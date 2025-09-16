@@ -1,0 +1,426 @@
+[
+  {
+    "id": "f398e101-1307-4d6f-b7e6-79e3b6896e88",
+    "product_id": "8d9fe0ad-0ed1-4ae8-90d6-e45248b6a3d4",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3842320/Wahlburgers-Deluxe-Slices-American-Cheese-16Ct",
+    "created_at": "2025-02-17T17:59:52.310336+00:00",
+    "updated_at": "2025-02-17T17:59:52.310336+00:00"
+  },
+  {
+    "id": "98845609-503b-4dcb-b104-6590708a5940",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Jewel-Osco",
+    "url": "https://www.jewelosco.com/shop/product-details.960424431.html",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "e6320860-452c-48dd-be6a-bb7f0411d48e",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Stop & Shop",
+    "url": "https://stopandshop.com/product/wahlburgers-gourmet-blend-angus-ground-beef-burgers-4-ct-fresh-21.3-oz-pkg/265273",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "aba03da3-373b-40ae-8c81-cc84e6971be1",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Acme",
+    "url": "https://www.acmemarkets.com/shop/product-details.960424431.html",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "141db69d-9226-43a8-90ce-685028a8b87a",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/2616607/Wahlburgers-Gourmet-Blend-Fresh-Angus-Ground-Beef-Patties-4pk",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "5588d889-9fd4-42d3-9254-c80f4e07a92f",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Shaws",
+    "url": "https://www.shaws.com/shop/product-details.960424431.html",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "33318aa4-2342-4dbb-935d-ef7ae4d853f4",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Giant Food Stores",
+    "url": "https://giantfoodstores.com/product/wahlburgers-gourmet-blend-angus-ground-beef-burgers-4-ct-fresh-21.3-oz-pkg/265273",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "8f2a1fe7-3d41-481c-bfd7-462a7df67511",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Big Y",
+    "url": "https://www.bigy.com/rs/products/wahlburgers-fresh-angus-burgers-00082900500060",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "46ad4ad8-f090-4b39-88da-5050e9657b79",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Safeway",
+    "url": "https://www.safeway.com/shop/product-details.960424431.html",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "c630166f-bc27-472d-a57c-9726ca77b810",
+    "product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "retailer": "Publix",
+    "url": "https://www.publix.com/pd/wahlburgers-burgers-famous-gourmet-blend-fresh-angus/RIO-PCI-595184?origin=search1",
+    "created_at": "2025-02-17T18:50:54.279787+00:00",
+    "updated_at": "2025-02-17T18:50:54.279787+00:00"
+  },
+  {
+    "id": "eae72e8a-cd7a-4d94-8051-1b85366b9a1c",
+    "product_id": "71c0feb0-aa44-4bc4-bade-b684d07ef925",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3594860/Wahlburgers-Chef-Pauls-BBQ-Sauce",
+    "created_at": "2025-02-17T18:54:17.645773+00:00",
+    "updated_at": "2025-02-17T18:54:17.645773+00:00"
+  },
+  {
+    "id": "670157fd-18ad-4577-8f97-34a1832a7044",
+    "product_id": "e7777773-8bcc-4a61-afa2-5f1fc002d8ef",
+    "retailer": "Giant Eagle",
+    "url": "https://www.gianteagle.com/grocery/search/product/00811463032312",
+    "created_at": "2025-02-17T18:57:58.880958+00:00",
+    "updated_at": "2025-02-17T18:57:58.880958+00:00"
+  },
+  {
+    "id": "ed00a0aa-040c-4508-8755-4922c3a3b138",
+    "product_id": "e7777773-8bcc-4a61-afa2-5f1fc002d8ef",
+    "retailer": "ShopRite",
+    "url": "https://www.shoprite.com/sm/pickup/rsid/3000/product/wahlburgers-chuck-brisket-blend-burgers-2132-oz-id-00811463032312",
+    "created_at": "2025-02-17T18:57:58.880958+00:00",
+    "updated_at": "2025-02-17T18:57:58.880958+00:00"
+  },
+  {
+    "id": "985b3905-efec-4359-bd15-c5a4a0e4ea57",
+    "product_id": "6b41eaf9-0b61-4130-bd82-ad69412d6461",
+    "retailer": "ShopRite",
+    "url": "https://www.shoprite.com/sm/pickup/rsid/3000/product/wahlburgers-craft-blend-burgers-2132-oz-id-00811463032299",
+    "created_at": "2025-02-17T18:59:20.978639+00:00",
+    "updated_at": "2025-02-17T18:59:20.978639+00:00"
+  },
+  {
+    "id": "a72c992e-bc95-41a9-89dd-d8e41db6d8f4",
+    "product_id": "c8c6018a-643d-4029-a3d3-8e9ed15122b4",
+    "retailer": "Giant Eagle",
+    "url": "https://www.gianteagle.com/grocery/search/product/00811463032275",
+    "created_at": "2025-02-17T18:59:44.720189+00:00",
+    "updated_at": "2025-02-17T18:59:44.720189+00:00"
+  },
+  {
+    "id": "b27986f9-42e1-454d-9adb-2208715926e6",
+    "product_id": "8332a679-2fe6-4572-9abe-4c6bee6588d5",
+    "retailer": "Acme",
+    "url": "https://www.acmemarkets.com/shop/product-details.960569167.html",
+    "created_at": "2025-02-17T19:14:47.21842+00:00",
+    "updated_at": "2025-02-17T19:14:47.21842+00:00"
+  },
+  {
+    "id": "8bdd12d1-01b7-4102-b2ed-eaabb10cb08c",
+    "product_id": "8332a679-2fe6-4572-9abe-4c6bee6588d5",
+    "retailer": "Jewel-Osco",
+    "url": "https://www.jewelosco.com/shop/product-details.960569167.html",
+    "created_at": "2025-02-17T19:14:47.21842+00:00",
+    "updated_at": "2025-02-17T19:14:47.21842+00:00"
+  },
+  {
+    "id": "a34f7801-f6aa-4fba-bea7-b614cfa91e5a",
+    "product_id": "8332a679-2fe6-4572-9abe-4c6bee6588d5",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3191942/Wahlburgers-Wahl-Sauce",
+    "created_at": "2025-02-17T19:14:47.21842+00:00",
+    "updated_at": "2025-02-17T19:14:47.21842+00:00"
+  },
+  {
+    "id": "09ce6b9c-9206-4dd5-b1bd-08f71453ef0a",
+    "product_id": "939f8278-8d25-4803-b110-fe5e1b4d5b5b",
+    "retailer": "Stop & Shop",
+    "url": "https://stopandshop.com/product/wahlburgers-all-natural-meatball-meatloaf-blend-fresh-16-oz-pkg/376109",
+    "created_at": "2025-02-28T19:18:29.805516+00:00",
+    "updated_at": "2025-02-28T19:18:29.805516+00:00"
+  },
+  {
+    "id": "bc9f91da-7c2e-4ad2-ba88-10feb01a5bc2",
+    "product_id": "939f8278-8d25-4803-b110-fe5e1b4d5b5b",
+    "retailer": "Publix",
+    "url": "https://www.publix.com/pd/wahlburgers-meatball-meatloaf-blend-custom-beefporkveal/RIO-PCI-620403",
+    "created_at": "2025-02-28T19:18:29.805516+00:00",
+    "updated_at": "2025-02-28T19:18:29.805516+00:00"
+  },
+  {
+    "id": "dd853efc-7dee-4a47-9a51-e0d2ed05e286",
+    "product_id": "7068a912-5dad-47c6-af67-5fe737ad2594",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3305088/Wahlburgers-Burgers-Prime-Blend-Abundantly-Marbled-Beef",
+    "created_at": "2025-02-28T19:21:27.848556+00:00",
+    "updated_at": "2025-02-28T19:21:27.848556+00:00"
+  },
+  {
+    "id": "006c643d-1ab8-4be0-9507-77e1428f01c9",
+    "product_id": "7068a912-5dad-47c6-af67-5fe737ad2594",
+    "retailer": "Giant Food Stores",
+    "url": "https://giantfoodstores.com/product/wahlburgers-prime-blend-ground-beef-burgers-4-ct-fresh-21.3-oz-pkg/309435",
+    "created_at": "2025-02-28T19:21:27.848556+00:00",
+    "updated_at": "2025-02-28T19:21:27.848556+00:00"
+  },
+  {
+    "id": "af2052cf-ea02-4b03-9779-ac95ea126654",
+    "product_id": "d1787b8c-d1ab-4528-908e-bfd6f8f0beb2",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3766533/Wahlburgers-Angus-Beef-Burgers-Bacon-And-Cheddar-6Ct",
+    "created_at": "2025-02-28T19:27:29.510055+00:00",
+    "updated_at": "2025-02-28T19:27:29.510055+00:00"
+  },
+  {
+    "id": "94f94133-8737-4f28-896f-0517eada7d32",
+    "product_id": "e2f5fee9-b42a-46da-852e-2022180030a2",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3753278/Wahlburgers-Angus-Beef-Burger-Original-6Ct",
+    "created_at": "2025-02-28T19:29:05.201528+00:00",
+    "updated_at": "2025-02-28T19:29:05.201528+00:00"
+  },
+  {
+    "id": "69eeeb44-6b8d-45a4-be09-5796232c2861",
+    "product_id": "b171ffbc-9b70-4805-95f5-fff8608fd69d",
+    "retailer": "Publix",
+    "url": "https://www.publix.com/pd/wahlburgers-turkey-burgers-with-seasoning/RIO-PCI-614155",
+    "created_at": "2025-02-28T19:29:49.37721+00:00",
+    "updated_at": "2025-02-28T19:29:49.37721+00:00"
+  },
+  {
+    "id": "a182a8e7-7fda-4f96-ac63-9b543482f580",
+    "product_id": "b171ffbc-9b70-4805-95f5-fff8608fd69d",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3771375/Wahlburgers-Turkey-Burgers-with-Seasoning-6Ct",
+    "created_at": "2025-02-28T19:29:49.37721+00:00",
+    "updated_at": "2025-02-28T19:29:49.37721+00:00"
+  },
+  {
+    "id": "783e653e-f83f-48e8-bd29-8b6940ae4aee",
+    "product_id": "eb53b10d-6aae-4d34-aad8-c6e2003f3cba",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3767800/Wahlburgers-Bacon-Hickory-Smoked-Uncured",
+    "created_at": "2025-02-28T19:30:42.554984+00:00",
+    "updated_at": "2025-02-28T19:30:42.554984+00:00"
+  },
+  {
+    "id": "665c47a2-cc94-4173-bc44-24469ea076ab",
+    "product_id": "eb53b10d-6aae-4d34-aad8-c6e2003f3cba",
+    "retailer": "Shaws",
+    "url": "https://www.shaws.com/shop/product-details.970103890.html",
+    "created_at": "2025-02-28T19:30:42.554984+00:00",
+    "updated_at": "2025-02-28T19:30:42.554984+00:00"
+  },
+  {
+    "id": "3f8eebf7-96a2-49cd-b2a1-ac95bf0fa2df",
+    "product_id": "a309d914-7ab3-431d-b5de-9906b58eb508",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3780860/Wahlburgers-Dill-Chips-Fresh-Hot-Snacking-Pickles",
+    "created_at": "2025-02-28T19:32:56.849821+00:00",
+    "updated_at": "2025-02-28T19:32:56.849821+00:00"
+  },
+  {
+    "id": "53762155-cda1-4880-b3a0-226f68976c4d",
+    "product_id": "a309d914-7ab3-431d-b5de-9906b58eb508",
+    "retailer": "Publix",
+    "url": "https://www.publix.com/pd/wahlburgers-dill-chips-fresh-hot-snacking-pickles/RIO-PCI-610862",
+    "created_at": "2025-02-28T19:32:56.849821+00:00",
+    "updated_at": "2025-02-28T19:32:56.849821+00:00"
+  },
+  {
+    "id": "ffc36f7b-f13c-4b6a-a25a-5ffef10dfa1a",
+    "product_id": "4e3aa371-1c1a-4760-8bed-b66b6afd887d",
+    "retailer": "Jewel-Osco",
+    "url": "https://www.jewelosco.com/shop/product-details.970096870.html",
+    "created_at": "2025-05-28T15:26:57.58369+00:00",
+    "updated_at": "2025-05-28T15:26:57.58369+00:00"
+  },
+  {
+    "id": "39774b7c-c803-40b2-926e-b0953eb50180",
+    "product_id": "4e3aa371-1c1a-4760-8bed-b66b6afd887d",
+    "retailer": "Stop & Shop",
+    "url": "https://stopandshop.com/product/wahlburgers-american-style-kobe-blend-ground-beef-burgers-4-ct-fresh-21.3-oz-pkg/318423",
+    "created_at": "2025-05-28T15:26:57.58369+00:00",
+    "updated_at": "2025-05-28T15:26:57.58369+00:00"
+  },
+  {
+    "id": "56cf05b7-b6c0-480e-b36c-79255c5b13b3",
+    "product_id": "4e3aa371-1c1a-4760-8bed-b66b6afd887d",
+    "retailer": "Acme",
+    "url": "https://www.acmemarkets.com/shop/product-details.970096870.html",
+    "created_at": "2025-05-28T15:26:57.58369+00:00",
+    "updated_at": "2025-05-28T15:26:57.58369+00:00"
+  },
+  {
+    "id": "4ca95ecc-b85e-4a4d-a695-5c44e62f998c",
+    "product_id": "4e3aa371-1c1a-4760-8bed-b66b6afd887d",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3305089/Wahlburgers-Burgers-American-Style-Kobe-Blend",
+    "created_at": "2025-05-28T15:26:57.58369+00:00",
+    "updated_at": "2025-05-28T15:26:57.58369+00:00"
+  },
+  {
+    "id": "a1930f59-a34e-4623-aac4-2ed5ce9b0f91",
+    "product_id": "4e3aa371-1c1a-4760-8bed-b66b6afd887d",
+    "retailer": "Shaws",
+    "url": "https://www.shaws.com/shop/product-details.970096870.html",
+    "created_at": "2025-05-28T15:26:57.58369+00:00",
+    "updated_at": "2025-05-28T15:26:57.58369+00:00"
+  },
+  {
+    "id": "7505ffa2-e6ac-431d-977d-d40c2ef1938a",
+    "product_id": "4e3aa371-1c1a-4760-8bed-b66b6afd887d",
+    "retailer": "Big Y",
+    "url": "https://www.bigy.com/rs/products/wahlburgers-american-style-kobe-blend-burgers-00082900500089",
+    "created_at": "2025-05-28T15:26:57.58369+00:00",
+    "updated_at": "2025-05-28T15:26:57.58369+00:00"
+  },
+  {
+    "id": "a8caaddc-b2b6-46f4-8852-09ab78c3b994",
+    "product_id": "4e3aa371-1c1a-4760-8bed-b66b6afd887d",
+    "retailer": "Publix",
+    "url": "https://www.publix.com/pd/wahlburgers-burgers-american-style-kobe-blend/RIO-PCI-595198?origin=search2",
+    "created_at": "2025-05-28T15:26:57.58369+00:00",
+    "updated_at": "2025-05-28T15:26:57.58369+00:00"
+  },
+  {
+    "id": "65b2780a-09d3-4e34-8d82-8204737b67e9",
+    "product_id": "604d9291-c380-40f1-a378-0ab04344e21d",
+    "retailer": "Acme",
+    "url": "https://www.acmemarkets.com/shop/product-details.970120552.html",
+    "created_at": "2025-05-28T15:27:48.639448+00:00",
+    "updated_at": "2025-05-28T15:27:48.639448+00:00"
+  },
+  {
+    "id": "11681b24-6a32-434b-a1fb-3985fc845d37",
+    "product_id": "604d9291-c380-40f1-a378-0ab04344e21d",
+    "retailer": "Jewel-Osco",
+    "url": "https://www.jewelosco.com/shop/product-details.970120552.html",
+    "created_at": "2025-05-28T15:27:48.639448+00:00",
+    "updated_at": "2025-05-28T15:27:48.639448+00:00"
+  },
+  {
+    "id": "2a325422-fcce-4714-9f34-bbafe601f220",
+    "product_id": "604d9291-c380-40f1-a378-0ab04344e21d",
+    "retailer": "Shaws",
+    "url": "https://www.shaws.com/shop/product-details.970120552.html",
+    "created_at": "2025-05-28T15:27:48.639448+00:00",
+    "updated_at": "2025-05-28T15:27:48.639448+00:00"
+  },
+  {
+    "id": "8359d659-a48f-41f7-b1e9-2e35bf8024e3",
+    "product_id": "604d9291-c380-40f1-a378-0ab04344e21d",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3349751/Wahlburgers-Fresh-Dill-Chips",
+    "created_at": "2025-05-28T15:27:48.639448+00:00",
+    "updated_at": "2025-05-28T15:27:48.639448+00:00"
+  },
+  {
+    "id": "e5d9e47e-72ad-4182-bf61-33609c20b021",
+    "product_id": "604d9291-c380-40f1-a378-0ab04344e21d",
+    "retailer": "Stop & Shop",
+    "url": "https://stopandshop.com/product/wahlburgers-fresh-dill-pickle-chips-refrigerated-32-oz-tub/379749",
+    "created_at": "2025-05-28T15:27:48.639448+00:00",
+    "updated_at": "2025-05-28T15:27:48.639448+00:00"
+  },
+  {
+    "id": "8243f506-c220-432a-aae6-89409b1e8f38",
+    "product_id": "95929427-8f11-44eb-a95e-91ae653ce0be",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3318751/Wahlburgers-Fresh-Dill-Spears",
+    "created_at": "2025-05-28T15:28:05.737029+00:00",
+    "updated_at": "2025-05-28T15:28:05.737029+00:00"
+  },
+  {
+    "id": "ae042517-f2db-41a3-aaa0-c08bc19dc004",
+    "product_id": "95929427-8f11-44eb-a95e-91ae653ce0be",
+    "retailer": "Jewel-Osco",
+    "url": "https://www.jewelosco.com/shop/product-details.970120059.html",
+    "created_at": "2025-05-28T15:28:05.737029+00:00",
+    "updated_at": "2025-05-28T15:28:05.737029+00:00"
+  },
+  {
+    "id": "89ba6710-8c27-4236-a721-dc22ddc8b4e5",
+    "product_id": "95929427-8f11-44eb-a95e-91ae653ce0be",
+    "retailer": "Shaws",
+    "url": "https://www.shaws.com/shop/product-details.970120059.html",
+    "created_at": "2025-05-28T15:28:05.737029+00:00",
+    "updated_at": "2025-05-28T15:28:05.737029+00:00"
+  },
+  {
+    "id": "5654f600-0dde-4a79-b155-641f2fc36abd",
+    "product_id": "95929427-8f11-44eb-a95e-91ae653ce0be",
+    "retailer": "Stop & Shop",
+    "url": "https://stopandshop.com/product/wahlburgers-fresh-dill-spears-pickles-refrigerated-32-oz-tub/379750",
+    "created_at": "2025-05-28T15:28:05.737029+00:00",
+    "updated_at": "2025-05-28T15:28:05.737029+00:00"
+  },
+  {
+    "id": "719d1eba-6e50-4eed-88bd-99642773236a",
+    "product_id": "05ca4a5e-7020-4842-aa54-ce7988839942",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/3318752/Wahlburgers-Hot-Fresh-Dill-Chips",
+    "created_at": "2025-05-28T15:28:17.254451+00:00",
+    "updated_at": "2025-05-28T15:28:17.254451+00:00"
+  },
+  {
+    "id": "8f9c6366-2b9b-4a97-b0bd-29445c6c143b",
+    "product_id": "05ca4a5e-7020-4842-aa54-ce7988839942",
+    "retailer": "Stop & Shop",
+    "url": "https://stopandshop.com/product/wahlburgers-hot-fresh-dill-pickle-chips-refrigerated-32-oz-tub/379751",
+    "created_at": "2025-05-28T15:28:17.254451+00:00",
+    "updated_at": "2025-05-28T15:28:17.254451+00:00"
+  },
+  {
+    "id": "0e176a1c-95f9-4901-8786-ff63ef594e45",
+    "product_id": "0d1d05d1-5b11-4737-bc2e-6c79c1d8f1da",
+    "retailer": "Hyvee",
+    "url": "https://www.hy-vee.com/aisles-online/p/2616608/Wahlburgers-Gourmet-Blend-Fresh-Angus-Ground-Beef-Sliders",
+    "created_at": "2025-05-28T15:33:26.655104+00:00",
+    "updated_at": "2025-05-28T15:33:26.655104+00:00"
+  },
+  {
+    "id": "b392c891-7803-46f6-bd60-7a12e8cad39d",
+    "product_id": "0d1d05d1-5b11-4737-bc2e-6c79c1d8f1da",
+    "retailer": "Giant Food Stores",
+    "url": "https://giantfoodstores.com/groceries/meat/ground-meats-burgers/burgers-patties/beef-burgers-patties/fresh-beef-burgers-patties/wahlburgers-burgers-angus-ground-beef-sliders-fresh-8-ct-20-oz-pkg.html",
+    "created_at": "2025-05-28T15:33:26.655104+00:00",
+    "updated_at": "2025-05-28T15:33:26.655104+00:00"
+  },
+  {
+    "id": "93b44444-0ba1-4af2-8d91-70ff96ef9617",
+    "product_id": "0d1d05d1-5b11-4737-bc2e-6c79c1d8f1da",
+    "retailer": "Publix",
+    "url": "https://www.publix.com/pd/wahlburgers-gourmet-blend-slider/RIO-PCI-605491",
+    "created_at": "2025-05-28T15:33:26.655104+00:00",
+    "updated_at": "2025-05-28T15:33:26.655104+00:00"
+  },
+  {
+    "id": "d5fdd719-6a22-42ad-a739-58652e5435b5",
+    "product_id": "0d1d05d1-5b11-4737-bc2e-6c79c1d8f1da",
+    "retailer": "Stop & Shop",
+    "url": "https://stopandshop.com/product/wahlburgers-gourmet-blend-angus-ground-beef-burger-sliders-8-ct-fresh-20-oz-pkg/311360",
+    "created_at": "2025-05-28T15:33:26.655104+00:00",
+    "updated_at": "2025-05-28T15:33:26.655104+00:00"
+  },
+  {
+    "id": "b82af634-a64c-4f61-a15f-662d6e6753d0",
+    "product_id": "0d1d05d1-5b11-4737-bc2e-6c79c1d8f1da",
+    "retailer": "Safeway",
+    "url": "https://www.safeway.com/shop/product-details.960519949.html",
+    "created_at": "2025-05-28T15:33:26.655104+00:00",
+    "updated_at": "2025-05-28T15:33:26.655104+00:00"
+  }
+]

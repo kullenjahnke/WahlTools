@@ -1,0 +1,50 @@
+{
+  "timestamp": "2025-09-10T15:37:09.499Z",
+  "tables": {
+    "products": {
+      "count": 0,
+      "file": "products.json"
+    },
+    "product_categories": {
+      "count": 0,
+      "file": "product_categories.json"
+    },
+    "product_images": {
+      "count": 0,
+      "file": "product_images.json"
+    },
+    "product_urls": {
+      "count": 53,
+      "file": "product_urls.json"
+    },
+    "prices": {
+      "count": 0,
+      "file": "prices.json"
+    },
+    "price_change_logs": {
+      "count": 0,
+      "file": "price_change_logs.json"
+    },
+    "price_check_logs": {
+      "count": 0,
+      "file": "price_check_logs.json"
+    },
+    "competitors": {
+      "count": 1,
+      "file": "competitors.json"
+    },
+    "competitor_products": {
+      "count": 1,
+      "file": "competitor_products.json"
+    },
+    "competitor_product_urls": {
+      "count": 0,
+      "file": "competitor_product_urls.json"
+    },
+    "competitor_prices": {
+      "count": 0,
+      "file": "competitor_prices.json"
+    }
+  },
+  "totalRecords": 55
+}

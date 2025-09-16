@@ -1,0 +1,13 @@
+[
+  {
+    "id": "20feba73-a3c6-48b3-a02e-42fba7aac83d",
+    "competitor_id": "f51655dd-3bb2-48f2-b6ed-1602ac971f07",
+    "name": "Signature Blend Patty",
+    "category_id": "23709a40-7b99-41b4-a863-bc1893637577",
+    "related_product_id": "a3a8267b-fed5-40bd-bfac-ad8442caf6ab",
+    "is_active": true,
+    "weight_oz": 24,
+    "created_at": "2025-03-04T20:21:49.070062+00:00",
+    "updated_at": "2025-03-04T20:21:49.070062+00:00"
+  }
+]
