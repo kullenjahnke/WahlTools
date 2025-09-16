@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createClientClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -26,7 +26,7 @@ interface ProductPriceHistoryProps {
 
 export function ProductPriceHistory({ productId, prices }: ProductPriceHistoryProps) {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createClientClient()
   const [timeRange, setTimeRange] = useState("30") // days
   const [isLoading, setIsLoading] = useState(false)
 
