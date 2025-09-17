@@ -328,8 +328,7 @@ export function EnhancedUnifiedProductForm({ product, onSuccess }: UnifiedProduc
               validUrls.map(item => ({
                 product_id: productId,
                 retailer: item.retailer,
-                url: item.url,
-                is_active: true
+                url: item.url
               }))
             )
           
