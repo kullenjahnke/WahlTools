@@ -3,7 +3,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { firecrawlService } from "@/lib/scraping/firecrawl-service"
 import { recordPriceCheck } from "./prices"
-import { getCurrentUserEmail } from "@/lib/auth/get-user"
 import { revalidatePath } from "next/cache"
 
 export interface AutomatedScrapeResult {
@@ -23,8 +22,7 @@ export interface AutomatedScrapeResult {
 export async function scrapeRetailerPrices(retailer: string) {
   try {
     const supabase = await createSupabaseServerClient()
-    const userEmail = await getCurrentUserEmail()
-    
+
     // Get all products with URLs for this retailer
     const { data: products, error } = await supabase
       .from('products')
@@ -55,18 +53,7 @@ export async function scrapeRetailerPrices(retailer: string) {
       retailer
     }))
     
-    // Log scraping attempt (don't set entity_id since it's not a UUID)
-    await supabase.from('activity_logs').insert({
-      user_email: userEmail || 'system',
-      action: 'start_automated_scrape',
-      entity_type: 'retailer',
-      entity_id: null, // No UUID for retailer actions
-      entity_name: retailer,
-      details: {
-        product_count: urlsToScrape.length,
-        trigger: 'manual'
-      }
-    })
+    // Activity logging removed - no longer tracking attribution
     
     // Scrape all products
     const scrapeResults = await firecrawlService.scrapeMultipleProducts(urlsToScrape)
@@ -120,20 +107,7 @@ export async function scrapeRetailerPrices(retailer: string) {
       await recordPriceCheck(retailer, pricesToRecord)
     }
     
-    // Log completion (don't set entity_id since it's not a UUID)
-    await supabase.from('activity_logs').insert({
-      user_email: userEmail || 'system',
-      action: 'complete_automated_scrape',
-      entity_type: 'retailer',
-      entity_id: null, // No UUID for retailer actions
-      entity_name: retailer,
-      details: {
-        total_products: products.length,
-        successful_scrapes: results.filter(r => r.success).length,
-        failed_scrapes: results.filter(r => !r.success).length,
-        prices_recorded: pricesToRecord.length
-      }
-    })
+    // Activity logging removed - no longer tracking attribution
     
     // Revalidate pages
     revalidatePath('/dashboard')
@@ -211,40 +185,30 @@ export async function testSingleProductScrape(productId: string, retailer: strin
 export async function getScrapingStatus() {
   try {
     const supabase = await createSupabaseServerClient()
-    
-    // Get recent scraping activity
-    const { data: recentActivity, error } = await supabase
-      .from('activity_logs')
-      .select('*')
-      .in('action', ['start_automated_scrape', 'complete_automated_scrape'])
-      .order('created_at', { ascending: false })
-      .limit(10)
-    
-    if (error) throw error
-    
+
     // Get count of products with URLs
     const { count: urlCount } = await supabase
       .from('product_urls')
       .select('*', { count: 'exact', head: true })
-    
+
     // Get retailers with URLs
     const { data: retailers } = await supabase
       .from('product_urls')
       .select('retailer')
       .order('retailer')
-    
+
     const uniqueRetailers = [...new Set(retailers?.map(r => r.retailer) || [])]
-    
+
     return {
       success: true,
       data: {
         totalProductUrls: urlCount || 0,
         retailersConfigured: uniqueRetailers,
-        recentActivity: recentActivity || [],
+        recentActivity: [], // Activity logging removed
         firecrawlConfigured: !!process.env.FIRECRAWL_API_KEY
       }
     }
-    
+
   } catch (error) {
     return {
       success: false,

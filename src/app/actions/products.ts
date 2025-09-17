@@ -2,7 +2,6 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { getCurrentUserEmail } from '@/lib/auth/get-user'
 // ProductInsert and ProductUpdate types imported for reference
 
 interface ProductFormData {
@@ -16,8 +15,7 @@ interface ProductFormData {
 
 export async function createProduct(data: ProductFormData) {
   const supabase = await createSupabaseServerClient()
-  const userEmail = await getCurrentUserEmail()
-  
+
   try {
     console.log('Creating product:', data)
     
@@ -34,9 +32,7 @@ export async function createProduct(data: ProductFormData) {
         upc: data.upc || null,
         description: data.description || null,
         internal_notes: data.internal_notes || null,
-        aliases: data.aliases || [],
-        created_by: userEmail,
-        updated_by: userEmail
+        aliases: data.aliases || []
       })
       .select()
       .single()
@@ -46,23 +42,7 @@ export async function createProduct(data: ProductFormData) {
       throw error
     }
 
-    // Log activity
-    const { error: activityError } = await supabase
-      .from('activity_logs')
-      .insert({
-        user_email: userEmail || 'system',
-        action: 'create_product',
-        entity_type: 'product',
-        entity_id: newProduct.id,
-        entity_name: newProduct.name,
-        details: {
-          category_id: data.category_id,
-          upc: data.upc,
-          has_aliases: (data.aliases?.length || 0) > 0
-        }
-      })
-    
-    if (activityError) console.error('Failed to log activity:', activityError)
+    // Activity logging removed - no longer tracking attribution
 
     console.log('Product created:', newProduct)
     console.log('Revalidating path: /dashboard/products')
@@ -81,8 +61,7 @@ export async function createProduct(data: ProductFormData) {
 
 export async function updateProduct(id: string, data: ProductFormData) {
   const supabase = await createSupabaseServerClient()
-  const userEmail = await getCurrentUserEmail()
-  
+
   try {
     console.log('Updating product:', id, data)
     
@@ -98,28 +77,13 @@ export async function updateProduct(id: string, data: ProductFormData) {
         upc: data.upc || null,
         description: data.description || null,
         internal_notes: data.internal_notes || null,
-        aliases: data.aliases || [],
-        updated_by: userEmail
+        aliases: data.aliases || []
       })
       .eq('id', id)
 
     if (error) throw error
 
-    // Log activity
-    const { error: activityError } = await supabase
-      .from('activity_logs')
-      .insert({
-        user_email: userEmail || 'system',
-        action: 'update_product',
-        entity_type: 'product',
-        entity_id: id,
-        entity_name: data.name,
-        details: {
-          updated_fields: Object.keys(data)
-        }
-      })
-    
-    if (activityError) console.error('Failed to log activity:', activityError)
+    // Activity logging removed - no longer tracking attribution
 
     console.log('Product updated')
     console.log('Revalidating path: /dashboard/products')
