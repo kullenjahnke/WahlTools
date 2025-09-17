@@ -202,24 +202,39 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
       ]));
       
       // Transform data for submission
-      const priceUpdates = productIdsWithData.map(productId => {
-        const hasPromo = promos[productId] || false
-        const originalPrice = hasPromo && originalPrices[productId] ? parseFloat(originalPrices[productId]) : null
-        const regularPrice = soldOut[productId] ? null : (prices[productId] ? parseFloat(prices[productId]) : null)
-        
-        return {
-          product_id: productId,
-          retailer,
-          price: regularPrice,
-          original_price: originalPrice,
-          on_sale: hasPromo,
-          discount_percentage: hasPromo && originalPrice && regularPrice
-            ? Math.round(((originalPrice - regularPrice) / originalPrice) * 100)
-            : null,
-          status: notAvailable[productId] ? 'not_carried' : (soldOut[productId] ? 'out_of_stock' : 'available'),
-          timestamp: new Date().toISOString()
-        }
-      })
+      const priceUpdates = productIdsWithData
+        .map(productId => {
+          const hasPromo = promos[productId] || false
+          const originalPrice = hasPromo && originalPrices[productId] ? parseFloat(originalPrices[productId]) : null
+          // For sold out or not available items, use 0 as the price
+          // For available items, parse the price or skip if no price entered
+          let regularPrice: number | null = null
+
+          if (soldOut[productId] || notAvailable[productId]) {
+            regularPrice = 0 // Use 0 for sold out or not available items
+          } else if (prices[productId]) {
+            regularPrice = parseFloat(prices[productId])
+          }
+
+          // Skip items that don't have a price and aren't marked as sold out or not available
+          if (regularPrice === null) {
+            return null
+          }
+
+          return {
+            product_id: productId,
+            retailer,
+            price: regularPrice,
+            original_price: originalPrice,
+            on_sale: hasPromo,
+            discount_percentage: hasPromo && originalPrice && regularPrice > 0
+              ? Math.round(((originalPrice - regularPrice) / originalPrice) * 100)
+              : null,
+            status: notAvailable[productId] ? 'not_carried' : (soldOut[productId] ? 'out_of_stock' : 'available'),
+            timestamp: new Date().toISOString()
+          }
+        })
+        .filter(update => update !== null) // Remove any null entries
       
       if (priceUpdates.length === 0) {
         toast({
