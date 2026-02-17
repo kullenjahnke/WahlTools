@@ -89,65 +89,132 @@ export async function fetchProductPriceHistory(productId: string, days: number =
   }
 }
 
+/**
+ * Get the Monday 00:00:00 start of a week in America/New_York timezone.
+ * Returns a UTC Date object representing that moment.
+ */
+function getWeekStartEST(date: Date): Date {
+  // Format the date in EST to get the local day-of-week
+  const estParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+
+  const get = (type: string) => estParts.find(p => p.type === type)?.value || ''
+  const weekday = get('weekday')
+  const dayMap: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }
+  const dayOffset = dayMap[weekday] ?? 0
+
+  // Build the Monday date in EST
+  const estYear = parseInt(get('year'))
+  const estMonth = parseInt(get('month')) - 1
+  const estDay = parseInt(get('day')) - dayOffset
+
+  // Create a date string representing Monday 00:00:00 EST
+  const mondayEST = new Date(Date.UTC(estYear, estMonth, estDay, 5, 0, 0)) // EST = UTC-5
+  // Check if EDT (UTC-4) — approximate: Mar second Sun to Nov first Sun
+  const month = mondayEST.getUTCMonth()
+  if (month >= 2 && month <= 10) {
+    // Potentially EDT, adjust to UTC-4
+    mondayEST.setUTCHours(4)
+  }
+
+  return mondayEST
+}
+
 export async function getPriceChangeStats() {
   try {
     const supabase = await createSupabaseServerClient()
 
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const now = new Date()
+    const currentWeekStart = getWeekStartEST(now)
+    const prevWeekStart = new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000)
 
-    // Two queries instead of 22 (was 2 per retailer)
-    const [{ data: activePrices }, { data: priceHistory }] = await Promise.all([
+    // Fetch active prices for distinct product count, and prices from both weeks for WoW
+    const [{ data: activePrices }, { data: twoWeekPrices }] = await Promise.all([
       supabase
         .from('prices')
-        .select('retailer, id')
+        .select('retailer, product_id')
         .eq('status', 'active'),
       supabase
         .from('prices')
         .select('retailer, product_id, price, timestamp')
-        .gte('timestamp', thirtyDaysAgo.toISOString())
-        .order('timestamp', { ascending: true })
+        .gte('timestamp', prevWeekStart.toISOString())
+        .order('timestamp', { ascending: false })
     ])
 
-    // Count active prices per retailer
-    const activeCountByRetailer: Record<string, number> = {}
+    // Count DISTINCT products per retailer (not price log count)
+    const distinctProductsByRetailer: Record<string, Set<string>> = {}
     for (const p of activePrices || []) {
-      activeCountByRetailer[p.retailer] = (activeCountByRetailer[p.retailer] || 0) + 1
-    }
-
-    // Group history by retailer+product and count increases/decreases
-    const changesByRetailer: Record<string, { increases: number; decreases: number }> = {}
-    const grouped: Record<string, { price: number }[]> = {}
-
-    for (const p of priceHistory || []) {
-      const key = `${p.retailer}::${p.product_id}`
-      if (!grouped[key]) grouped[key] = []
-      grouped[key].push({ price: p.price })
-    }
-
-    for (const [key, prices] of Object.entries(grouped)) {
-      const retailer = key.split('::')[0]
-      if (!changesByRetailer[retailer]) {
-        changesByRetailer[retailer] = { increases: 0, decreases: 0 }
+      if (!distinctProductsByRetailer[p.retailer]) {
+        distinctProductsByRetailer[p.retailer] = new Set()
       }
-      for (let i = 1; i < prices.length; i++) {
-        if (prices[i].price > prices[i - 1].price) {
-          changesByRetailer[retailer].increases++
-        } else if (prices[i].price < prices[i - 1].price) {
-          changesByRetailer[retailer].decreases++
+      distinctProductsByRetailer[p.retailer].add(p.product_id)
+    }
+
+    // Group prices by retailer+product, split into current/prev week
+    // Use latest price per product per retailer per week as representative
+    const currentWeekPrices: Record<string, number> = {} // key: retailer::product_id
+    const prevWeekPrices: Record<string, number> = {}
+
+    for (const p of twoWeekPrices || []) {
+      if (p.price === 0) continue // Skip sold-out/not-available entries
+      const ts = new Date(p.timestamp)
+      const key = `${p.retailer}::${p.product_id}`
+
+      if (ts >= currentWeekStart) {
+        // Current week — first occurrence is latest (ordered desc)
+        if (!(key in currentWeekPrices)) {
+          currentWeekPrices[key] = p.price
+        }
+      } else if (ts >= prevWeekStart) {
+        // Previous week
+        if (!(key in prevWeekPrices)) {
+          prevWeekPrices[key] = p.price
         }
       }
     }
 
+    // Calculate WoW changes per retailer
+    const changesByRetailer: Record<string, { increases: number; decreases: number; unchanged: number }> = {}
+
+    for (const key of Object.keys(currentWeekPrices)) {
+      const retailer = key.split('::')[0]
+      if (!changesByRetailer[retailer]) {
+        changesByRetailer[retailer] = { increases: 0, decreases: 0, unchanged: 0 }
+      }
+
+      if (key in prevWeekPrices) {
+        const change = (currentWeekPrices[key] - prevWeekPrices[key]) / prevWeekPrices[key]
+        if (change > 0.001) {
+          changesByRetailer[retailer].increases++
+        } else if (change < -0.001) {
+          changesByRetailer[retailer].decreases++
+        } else {
+          changesByRetailer[retailer].unchanged++
+        }
+      } else {
+        // No previous week data — count as unchanged
+        changesByRetailer[retailer].unchanged++
+      }
+    }
+
     return RETAILERS.map(retailer => {
-      const totalProducts = activeCountByRetailer[retailer] || 0
-      const changes = changesByRetailer[retailer] || { increases: 0, decreases: 0 }
+      const totalProducts = distinctProductsByRetailer[retailer]?.size || 0
+      const changes = changesByRetailer[retailer] || { increases: 0, decreases: 0, unchanged: 0 }
       return {
         retailer,
         totalProducts,
         increases: changes.increases,
         decreases: changes.decreases,
-        unchanged: Math.max(0, totalProducts - changes.increases - changes.decreases)
+        unchanged: changes.unchanged
       }
     })
   } catch (error) {

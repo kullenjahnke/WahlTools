@@ -7,9 +7,10 @@ import { PriceHistoryChart } from "@/components/prices/price-history-chart"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Plus, History, Bell, PackageSearch, BarChart4, Zap } from "lucide-react"
+import { Plus, History, Bell, PackageSearch, BarChart4, Zap, ListOrdered } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ExportModal } from "@/components/prices/export-modal"
 
 // Loading state component
 function PricesTableSkeleton() {
@@ -37,26 +38,33 @@ async function ProductsDataLoader() {
   try {
     const supabase = await createSupabaseServerClient()
     
-    // Fetch products
-    const productsResponse = await supabase
-      .from('products')
-      .select(`
-        *,
-        prices (*),
-        product_urls (*)
-      `)
-      .order('name')
-      .limit(500)
+    // Fetch products and categories in parallel
+    const [productsResponse, categoriesResponse] = await Promise.all([
+      supabase
+        .from('products')
+        .select(`
+          *,
+          prices (*),
+          product_urls (*)
+        `)
+        .order('name')
+        .limit(500),
+      supabase
+        .from('product_categories')
+        .select('id, name')
+        .order('name')
+    ])
 
     // Handle errors
     if (productsResponse.error) {
       console.error('Error fetching products:', productsResponse.error)
       throw productsResponse.error
     }
-    
+
     // Products directly from the database
     const products = productsResponse.data || []
-    
+    const categories = categoriesResponse.data || []
+
     // Fetch price stats (increases/decreases)
     let priceStats;
     try {
@@ -68,9 +76,13 @@ async function ProductsDataLoader() {
 
     return (
       <>
-        <RetailerPriceOverview 
-          products={products} 
-          priceStats={priceStats} 
+        <div className="flex justify-end">
+          <ExportModal products={products} categories={categories} />
+        </div>
+
+        <RetailerPriceOverview
+          products={products}
+          priceStats={priceStats}
         />
 
         <Tabs defaultValue="table" className="space-y-4">
@@ -137,6 +149,12 @@ export default async function PricesPage() {
             <Link href="/dashboard/prices/automation">
               <Zap className="h-4 w-4 mr-2" />
               Automation
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/prices/sequential">
+              <ListOrdered className="h-4 w-4 mr-2" />
+              Sequential Entry
             </Link>
           </Button>
           <Button asChild>

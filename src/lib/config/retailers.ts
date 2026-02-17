@@ -2,7 +2,6 @@ export const RETAILERS = [
     'Jewel-Osco',
     'Stop & Shop',
     'Acme',
-    'Hyvee',
     'Shaws',
     'Giant Eagle',
     'Giant Food Stores',
@@ -11,12 +10,11 @@ export const RETAILERS = [
     'Publix',
     'Safeway'
   ] as const;
-  
+
   export const RETAILER_COLORS: Record<string, string> = {
     'Jewel-Osco': '#2563eb',     // Blue
     'Stop & Shop': '#16a34a',    // Green
     'Acme': '#dc2626',          // Red
-    'Hyvee': '#9333ea',         // Purple
     'Shaws': '#ea580c',         // Orange
     'Giant Eagle': '#0891b2',    // Cyan
     'Giant Food Stores': '#4f46e5', // Indigo

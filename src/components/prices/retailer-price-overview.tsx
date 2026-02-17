@@ -17,15 +17,12 @@ import { ShawsIcon } from "@/components/icons/retailers/shaws"
 import { ShopRiteIcon } from "@/components/icons/retailers/shoprite"
 import { StopAndShopIcon } from "@/components/icons/retailers/stop-and-shop"
 import { AcmeIcon } from "@/components/icons/retailers/acme"
-import { HyVeeIcon } from "@/components/icons/retailers/hyvee"
-
 // Create a map of retailer names to their icon components
 const retailerIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'Acme': AcmeIcon,
   'Big Y': BigYIcon,
   'Giant Eagle': GiantEagleIcon,
   'Giant Food Stores': GiantFoodStoresIcon,
-  'Hyvee': HyVeeIcon,
   'Jewel-Osco': JewelOscoIcon,
   'Publix': PublixIcon,
   'Safeway': SafewayIcon,
@@ -61,46 +58,20 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
     );
   }
 
-  // If we have pre-calculated stats, use them; otherwise calculate them here
+  // Use pre-calculated stats from server action, or build basic stats from products
   const stats = priceStats || RETAILERS.map(retailer => {
-    // Removed unused retailerPrices variable
-    // const retailerPrices = products.flatMap(p => 
-    //   p.prices?.filter(price => price.retailer === retailer) || []
-    // )
-
-    // Get prices updated in last 30 days - commented out as not used
-    // const thirtyDaysAgo = new Date()
-    // thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    // const recentPrices = retailerPrices.filter(p => 
-    //   p && p.timestamp && new Date(p.timestamp) >= thirtyDaysAgo
-    // )
-
-    // Get latest price for each product
-    const productPrices = products.map(product => {
+    // Count distinct products with prices for this retailer
+    const productsWithPrices = products.filter(product => {
       const prices = product.prices?.filter(p => p && p.retailer === retailer) || []
-      return prices.sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      )[0]
-    }).filter(Boolean)
-
-    // Calculate changes (simplified calculation for the overview)
-    const increases = 0  // This would require historical price comparison
-    const decreases = 0  // This would require historical price comparison
-    const unchanged = productPrices.length
-
-    // Get latest update
-    const latestUpdate = productPrices.length > 0 ? 
-      productPrices.sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      )[0] : null
+      return prices.length > 0
+    })
 
     return {
       retailer,
-      totalProducts: productPrices.length,
-      increases,
-      decreases,
-      unchanged,
-      lastUpdated: latestUpdate?.timestamp
+      totalProducts: productsWithPrices.length,
+      increases: 0,
+      decreases: 0,
+      unchanged: productsWithPrices.length,
     }
   })
 

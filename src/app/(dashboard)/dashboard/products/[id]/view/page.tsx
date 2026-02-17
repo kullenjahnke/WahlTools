@@ -18,7 +18,6 @@ import { ShawsIcon } from "@/components/icons/retailers/shaws"
 import { ShopRiteIcon } from "@/components/icons/retailers/shoprite"
 import { StopAndShopIcon } from "@/components/icons/retailers/stop-and-shop"
 import { AcmeIcon } from "@/components/icons/retailers/acme"
-import { HyVeeIcon } from "@/components/icons/retailers/hyvee"
 import { ProductPriceHistory } from "@/components/prices/product-price-history"
 import { QuickPriceEntryWrapper } from "@/components/prices/quick-price-entry-wrapper"
 import type { ProductUrl as DBProductUrl } from "@/types/database"
@@ -50,7 +49,6 @@ const retailerIcons: Record<string, RetailerIconConfig> = {
     icon: GiantFoodStoresIcon,
     className: 'h-12 w-auto'
   },
-  'Hyvee': { icon: HyVeeIcon },
   'Jewel-Osco': { icon: JewelOscoIcon },
   'Publix': { icon: PublixIcon },
   'Safeway': { icon: SafewayIcon },

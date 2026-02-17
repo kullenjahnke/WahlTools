@@ -122,7 +122,7 @@ export function AutomationDashboard() {
       if (data.success) {
         toast({
           title: "Weekly check completed",
-          description: `Updated prices for HyVee and ShopRite`,
+          description: `Updated prices for ShopRite`,
         })
         
         // Convert weekly results to display format
@@ -259,7 +259,7 @@ export function AutomationDashboard() {
               ) : (
                 <>
                   <Calendar className="mr-2 h-4 w-4" />
-                  Run Weekly Check (HyVee & ShopRite)
+                  Run Weekly Check (ShopRite)
                 </>
               )}
             </Button>

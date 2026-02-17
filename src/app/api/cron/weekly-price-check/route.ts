@@ -27,7 +27,7 @@ export async function POST(_request: Request) {
     }
     
     // Run the same logic as GET but without cron token check
-    const workingRetailers = ['Hyvee', 'ShopRite']
+    const workingRetailers = ['ShopRite']
     const results = []
     
     for (const retailer of workingRetailers) {
