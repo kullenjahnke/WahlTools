@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
   Select,
@@ -22,16 +22,13 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { RETAILERS } from "@/lib/config/retailers"
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Minus, 
-  Plus, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
   X,
   Package,
-  DollarSign,
   AlertCircle,
-  CheckCircle,
   XCircle,
   BarChart3
 } from "lucide-react"
@@ -71,7 +68,6 @@ export function EnhancedProductComparison({
   categories 
 }: EnhancedProductComparisonProps) {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
-  const [comparisonView, setComparisonView] = useState<"grid" | "chart">("grid")
   const [showOnlyDifferences, setShowOnlyDifferences] = useState(false)
   const [selectedRetailer, setSelectedRetailer] = useState<string>("all")
   
@@ -114,13 +110,6 @@ export function EnhancedProductComparison({
     const avg = productPrices.reduce((a, b) => a + b, 0) / productPrices.length
     
     return { min, max, avg }
-  }
-  
-  // Get price difference percentage
-  const getPriceDifference = (price1: number | null, price2: number | null) => {
-    if (!price1 || !price2) return null
-    const diff = ((price2 - price1) / price1) * 100
-    return diff
   }
   
   // Group products by brand

@@ -46,6 +46,7 @@ async function ProductsDataLoader() {
         product_urls (*)
       `)
       .order('name')
+      .limit(500)
 
     // Handle errors
     if (productsResponse.error) {
@@ -55,8 +56,6 @@ async function ProductsDataLoader() {
     
     // Products directly from the database
     const products = productsResponse.data || []
-    
-    console.log(`Loaded ${products.length} products for prices page`)
     
     // Fetch price stats (increases/decreases)
     let priceStats;

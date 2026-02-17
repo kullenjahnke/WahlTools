@@ -44,8 +44,6 @@ export function QuickPriceEntry({
 
   // Open all retailer URLs in new tabs
   const openAllUrls = async () => {
-    console.log('Opening URLs:', retailerUrls)
-    
     // Add a small delay between opening each URL to prevent browser blocking
     for (const { retailer, url } of retailerUrls) {
       if (url && url.trim()) {
@@ -109,8 +107,6 @@ export function QuickPriceEntry({
         throw new Error('Please enter at least one valid price')
       }
 
-      console.log('Attempting to save price entries:', priceEntries)
-
       // Update existing prices to historical
       const retailersWithNewPrices = priceEntries.map(entry => entry.retailer)
       const { error: updateError } = await supabase
@@ -128,7 +124,7 @@ export function QuickPriceEntry({
       }
 
       // Insert new prices
-      const { error: insertError, data } = await supabase
+      const { error: insertError } = await supabase
         .from('prices')
         .insert(priceEntries)
         .select()
@@ -136,8 +132,6 @@ export function QuickPriceEntry({
       if (insertError) {
         throw new Error(`Failed to save new prices: ${insertError.message}`)
       }
-
-      console.log('Successfully saved prices:', data)
 
       toast({
         title: "Success",

@@ -1,29 +1,25 @@
 import { NextResponse } from 'next/server'
 import { scrapeRetailerPrices } from '@/app/actions/automated-prices'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { isEmailAuthorized } from '@/lib/auth/whitelist'
 
 // Manual price check endpoint - triggered from the UI only
-export async function POST(request: Request) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function POST(_request: Request) {
   try {
     // For manual triggers, check if user is authenticated
     const supabase = await createSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized - must be logged in' },
         { status: 401 }
       )
     }
-    
+
     // Check if user is whitelisted
-    const allowedEmails = [
-      'info@kullenjahnke.com',
-      'kdjahnke@arkkfood.com',
-      'rjahnke@arkkfood.com'
-    ]
-    
-    if (!allowedEmails.includes(user.email || '')) {
+    if (!isEmailAuthorized(user.email || '')) {
       return NextResponse.json(
         { error: 'Unauthorized - user not allowed' },
         { status: 403 }
@@ -31,14 +27,10 @@ export async function POST(request: Request) {
     }
     
     // Run the same logic as GET but without cron token check
-    console.log(`Manual weekly price check triggered by ${user.email}`)
-    
     const workingRetailers = ['Hyvee', 'ShopRite']
     const results = []
     
     for (const retailer of workingRetailers) {
-      console.log(`Scraping ${retailer}...`)
-      
       try {
         const result = await scrapeRetailerPrices(retailer)
         results.push({

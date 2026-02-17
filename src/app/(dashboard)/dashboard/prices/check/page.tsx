@@ -47,10 +47,6 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
       categoriesResult.data?.map(cat => [cat.id, cat.name]) || []
     )
     
-    // Log for debugging
-    console.log(`Loaded ${productsResult.data?.length || 0} products for price check`)
-    console.log(`Loaded ${categoriesResult.data?.length || 0} categories`)
-    
     // Get unique retailers from product URLs
     const availableRetailers = Array.from(new Set(
       productsResult.data?.flatMap(product => 

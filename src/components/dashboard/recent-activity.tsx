@@ -3,6 +3,16 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { formatDistanceToNow } from "date-fns"
 import { Package, DollarSign } from "lucide-react"
 
+interface PriceRecord {
+  id: string
+  price: number
+  retailer: string
+  updated_at: string
+  products: {
+    name: string
+  }[]
+}
+
 interface Update {
   id: string
   type: 'product' | 'price'
@@ -49,11 +59,11 @@ async function getRecentUpdates(): Promise<Update[]> {
   }
 
   if (prices) {
-    prices.forEach(p => {
+    prices.forEach((p: PriceRecord) => {
       updates.push({
         id: p.id,
         type: 'price',
-        name: (p.products as any)?.name || 'Unknown product',
+        name: p.products?.[0]?.name || 'Unknown product',
         retailer: p.retailer,
         price: p.price,
         timestamp: p.updated_at
@@ -106,10 +116,10 @@ export async function RecentActivity() {
               <div className="flex-1 space-y-1">
                 <div className="text-muted-foreground">
                   {update.type === 'product' ? (
-                    <>Product "{update.name}" was updated</>
+                    <>Product &quot;{update.name}&quot; was updated</>
                   ) : (
                     <>
-                      Price updated for "{update.name}"
+                      Price updated for &quot;{update.name}&quot;
                       {update.retailer && ` at ${update.retailer}`}
                       {update.price && ` ($${update.price.toFixed(2)})`}
                     </>

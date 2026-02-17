@@ -21,7 +21,7 @@ import { AcmeIcon } from "@/components/icons/retailers/acme"
 import { HyVeeIcon } from "@/components/icons/retailers/hyvee"
 import { ProductPriceHistory } from "@/components/prices/product-price-history"
 import { QuickPriceEntryWrapper } from "@/components/prices/quick-price-entry-wrapper"
-import type { Price, ProductImage as DBProductImage, ProductUrl as DBProductUrl } from "@/types/database"
+import type { ProductUrl as DBProductUrl } from "@/types/database"
 
 interface ProductImage {
   id: string
@@ -90,38 +90,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     .eq('id', id)
     .single()
 
-  // Add detailed debug logging
-  if (product) {
-    console.log('Product data:', {
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      created_at: product.created_at,
-      urls: product.product_urls,
-      prices: product.prices?.map((price: Price) => ({
-        id: price.id,
-        retailer: price.retailer,
-        price: price.price,
-        timestamp: price.timestamp,
-        status: price.status
-      })),
-      images: product.product_images?.map((img: DBProductImage) => ({
-        id: img.id,
-        url: img.url,
-        main: img.main,
-        type: img.type
-      }))
-    })
-  }
 
   if (error || !product) {
     console.error('Error loading product:', error)
     notFound()
   }
-
-  // Add console logging to verify data structure
-  console.log('Product URLs:', product.product_urls)
-  console.log('Current Prices:', product.prices)
 
   const mainImage = product.product_images?.find((img: ProductImage) => img.main)
 

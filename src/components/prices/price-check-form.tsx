@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -48,12 +48,6 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClientClient()
-  
-  useEffect(() => {
-    // Log products and retailer for debugging
-    console.log('PriceCheckForm - products:', products)
-    console.log('PriceCheckForm - retailer:', retailer)
-  }, [products, retailer])
   
   // Get unique categories from products
   const categories = Array.from(new Set(products.map(p => p.category)))
@@ -282,7 +276,7 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
       
       // Auto-advance to next retailer if enabled
       if (autoAdvance) {
-        const currentIndex = RETAILERS.indexOf(retailer)
+        const currentIndex = (RETAILERS as readonly string[]).indexOf(retailer)
         if (currentIndex < RETAILERS.length - 1) {
           const nextRetailer = RETAILERS[currentIndex + 1]
           router.push(`/dashboard/prices/check?retailer=${encodeURIComponent(nextRetailer)}`)

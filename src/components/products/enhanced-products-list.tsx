@@ -85,8 +85,6 @@ export function EnhancedProductsList({
   categories,
   brands = []
 }: EnhancedProductsListProps) {
-  console.log('Products in list:', initialProducts)
-
   const [view, setView] = useState<'list' | 'grid'>('list')
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
@@ -311,14 +309,7 @@ export function EnhancedProductsList({
         <TableBody>
           {filteredProducts.map((product) => {
             const mainImage = product.product_images?.find(img => img.main)
-            
-            console.log('Product and main image:', { 
-              productId: product.id, 
-              productName: product.name,
-              images: product.product_images,
-              mainImage 
-            })
-            
+
             return (
               <TableRow 
                 key={product.id}

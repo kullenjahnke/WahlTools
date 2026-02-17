@@ -17,8 +17,6 @@ export async function createProduct(data: ProductFormData) {
   const supabase = await createSupabaseServerClient()
 
   try {
-    console.log('Creating product:', data)
-    
     // Ensure we have a category_id
     if (!data.category_id) {
       throw new Error('Category is required')
@@ -44,10 +42,7 @@ export async function createProduct(data: ProductFormData) {
 
     // Activity logging removed - no longer tracking attribution
 
-    console.log('Product created:', newProduct)
-    console.log('Revalidating path: /dashboard/products')
     revalidatePath('/dashboard/products')
-    console.log('Path revalidated')
 
     return { success: true, data: newProduct }
   } catch (error: unknown) {
@@ -63,8 +58,6 @@ export async function updateProduct(id: string, data: ProductFormData) {
   const supabase = await createSupabaseServerClient()
 
   try {
-    console.log('Updating product:', id, data)
-    
     if (!data.category_id) {
       throw new Error('Category is required')
     }
@@ -85,10 +78,7 @@ export async function updateProduct(id: string, data: ProductFormData) {
 
     // Activity logging removed - no longer tracking attribution
 
-    console.log('Product updated')
-    console.log('Revalidating path: /dashboard/products')
     revalidatePath('/dashboard/products')
-    console.log('Path revalidated')
 
     return { success: true }
   } catch (error: unknown) {
@@ -104,8 +94,6 @@ export async function deleteProduct(id: string) {
   const supabase = await createSupabaseServerClient()
   
   try {
-    console.log('Deleting product:', id)
-
     const { error } = await supabase
       .from('products')
       .delete()
@@ -113,10 +101,7 @@ export async function deleteProduct(id: string) {
 
     if (error) throw error
 
-    console.log('Product deleted')
-    console.log('Revalidating path: /dashboard/products')
     revalidatePath('/dashboard/products')
-    console.log('Path revalidated')
 
     return { success: true }
   } catch (error: unknown) {

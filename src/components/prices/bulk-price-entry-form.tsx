@@ -96,7 +96,7 @@ export function BulkPriceEntryForm({ product }: BulkPriceEntryFormProps) {
           entry.originalPrice = ''
         }
       } else {
-        (entry as any)[field] = value
+        (entry as unknown as Record<string, string | boolean>)[field] = value
       }
       
       updated[index] = entry
@@ -203,7 +203,7 @@ export function BulkPriceEntryForm({ product }: BulkPriceEntryFormProps) {
             </div>
           </CardTitle>
           <CardDescription>
-            Enter prices for all retailers at once. Leave blank for retailers that don't carry this product.
+            Enter prices for all retailers at once. Leave blank for retailers that don&apos;t carry this product.
           </CardDescription>
         </CardHeader>
         <CardContent>

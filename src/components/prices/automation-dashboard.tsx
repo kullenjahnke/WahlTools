@@ -20,7 +20,7 @@ export function AutomationDashboard() {
   const [isRunningWeekly, setIsRunningWeekly] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [results, setResults] = useState<AutomatedScrapeResult[]>([])
-  const [testResult, setTestResult] = useState<any>(null)
+  const [testResult, setTestResult] = useState<Record<string, unknown> | null>(null)
   const { toast } = useToast()
   const supabase = createClientClient()
 
@@ -95,7 +95,7 @@ export function AutomationDashboard() {
           variant: "destructive"
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An unexpected error occurred",
@@ -151,7 +151,7 @@ export function AutomationDashboard() {
           variant: "destructive"
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to trigger weekly check",
@@ -192,7 +192,7 @@ export function AutomationDashboard() {
           variant: "destructive"
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Test error",
         description: "Failed to run test scrape",

@@ -64,14 +64,6 @@ export function RetailerAssociations({
         throw new Error('Not authenticated')
       }
 
-      console.log('Starting save with:', {
-        isEnabled,
-        urls,
-        skus,
-        initialUrls,
-        initialSkus
-      });
-
       // Don't delete existing data if there's nothing new to save
       const urlsToUpdate = Object.entries(urls)
         .filter(([retailer, url]) => isEnabled[retailer] && url.trim())

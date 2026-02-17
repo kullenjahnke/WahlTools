@@ -19,55 +19,54 @@ export default async function DashboardPage() {
   try {
     const supabase = await createSupabaseServerClient()
     
-    // Update the data fetching to use Promise.all
     const [
       { count: productsCount },
       { data: recentPrices },
       { data: pendingChecks },
-      { data: retailerCount },
+      { data: activeRetailers },
       { data: competitorProducts },
       { data: wahlburgersProducts }
     ] = await Promise.all([
       supabase
         .from('products')
         .select('*', { count: 'exact', head: true }),
-      
+
       supabase
         .from('prices')
-        .select('*')
+        .select('retailer, timestamp')
         .order('timestamp', { ascending: false })
         .limit(1),
-      
+
       supabase
         .from('price_check_logs')
-        .select('*')
+        .select('id')
         .eq('completed', false)
         .limit(1),
-        
+
       supabase
         .from('prices')
         .select('retailer')
-        .eq('status', 'active')
-        .limit(1),
-        
+        .eq('status', 'active'),
+
       supabase
         .from('products')
         .select(`
           *,
-          prices (*)
+          prices!inner (id, price, retailer, timestamp, status, is_promotion, is_sold_out)
         `)
-        .eq('brand_id', 'competitor'), // or however you distinguish competitor products
-        
+        .eq('prices.status', 'active')
+        .eq('brand_id', 'competitor'),
+
       supabase
         .from('products')
         .select(`
           *,
-          prices (*)
+          prices!inner (id, price, retailer, timestamp, status, is_promotion, is_sold_out)
         `)
+        .eq('prices.status', 'active')
     ])
 
-    // Add unique retailers calculation
-    const uniqueRetailers = new Set(retailerCount?.map(r => r.retailer) || [])
+    const uniqueRetailers = new Set(activeRetailers?.map(r => r.retailer) || [])
 
     return (
       <div className="p-6 space-y-6">
@@ -210,7 +209,7 @@ export default async function DashboardPage() {
           <CompetitorPriceSummary
             wahlburgersProducts={wahlburgersProducts || []}
             competitorProducts={competitorProducts || []}
-            selectedRetailer={retailerCount && retailerCount.length > 0 ? retailerCount[0].retailer : RETAILERS[0]}
+            selectedRetailer={activeRetailers && activeRetailers.length > 0 ? activeRetailers[0].retailer : RETAILERS[0]}
           />
         </div>
       </div>

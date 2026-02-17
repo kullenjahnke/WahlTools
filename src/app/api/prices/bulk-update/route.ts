@@ -4,9 +4,9 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServerClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       const { error: updateError } = await supabase.from('prices')
         .update({ 
           price: update.price,
-          updated_by: session.user.id,
+          updated_by: user.id,
           updated_at: new Date().toISOString()
         })
         .eq('id', update.priceId);
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
             price_id: update.priceId,
             old_price: currentPrice.price,
             new_price: update.price,
-            changed_by: session.user.id
+            changed_by: user.id
           });
 
         if (logError) throw logError;
@@ -56,9 +56,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error processing bulk update:', error);
-    return new NextResponse(
-      'Internal Server Error: ' + (error instanceof Error ? error.message : 'Unknown error'), 
-      { status: 500 }
-    );
+    return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

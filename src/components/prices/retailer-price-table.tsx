@@ -301,7 +301,7 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
                             ) : (
                               <div className="flex flex-col items-center justify-center h-full">
                                 <div className="text-lg font-semibold">${latestPrice.price.toFixed(2)}</div>
-                                {(latestPrice.on_sale || latestPrice.is_promotion) && (
+                                {latestPrice.is_promotion && (
                                   <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium">
                                     Promo
                                   </span>

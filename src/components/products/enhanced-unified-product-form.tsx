@@ -51,7 +51,7 @@ export function EnhancedUnifiedProductForm({ product, onSuccess }: UnifiedProduc
   
   // Form fields
   const [brandId, setBrandId] = useState(product?.brand_id || "")
-  const [brandType, setBrandType] = useState(product?.brand_type || "wahlburgers")
+  const [, setBrandType] = useState(product?.brand_type || "wahlburgers")
   const [name, setName] = useState(product?.name || "")
   const [categoryId, setCategoryId] = useState(product?.category_id || "")
   const [upc, setUpc] = useState(product?.upc || "")
@@ -186,7 +186,7 @@ export function EnhancedUnifiedProductForm({ product, onSuccess }: UnifiedProduc
     const fileName = `${productId}-${Date.now()}.${fileExt}`
     const filePath = `products/${fileName}`
 
-    const { error: uploadError, data } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('product-images')
       .upload(filePath, file)
 

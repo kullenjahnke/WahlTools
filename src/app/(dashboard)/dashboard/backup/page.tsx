@@ -17,7 +17,7 @@ export default function BackupPage() {
     setStatus("Starting export...")
 
     try {
-      const backup: Record<string, unknown> = {
+      const backup: { timestamp: string; version: string; tables: Record<string, unknown> } = {
         timestamp: new Date().toISOString(),
         version: "1.0",
         tables: {}

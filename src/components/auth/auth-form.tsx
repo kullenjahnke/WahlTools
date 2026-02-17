@@ -15,7 +15,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { createClientClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 import { isEmailAuthorized } from "@/lib/auth/whitelist"
 
 const authFormSchema = z.object({
@@ -36,7 +35,6 @@ interface AuthFormProps {
 export function AuthForm({ type }: AuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
   const supabase = createClientClient()
 
   const form = useForm<AuthFormValues>({

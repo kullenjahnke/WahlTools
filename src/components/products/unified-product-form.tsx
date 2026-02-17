@@ -16,7 +16,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Plus, Package, Tag, AlignLeft, FileText, Save, Building2 } from "lucide-react"
+import { Package, Tag, AlignLeft, FileText, Save, Building2 } from "lucide-react"
 import type { Product, ProductCategory, Brand } from "@/types/database"
 
 interface UnifiedProductFormProps {
@@ -34,7 +34,7 @@ export function UnifiedProductForm({ product, onSuccess }: UnifiedProductFormPro
   
   // Form fields
   const [brandId, setBrandId] = useState(product?.brand_id || "")
-  const [brandType, setBrandType] = useState(product?.brand_type || "wahlburgers")
+  const [, setBrandType] = useState(product?.brand_type || "wahlburgers")
   const [name, setName] = useState(product?.name || "")
   const [categoryId, setCategoryId] = useState(product?.category_id || "")
   const [upc, setUpc] = useState(product?.upc || "")

@@ -11,9 +11,7 @@ export async function uploadProductImage(productId: string, file: File, type: 'p
     const fileExt = file.name.split('.').pop()
     const fileName = `${productId}/${Date.now()}.${fileExt}`
     
-    console.log('Starting upload to storage:', { fileName, fileSize: file.size, fileType: file.type })
-
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('product-images')
       .upload(fileName, file)
 
@@ -22,14 +20,10 @@ export async function uploadProductImage(productId: string, file: File, type: 'p
       throw uploadError
     }
 
-    console.log('Upload to storage successful:', { fileName, uploadData })
-
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('product-images')
       .getPublicUrl(fileName)
-
-    console.log('Generated public URL:', publicUrl)
 
     // Check if this is the first product image (should be main)
     const { data: existingImages } = await supabase
@@ -39,7 +33,6 @@ export async function uploadProductImage(productId: string, file: File, type: 'p
       .eq('type', 'product')
 
     const isFirstProductImage = type === 'product' && (!existingImages || existingImages.length === 0)
-    console.log('Checking existing images:', { existingImagesCount: existingImages?.length, isFirstProductImage })
 
     // Save image record
     const { error: dbError } = await supabase
@@ -55,8 +48,6 @@ export async function uploadProductImage(productId: string, file: File, type: 'p
       console.error('Database insert failed:', dbError)
       throw dbError
     }
-
-    console.log('Image record created successfully:', { productId, type, isMain: isFirstProductImage })
 
     revalidatePath(`/dashboard/products/${productId}`)
     return { success: true }
@@ -77,9 +68,11 @@ export async function deleteProductImage(imageId: string, url: string) {
       .eq('id', imageId)
       .single()
 
-    // Delete from Storage
-    const filePath = url.split('/').pop()
-    if (filePath) {
+    // Delete from Storage - extract full path after bucket name
+    const bucketSegment = '/product-images/'
+    const bucketIndex = url.indexOf(bucketSegment)
+    if (bucketIndex !== -1) {
+      const filePath = url.substring(bucketIndex + bucketSegment.length)
       await supabase.storage
         .from('product-images')
         .remove([filePath])

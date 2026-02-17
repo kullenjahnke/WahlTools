@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AutomationDashboard } from "@/components/prices/automation-dashboard"
 import { getScrapingStatus } from "@/app/actions/automated-prices"
-import { AlertCircle, CheckCircle, XCircle } from "lucide-react"
+import { AlertCircle, CheckCircle } from "lucide-react"
 
 export default async function PriceAutomationPage() {
   const status = await getScrapingStatus()
@@ -115,7 +115,7 @@ export default async function PriceAutomationPage() {
               <div>
                 <p className="font-medium text-sm">Review Results</p>
                 <p className="text-sm text-muted-foreground">
-                  Check the results and handle any products that couldn't be scraped
+                  Check the results and handle any products that couldn&apos;t be scraped
                 </p>
               </div>
             </div>

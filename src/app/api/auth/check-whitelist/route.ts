@@ -20,7 +20,7 @@ export async function POST(request: Request) {
         ? 'Email is authorized' 
         : 'This email is not authorized to register'
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to check authorization' },
       { status: 500 }

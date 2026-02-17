@@ -28,15 +28,18 @@ export default async function ProductsPage() {
             main
           )
         `)
-        .order('name'),
+        .order('name')
+        .limit(500),
       supabase
         .from('product_categories')
         .select('*')
-        .order('name'),
+        .order('name')
+        .limit(100),
       supabase
         .from('brands')
         .select('*')
         .order('name')
+        .limit(100)
     ])
 
     if (productsResponse.error) {
@@ -63,10 +66,6 @@ export default async function ProductsPage() {
       console.error('Error fetching brands:', brandsResponse.error)
       throw brandsResponse.error
     }
-
-    console.log('Products count:', productsResponse.data?.length)
-    console.log('Categories count:', categoriesResponse.data?.length)
-    console.log('Brands count:', brandsResponse.data?.length)
 
     return (
       <div className="container space-y-6">
