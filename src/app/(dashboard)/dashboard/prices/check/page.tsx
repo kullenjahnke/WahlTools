@@ -131,7 +131,8 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
           </div>
 
           {productsWithUrls.length > 0 ? (
-            <PriceCheckForm 
+            <PriceCheckForm
+              key={effectiveRetailer}
               products={productsWithUrls}
               retailer={effectiveRetailer}
             />

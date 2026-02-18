@@ -3,7 +3,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { RETAILERS } from "@/lib/config/retailers"
 import { RETAILER_COLOR_MAP, BRAND_COLORS } from "@/lib/config/colors"
 import { Product, Price } from "@/types/database"
-import { ArrowUpIcon, ArrowDownIcon, MinusIcon, BarChart3, DollarSign, PieChart, ShoppingBag } from "lucide-react"
+import { BarChart3, DollarSign, PieChart, ShoppingBag } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
 // Import all retailer icon components
@@ -34,9 +34,12 @@ const retailerIcons: Record<string, React.ComponentType<{ className?: string }>>
 interface RetailerStats {
   retailer: string
   totalProducts: number
-  increases: number
-  decreases: number
-  unchanged: number
+  downOver10: number
+  down5to10: number
+  down0to5: number
+  up0to5: number
+  up5to10: number
+  upOver10: number
 }
 
 type ProductWithPrices = Product & {
@@ -69,9 +72,8 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
     return {
       retailer,
       totalProducts: productsWithPrices.length,
-      increases: 0,
-      decreases: 0,
-      unchanged: productsWithPrices.length,
+      downOver10: 0, down5to10: 0, down0to5: 0,
+      up0to5: 0, up5to10: 0, upOver10: 0,
     }
   })
 
@@ -109,15 +111,20 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
     <ScrollArea className="w-full whitespace-nowrap rounded-lg">
       <div className="flex w-max space-x-4 p-4">
         {stats.map((retailerStats, index) => {
-          const { retailer, totalProducts, increases, decreases, unchanged } = retailerStats
+          const { retailer, totalProducts, downOver10, down5to10, down0to5, up0to5, up5to10, upOver10 } = retailerStats
           const avgPrice = averagePrices.find(p => p.retailer === retailer)?.average || 0
           const lastUpdate = latestUpdates.find(u => u.retailer === retailer)?.lastUpdated
-          
-          // Calculate percentages for the chart
-          const total = increases + decreases + unchanged
-          const increasePercent = total > 0 ? (increases / total) * 100 : 0
-          const decreasePercent = total > 0 ? (decreases / total) * 100 : 0
-          const unchangedPercent = total > 0 ? (unchanged / total) * 100 : 0
+
+          // Calculate percentages for the 6-bucket chart
+          const total = downOver10 + down5to10 + down0to5 + up0to5 + up5to10 + upOver10
+          const buckets = [
+            { count: downOver10, pct: total > 0 ? (downOver10 / total) * 100 : 0, color: 'from-green-600 to-green-700', label: '> 10% down' },
+            { count: down5to10, pct: total > 0 ? (down5to10 / total) * 100 : 0, color: 'from-green-400 to-green-500', label: '5-10% down' },
+            { count: down0to5, pct: total > 0 ? (down0to5 / total) * 100 : 0, color: 'from-green-200 to-green-300', label: '0-5% down' },
+            { count: up0to5, pct: total > 0 ? (up0to5 / total) * 100 : 0, color: 'from-gray-300 to-gray-400', label: '0-5% up' },
+            { count: up5to10, pct: total > 0 ? (up5to10 / total) * 100 : 0, color: 'from-red-300 to-red-400', label: '5-10% up' },
+            { count: upOver10, pct: total > 0 ? (upOver10 / total) * 100 : 0, color: 'from-red-500 to-red-600', label: '> 10% up' },
+          ]
           
           // Get the appropriate icon component for this retailer
           const IconComponent = retailerIcons[retailer]
@@ -183,59 +190,36 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
                     <span>Price changes</span>
                     <span>Distribution</span>
                   </div>
-                  <div 
+                  <div
                     className="h-8 w-full flex rounded-lg overflow-hidden shadow-inner bg-gray-100 dark:bg-gray-800"
                     style={{ animation: 'fadeIn 0.5s ease-out forwards', animationDelay: `${animDelay + 0.3}s` }}
                   >
-                    {increasePercent > 0 && (
-                      <div 
-                        className="h-full bg-gradient-to-r from-red-400 to-red-500 flex items-center justify-center text-xs text-white transition-all duration-1000 ease-out"
-                        style={{ width: `${increasePercent}%` }}
+                    {buckets.map((bucket, i) => bucket.pct > 0 && (
+                      <div
+                        key={i}
+                        className={`h-full bg-gradient-to-r ${bucket.color} flex items-center justify-center text-xs text-white transition-all duration-1000 ease-out`}
+                        style={{ width: `${bucket.pct}%` }}
+                        title={`${bucket.label}: ${bucket.count}`}
                       >
-                        {increases > 0 && increasePercent > 15 && (
-                          <div className="flex items-center">
-                            <ArrowUpIcon className="h-3 w-3 mr-1" />
-                            <span>{increases}</span>
-                          </div>
+                        {bucket.count > 0 && bucket.pct > 15 && (
+                          <span>{bucket.count}</span>
                         )}
                       </div>
-                    )}
-                    {decreasePercent > 0 && (
-                      <div 
-                        className="h-full bg-gradient-to-r from-green-400 to-green-500 flex items-center justify-center text-xs text-white transition-all duration-1000 ease-out"
-                        style={{ width: `${decreasePercent}%` }}
-                      >
-                        {decreases > 0 && decreasePercent > 15 && (
-                          <div className="flex items-center">
-                            <ArrowDownIcon className="h-3 w-3 mr-1" />
-                            <span>{decreases}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {unchangedPercent > 0 && (
-                      <div 
-                        className="h-full bg-gradient-to-r from-gray-300 to-gray-400 flex items-center justify-center text-xs text-gray-700 transition-all duration-1000 ease-out"
-                        style={{ width: `${unchangedPercent}%` }}
-                      >
-                        {unchanged > 0 && unchangedPercent > 15 && (
-                          <div className="flex items-center">
-                            <MinusIcon className="h-3 w-3 mr-1" />
-                            <span>{unchanged}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                  
-                  <div className="flex justify-between text-xs text-muted-foreground mt-3 gap-2">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-400 to-red-500 mr-1"></div>
-                      <span>Increases: {increases}</span>
-                    </div>
+
+                  <div className="flex flex-wrap justify-between text-xs text-muted-foreground mt-3 gap-x-2 gap-y-1">
                     <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-400 to-green-500 mr-1"></div>
-                      <span>Decreases: {decreases}</span>
+                      <span>Down: {downOver10 + down5to10 + down0to5}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-gray-300 to-gray-400 mr-1"></div>
+                      <span>Flat: {up0to5}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-400 to-red-500 mr-1"></div>
+                      <span>Up: {up5to10 + upOver10}</span>
                     </div>
                   </div>
                 </div>

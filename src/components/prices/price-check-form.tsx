@@ -224,7 +224,7 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
             discount_percentage: hasPromo && originalPrice && regularPrice > 0
               ? Math.round(((originalPrice - regularPrice) / originalPrice) * 100)
               : null,
-            status: notAvailable[productId] ? 'not_carried' : (soldOut[productId] ? 'out_of_stock' : 'available'),
+            status: notAvailable[productId] ? 'not_carried' : (soldOut[productId] ? 'out_of_stock' : 'active'),
             timestamp: new Date().toISOString()
           }
         })
@@ -258,8 +258,8 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
         .update({ status: 'historical' })
         .eq('retailer', retailer)
         .in('product_id', priceUpdates.map(p => p.product_id))
-        .eq('status', 'active')
-      
+        .in('status', ['active', 'available'])
+
       if (updateError) throw new Error(`Failed to update existing prices: ${updateError.message}`)
       
       // Then insert new prices

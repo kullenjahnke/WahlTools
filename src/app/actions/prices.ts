@@ -182,39 +182,53 @@ export async function getPriceChangeStats() {
       }
     }
 
-    // Calculate WoW changes per retailer
-    const changesByRetailer: Record<string, { increases: number; decreases: number; unchanged: number }> = {}
+    // Calculate WoW changes per retailer using 6 percentage buckets
+    const changesByRetailer: Record<string, {
+      downOver10: number; down5to10: number; down0to5: number;
+      up0to5: number; up5to10: number; upOver10: number;
+    }> = {}
 
     for (const key of Object.keys(currentWeekPrices)) {
       const retailer = key.split('::')[0]
       if (!changesByRetailer[retailer]) {
-        changesByRetailer[retailer] = { increases: 0, decreases: 0, unchanged: 0 }
+        changesByRetailer[retailer] = {
+          downOver10: 0, down5to10: 0, down0to5: 0,
+          up0to5: 0, up5to10: 0, upOver10: 0,
+        }
       }
 
-      if (key in prevWeekPrices) {
-        const change = (currentWeekPrices[key] - prevWeekPrices[key]) / prevWeekPrices[key]
-        if (change > 0.001) {
-          changesByRetailer[retailer].increases++
-        } else if (change < -0.001) {
-          changesByRetailer[retailer].decreases++
-        } else {
-          changesByRetailer[retailer].unchanged++
-        }
+      // Only include products that have data in both weeks
+      if (!(key in prevWeekPrices)) continue
+
+      const changePct = ((currentWeekPrices[key] - prevWeekPrices[key]) / prevWeekPrices[key]) * 100
+
+      if (changePct < -10) {
+        changesByRetailer[retailer].downOver10++
+      } else if (changePct < -5) {
+        changesByRetailer[retailer].down5to10++
+      } else if (changePct < -0.1) {
+        changesByRetailer[retailer].down0to5++
+      } else if (changePct <= 0.1) {
+        changesByRetailer[retailer].up0to5++ // effectively unchanged — bucket with smallest increases
+      } else if (changePct <= 5) {
+        changesByRetailer[retailer].up0to5++
+      } else if (changePct <= 10) {
+        changesByRetailer[retailer].up5to10++
       } else {
-        // No previous week data — count as unchanged
-        changesByRetailer[retailer].unchanged++
+        changesByRetailer[retailer].upOver10++
       }
     }
 
     return RETAILERS.map(retailer => {
       const totalProducts = distinctProductsByRetailer[retailer]?.size || 0
-      const changes = changesByRetailer[retailer] || { increases: 0, decreases: 0, unchanged: 0 }
+      const changes = changesByRetailer[retailer] || {
+        downOver10: 0, down5to10: 0, down0to5: 0,
+        up0to5: 0, up5to10: 0, upOver10: 0,
+      }
       return {
         retailer,
         totalProducts,
-        increases: changes.increases,
-        decreases: changes.decreases,
-        unchanged: changes.unchanged
+        ...changes,
       }
     })
   } catch (error) {
@@ -222,9 +236,8 @@ export async function getPriceChangeStats() {
     return RETAILERS.map(retailer => ({
       retailer,
       totalProducts: 0,
-      increases: 0,
-      decreases: 0,
-      unchanged: 0
+      downOver10: 0, down5to10: 0, down0to5: 0,
+      up0to5: 0, up5to10: 0, upOver10: 0,
     }))
   }
 }

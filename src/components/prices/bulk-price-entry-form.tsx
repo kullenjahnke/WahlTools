@@ -43,7 +43,7 @@ interface RetailerPriceEntry {
   retailer: string
   price: string
   originalPrice: string
-  status: 'available' | 'out_of_stock' | 'not_carried' | ''
+  status: 'active' | 'out_of_stock' | 'not_carried' | ''
   hasPromotion: boolean
 }
 
@@ -130,7 +130,7 @@ export function BulkPriceEntryForm({ product }: BulkPriceEntryFormProps) {
           product_id: product.id,
           retailer: entry.retailer,
           timestamp: checkDate.toISOString(),
-          status: entry.status || 'available',
+          status: entry.status || 'active',
         }
         
         if (entry.price) {
@@ -221,7 +221,7 @@ export function BulkPriceEntryForm({ product }: BulkPriceEntryFormProps) {
                     setRetailerPrices(prev => prev.map(entry => ({
                       ...entry,
                       price,
-                      status: 'available'
+                      status: 'active'
                     })))
                   }
                 }}
@@ -277,7 +277,7 @@ export function BulkPriceEntryForm({ product }: BulkPriceEntryFormProps) {
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="available">
+                          <SelectItem value="active">
                             <span className="flex items-center gap-2">
                               <Check className="h-3 w-3" />
                               Available
