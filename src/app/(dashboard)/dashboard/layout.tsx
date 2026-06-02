@@ -5,6 +5,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { WahltoolsLogo } from "@/components/icons/wahltools-logo"
 
+// Dashboard routes are auth-gated and always read cookies, so they can never
+// be statically prerendered. Opting into dynamic rendering avoids Next.js
+// attempting (and bailing out of) static generation at build time.
+export const dynamic = "force-dynamic"
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -44,6 +49,12 @@ export default async function DashboardLayout({
       </div>
     )
   } catch (error) {
+    // redirect()/notFound() and dynamic-rendering bail-outs work by throwing
+    // a signal that carries a `digest`. Re-throw those so Next.js can handle
+    // them as intended instead of treating them as real errors.
+    if (error && typeof error === "object" && "digest" in error) {
+      throw error
+    }
     console.error('Error in DashboardLayout:', error)
     redirect('/login')
   }
