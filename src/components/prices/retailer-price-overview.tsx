@@ -14,7 +14,6 @@ import { JewelOscoIcon } from "@/components/icons/retailers/jewel-osco"
 import { PublixIcon } from "@/components/icons/retailers/publix"
 import { SafewayIcon } from "@/components/icons/retailers/safeway"
 import { ShawsIcon } from "@/components/icons/retailers/shaws"
-import { ShopRiteIcon } from "@/components/icons/retailers/shoprite"
 import { StopAndShopIcon } from "@/components/icons/retailers/stop-and-shop"
 import { AcmeIcon } from "@/components/icons/retailers/acme"
 // Create a map of retailer names to their icon components
@@ -27,7 +26,6 @@ const retailerIcons: Record<string, React.ComponentType<{ className?: string }>>
   'Publix': PublixIcon,
   'Safeway': SafewayIcon,
   'Shaws': ShawsIcon,
-  'ShopRite': ShopRiteIcon,
   'Stop & Shop': StopAndShopIcon,
 }
 

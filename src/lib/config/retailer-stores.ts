@@ -18,10 +18,6 @@ export const RETAILER_STORE_CONFIGS = {
     storeId: null, // Add when needed
     zipCode: null
   },
-  'ShopRite': {
-    storeId: null, // Add when needed
-    zipCode: null
-  },
   'Publix': {
     storeId: null, // Add when needed
     zipCode: null

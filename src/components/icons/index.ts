@@ -9,7 +9,6 @@ export * from './retailers/giant-food-stores'
 export * from './retailers/big-y'
 export * from './retailers/publix'
 export * from './retailers/safeway'
-export * from './retailers/shoprite'
 export * from './retailers/stop-and-shop'
 export * from './retailers/shaws'
 

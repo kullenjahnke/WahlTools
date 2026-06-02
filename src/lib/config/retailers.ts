@@ -6,7 +6,6 @@ export const RETAILERS = [
     'Giant Eagle',
     'Giant Food Stores',
     'Big Y',
-    'ShopRite',
     'Publix',
     'Safeway'
   ] as const;
@@ -19,7 +18,6 @@ export const RETAILERS = [
     'Giant Eagle': '#0891b2',    // Cyan
     'Giant Food Stores': '#4f46e5', // Indigo
     'Big Y': '#be123c',         // Rose
-    'ShopRite': '#854d0e',      // Amber
     'Publix': '#15803d',        // Emerald
     'Safeway': '#7c2d12'        // Orange dark
   };

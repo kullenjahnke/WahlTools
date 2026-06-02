@@ -15,7 +15,6 @@ import { JewelOscoIcon } from "@/components/icons/retailers/jewel-osco"
 import { PublixIcon } from "@/components/icons/retailers/publix"
 import { SafewayIcon } from "@/components/icons/retailers/safeway"
 import { ShawsIcon } from "@/components/icons/retailers/shaws"
-import { ShopRiteIcon } from "@/components/icons/retailers/shoprite"
 import { StopAndShopIcon } from "@/components/icons/retailers/stop-and-shop"
 import { AcmeIcon } from "@/components/icons/retailers/acme"
 import { ProductPriceHistory } from "@/components/prices/product-price-history"
@@ -53,7 +52,6 @@ const retailerIcons: Record<string, RetailerIconConfig> = {
   'Publix': { icon: PublixIcon },
   'Safeway': { icon: SafewayIcon },
   'Shaws': { icon: ShawsIcon },
-  'ShopRite': { icon: ShopRiteIcon },
   'Stop & Shop': { icon: StopAndShopIcon },
 }
 

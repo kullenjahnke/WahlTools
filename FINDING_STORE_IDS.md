@@ -46,7 +46,6 @@ Sometimes the store ID appears in the URL after selection:
 - **Giant Eagle**: Usually 4 digits like "0062"
 - **Stop & Shop**: Often 5 digits like "00123"
 - **Publix**: Usually 4 digits like "1234"
-- **ShopRite**: Varies, can be 3-5 digits
 
 ## If Store Selection Still Doesn't Work
 
@@ -58,4 +57,3 @@ The issue might be that Giant Eagle:
 In this case, we may need to:
 - Accept that only unit prices ($4.99/lb) are available via scraping
 - Use manual entry for Giant Eagle
-- Contact Firecrawl support for JavaScript rendering options

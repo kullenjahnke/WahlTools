@@ -28,7 +28,6 @@ pnpm add <package>       # Add new dependency
 - **Styling**: Tailwind CSS with custom animations
 - **Forms**: React Hook Form with Zod validation
 - **Charts**: Recharts for data visualization
-- **Web Scraping**: Playwright and Cheerio with ScrapingBee proxy
 
 ### Project Structure
 
@@ -91,7 +90,6 @@ Required in `.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-SCRAPINGBEE_API_KEY=<optional-for-web-scraping>
 ```
 
 ### Important Notes
