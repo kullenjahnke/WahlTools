@@ -1,4 +1,5 @@
 import { PriceCheckReminders } from "@/components/prices/price-check-reminders"
+import { SendTestReminderButton } from "@/components/prices/send-test-reminder-button"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
@@ -15,6 +16,7 @@ export default function PriceRemindersPage() {
             </Link>
           </Button>
         </div>
+        <SendTestReminderButton />
       </div>
 
       <div className="grid gap-6">
