@@ -91,7 +91,7 @@ async function ProductsDataLoader() {
             <TabsTrigger value="trends">Price Trends</TabsTrigger>
           </TabsList>
           <TabsContent value="table" className="space-y-4">
-            <RetailerPriceTable products={products} />
+            <RetailerPriceTable products={products} categories={categories} />
           </TabsContent>
           <TabsContent value="trends" className="space-y-4">
             <PriceHistoryChart products={products} />

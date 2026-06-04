@@ -42,9 +42,10 @@ type ProductWithPrices = Product & {
 
 interface RetailerPriceTableProps {
   products: ProductWithPrices[]
+  categories?: { id: string; name: string }[]
 }
 
-export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
+export function RetailerPriceTable({ products, categories = [] }: RetailerPriceTableProps) {
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [retailerFilter, setRetailerFilter] = useState<string>("all")
@@ -52,8 +53,11 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
   const router = useRouter()
   const supabase = createClientClient()
 
-  // Get unique category IDs from products
-  const categories = Array.from(new Set(products.map(p => p.category_id).filter(Boolean)))
+  // Resolve category_id -> name, and list only categories present in the products
+  const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
+  const categoryOptions = Array.from(
+    new Set(products.map((p) => p.category_id).filter(Boolean))
+  ).map((id) => ({ id, name: categoryMap.get(id) || id }))
   
   // Get unique retailers that have associations with any product
   const relevantRetailers = Array.from(new Set(
@@ -181,8 +185,8 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    {categoryOptions.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -274,7 +278,7 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
                     <div className="truncate">{product.name}</div>
                   </TableCell>
                   <TableCell className="max-w-[120px] text-muted-foreground">
-                    <div className="truncate">{product.category_id}</div>
+                    <div className="truncate">{categoryMap.get(product.category_id) || "—"}</div>
                   </TableCell>
                   {(retailerFilter === "all" ? availableRetailers : [retailerFilter]).map(retailer => {
                     const latestPrice = getLatestPrice(product.prices, retailer)
