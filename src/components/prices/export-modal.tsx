@@ -337,6 +337,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
               {filteredCount.toLocaleString()} rows
             </Badge>
             <Button
+              variant="brand"
               onClick={handleExport}
               disabled={filteredCount === 0 || selectedColumns.size === 0}
             >
