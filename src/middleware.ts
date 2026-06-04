@@ -34,10 +34,15 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Auth condition
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login') || 
-                    request.nextUrl.pathname.startsWith('/register')
+  const { pathname } = request.nextUrl
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register')
+  // API routes and the auth callback authenticate themselves (CRON_SECRET for
+  // the cron endpoint, the registration whitelist for check-whitelist, the
+  // OAuth handshake for /auth/callback) and must NOT be bounced to /login by
+  // the session guard — otherwise e.g. Vercel Cron gets a 307 and never runs.
+  const isSelfAuthedRoute = pathname.startsWith('/api') || pathname.startsWith('/auth')
 
-  if (!user && !isAuthPage) {
+  if (!user && !isAuthPage && !isSelfAuthedRoute) {
     // Redirect to login if accessing protected page without session
     const redirectUrl = new URL('/login', request.url)
     return NextResponse.redirect(redirectUrl)

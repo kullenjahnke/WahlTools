@@ -5,8 +5,11 @@ import { sendPriceReminder } from "@/lib/email/send-price-reminder"
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
+  const secret = process.env.CRON_SECRET
   const auth = request.headers.get("authorization")
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Guard against a missing secret so an unset env var can't be matched by
+  // `Bearer undefined` and turn into an auth bypass.
+  if (!secret || auth !== `Bearer ${secret}`) {
     return new NextResponse("Unauthorized", { status: 401 })
   }
 
