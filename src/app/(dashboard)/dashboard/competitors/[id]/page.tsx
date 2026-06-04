@@ -12,6 +12,8 @@ interface PageProps {
   }>
 }
 
+export const metadata = { title: "Competitor" }
+
 export default async function EditCompetitorPage({ params }: PageProps) {
   const { id } = await params
   const supabase = await createSupabaseServerClient()

@@ -12,6 +12,8 @@ interface PageProps {
   searchParams: Promise<{ retailer?: string; competitor?: string }>
 }
 
+export const metadata = { title: "Competitor Prices" }
+
 export default async function CompetitorPriceCheckPage({ searchParams }: PageProps) {
   const params = await searchParams
   const selectedRetailer = params.retailer || RETAILERS[0]

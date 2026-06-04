@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
 
+export const metadata = { title: "New Product" }
+
 export default function NewProductPage() {
   return (
     <div className="container mx-auto py-10 max-w-4xl">

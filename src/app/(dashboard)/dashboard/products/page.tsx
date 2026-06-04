@@ -2,6 +2,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { EnhancedProductsList } from "@/components/products/enhanced-products-list"
 import { Card } from "@/components/ui/card"
 
+export const metadata = { title: "Products" }
+
 export default async function ProductsPage() {
   const supabase = await createSupabaseServerClient()
   

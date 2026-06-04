@@ -13,6 +13,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
+export const metadata = { title: "Dashboard" }
+
 export default async function DashboardPage() {
   try {
     const supabase = await createSupabaseServerClient()

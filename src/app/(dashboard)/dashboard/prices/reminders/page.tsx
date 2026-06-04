@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
 
+export const metadata = { title: "Reminders" }
+
 export default function PriceRemindersPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">

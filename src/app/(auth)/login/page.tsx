@@ -2,6 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AuthForm } from "@/components/auth/auth-form"
 import Link from "next/link"
 
+export const metadata = { title: "Login" }
+
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center">

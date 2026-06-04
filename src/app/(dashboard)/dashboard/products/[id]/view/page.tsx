@@ -55,6 +55,8 @@ const retailerIcons: Record<string, RetailerIconConfig> = {
   'Stop & Shop': { icon: StopAndShopIcon },
 }
 
+export const metadata = { title: "Product Details" }
+
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createSupabaseServerClient()

@@ -10,6 +10,8 @@ import { PriceHistoryComparisonChart } from "@/components/comparison/price-histo
 import { RETAILERS } from "@/lib/config/retailers"
 import type { Price, CompetitorPrice, CompetitorProductUrl } from "@/types/database"
 
+export const metadata = { title: "Competitor Details" }
+
 export default async function CompetitorProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createSupabaseServerClient()

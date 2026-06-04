@@ -110,6 +110,8 @@ async function ProductsDataLoader() {
   }
 }
 
+export const metadata = { title: "Prices" }
+
 export default async function PricesPage() {
   return (
     <div className="p-6 space-y-6">

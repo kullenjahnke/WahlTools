@@ -1,6 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { ProductAnalytics } from "@/components/analytics/product-analytics"
 
+export const metadata = { title: "Analytics" }
+
 export default async function AnalyticsPage() {
   const supabase = await createSupabaseServerClient()
 

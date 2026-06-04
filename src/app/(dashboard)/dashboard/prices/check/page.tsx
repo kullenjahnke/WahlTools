@@ -13,6 +13,8 @@ interface PageProps {
   searchParams: Promise<{ retailer?: string }>
 }
 
+export const metadata = { title: "Record Prices" }
+
 export default async function PriceCheckPage({ searchParams }: PageProps) {
   const params = await searchParams
   const supabase = await createSupabaseServerClient()
