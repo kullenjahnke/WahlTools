@@ -116,12 +116,6 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
     return <Minus className="h-3 w-3 mr-0.5" />
   }
 
-  // Removed unused isPriceOutdated function
-  // const isPriceOutdated = (timestamp: string, days = 14) => {
-  //   const cutoffDate = subDays(new Date(), days)
-  //   return isBefore(new Date(timestamp), cutoffDate)
-  // }
-
   const filteredProducts = products.filter(product => {
     // Apply text search filter
     const searchMatch = search.trim() === "" || 
@@ -386,7 +380,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
           {categoryFilter !== "all" && (
             <Badge variant="secondary">
               <Filter className="h-3 w-3 mr-1" />
-              {categoryFilter}
+              {categoryMap.get(categoryFilter) || categoryFilter}
             </Badge>
           )}
           {retailerFilter !== "all" && (
