@@ -399,8 +399,8 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                             dataKey={retailer}
                             stroke={retailerColor(retailer)}
                             strokeWidth={2}
-                            dot={{ r: 2, strokeWidth: 0 }}
-                            activeDot={{ r: 4, strokeWidth: 0 }}
+                            dot={{ r: 2.5, strokeWidth: 0, fill: retailerColor(retailer) }}
+                            activeDot={{ r: 4, strokeWidth: 0, fill: retailerColor(retailer) }}
                             connectNulls
                           />
                         ))}
