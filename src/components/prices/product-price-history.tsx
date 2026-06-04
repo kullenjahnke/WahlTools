@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { format, subDays } from "date-fns"
-import { RETAILERS } from "@/lib/config/retailers"
+import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -182,7 +182,7 @@ export function ProductPriceHistory({ productId, prices }: ProductPriceHistoryPr
                     key={retailer}
                     type="monotone"
                     dataKey={retailer}
-                    stroke={chart.series[index % chart.series.length]}
+                    stroke={RETAILER_COLORS[retailer] ?? chart.series[index % chart.series.length]}
                     name={retailer}
                     dot={false}
                     strokeWidth={2}

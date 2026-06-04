@@ -95,10 +95,13 @@ export function PriceHistoryComparisonChart({
   
   const chartData = formatChartData()
   
-  // Competitor lines use the monochrome-leaning token palette, skipping series-1
-  // (brand) which is reserved for the primary Wahlburgers line.
+  // Competitor products get a distinct, spaced palette (brand green is reserved
+  // for the primary Wahlburgers line).
   const getCompetitorColor = (index: number) => {
-    const palette = chart.series.slice(1)
+    const palette = [
+      '#2563eb', '#7c3aed', '#0891b2', '#db2777', '#f59e0b',
+      '#64748b', '#e11d48', '#0d9488', '#4f46e5',
+    ]
     return palette[index % palette.length]
   }
   

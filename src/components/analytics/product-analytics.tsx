@@ -23,7 +23,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts"
-import { RETAILERS } from "@/lib/config/retailers"
+import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Product, Price } from "@/types/database"
 import { format, subDays, subMonths } from "date-fns"
@@ -89,10 +89,9 @@ function getWeekStartEST(date: Date): Date {
 
 export function ProductAnalytics({ products }: ProductAnalyticsProps) {
   const chart = useChartTheme()
-  // Stable monochrome-leaning color per retailer so the line, legend swatch,
-  // and table swatch all agree.
-  const retailerColor = (retailer: string) =>
-    chart.series[Math.max(0, RETAILERS.indexOf(retailer as (typeof RETAILERS)[number])) % chart.series.length]
+  // Distinct per-retailer brand/hybrid color (shared by line, legend swatch,
+  // and table swatch so they all agree).
+  const retailerColor = (retailer: string) => RETAILER_COLORS[retailer] ?? chart.axis
   const [selectedProductId, setSelectedProductId] = useState<string>("")
   const [timeRange, setTimeRange] = useState("90")
   const [enabledRetailers, setEnabledRetailers] = useState<Set<string>>(

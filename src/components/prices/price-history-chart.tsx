@@ -12,7 +12,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { format, subDays } from 'date-fns'
 import { Product, Price } from "@/types/database"
-import { RETAILERS } from "@/lib/config/retailers"
+import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
 import { CHART_CONFIG } from "@/lib/config/colors"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Calendar } from "lucide-react"
@@ -202,7 +202,7 @@ export function PriceHistoryChart({ products }: PriceHistoryChartProps) {
                   const hasData = chartData.some((entry: ChartDataEntry) => entry[retailer] !== undefined)
                   if (!hasData) return null
 
-                  const color = chart.series[index % chart.series.length]
+                  const color = RETAILER_COLORS[retailer] ?? chart.series[index % chart.series.length]
                   return (
                     <Line
                       key={retailer}
