@@ -155,10 +155,10 @@ export function PriceHistoryView({ products, priceLogs }: PriceHistoryViewProps)
                       {product?.name || 'Unknown Product'}
                     </TableCell>
                     <TableCell>{log.price.retailer}</TableCell>
-                    <TableCell>${log.old_price.toFixed(2)}</TableCell>
-                    <TableCell>${log.new_price.toFixed(2)}</TableCell>
-                    <TableCell className={priceChange > 0 ? 'text-red-500' : 'text-green-500'}>
-                      {priceChange > 0 ? '+' : ''}{priceChange.toFixed(1)}%
+                    <TableCell className="tabular-nums">${log.old_price.toFixed(2)}</TableCell>
+                    <TableCell className="tabular-nums">${log.new_price.toFixed(2)}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {priceChange > 0 ? '▲ ' : priceChange < 0 ? '▼ ' : ''}{priceChange > 0 ? '+' : ''}{priceChange.toFixed(1)}%
                     </TableCell>
                     <TableCell>
                       {format(new Date(log.changed_at), 'MMM d, yyyy h:mm a')}
