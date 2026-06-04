@@ -2,7 +2,7 @@
 
 Copy everything in the fenced block below into a **new Claude Code session** opened in this repo to execute the UI overhaul. It loads the right context, skills, and connections.
 
-> Prerequisite: make sure the `wahltools-review-fixes` branch (cron/middleware fix) has been merged to `main` first, so the new work branches off the corrected code.
+> Status: `main` is fully current — Phases 1–4 plus the code-review fix (cron/middleware) are merged and deployed. Just branch the new work off the latest `main`.
 
 ---
 
