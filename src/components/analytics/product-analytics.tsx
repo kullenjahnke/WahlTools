@@ -23,7 +23,8 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts"
-import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
+import { RETAILERS } from "@/lib/config/retailers"
+import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Product, Price } from "@/types/database"
 import { format, subDays, subMonths } from "date-fns"
 import {
@@ -87,6 +88,11 @@ function getWeekStartEST(date: Date): Date {
 }
 
 export function ProductAnalytics({ products }: ProductAnalyticsProps) {
+  const chart = useChartTheme()
+  // Stable monochrome-leaning color per retailer so the line, legend swatch,
+  // and table swatch all agree.
+  const retailerColor = (retailer: string) =>
+    chart.series[Math.max(0, RETAILERS.indexOf(retailer as (typeof RETAILERS)[number])) % chart.series.length]
   const [selectedProductId, setSelectedProductId] = useState<string>("")
   const [timeRange, setTimeRange] = useState("90")
   const [enabledRetailers, setEnabledRetailers] = useState<Set<string>>(
@@ -300,7 +306,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                         <span
                           className="inline-block w-2.5 h-2.5 rounded-full mr-1"
                           style={{
-                            backgroundColor: RETAILER_COLORS[retailer],
+                            backgroundColor: retailerColor(retailer),
                           }}
                         />
                         {retailer}
@@ -328,15 +334,21 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                 <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
                       <XAxis
                         dataKey="date"
                         tickFormatter={(d) => format(new Date(d), "MMM d")}
-                        fontSize={12}
+                        stroke={chart.axis}
+                        tick={{ fill: chart.axis, fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={{ stroke: chart.grid }}
                       />
                       <YAxis
                         tickFormatter={(v) => `$${v.toFixed(2)}`}
-                        fontSize={12}
+                        stroke={chart.axis}
+                        tick={{ fill: chart.axis, fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={{ stroke: chart.grid }}
                         width={60}
                       />
                       <Tooltip
@@ -348,27 +360,28 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                           name,
                         ]}
                         contentStyle={{
-                          backgroundColor: "rgba(255,255,255,0.95)",
-                          border: "none",
+                          backgroundColor: chart.tooltipBg,
+                          border: `1px solid ${chart.grid}`,
                           borderRadius: "0.375rem",
-                          boxShadow:
-                            "0 4px 6px -1px rgba(0,0,0,0.1)",
-                          padding: "0.75rem",
+                          color: chart.tooltipText,
+                          fontSize: 12,
+                          padding: "0.5rem 0.75rem",
                         }}
+                        labelStyle={{ color: chart.axis }}
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
                       {metrics.length > 0 && (
                         <ReferenceLine
                           y={
                             metrics.reduce((s, m) => s + (m.avg || 0), 0) /
                             metrics.filter((m) => m.avg !== null).length
                           }
-                          stroke="#94a3b8"
+                          stroke={chart.brand}
                           strokeDasharray="5 5"
                           label={{
                             value: "Avg",
                             position: "insideTopRight",
-                            fill: "#94a3b8",
+                            fill: chart.axis,
                             fontSize: 11,
                           }}
                         />
@@ -384,10 +397,10 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                             key={retailer}
                             type="monotone"
                             dataKey={retailer}
-                            stroke={RETAILER_COLORS[retailer]}
+                            stroke={retailerColor(retailer)}
                             strokeWidth={2}
-                            dot={{ r: 3 }}
-                            activeDot={{ r: 5 }}
+                            dot={{ r: 2, strokeWidth: 0 }}
+                            activeDot={{ r: 4, strokeWidth: 0 }}
                             connectNulls
                           />
                         ))}
@@ -439,8 +452,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                               <span
                                 className="inline-block w-3 h-3 rounded-full"
                                 style={{
-                                  backgroundColor:
-                                    RETAILER_COLORS[m.retailer],
+                                  backgroundColor: retailerColor(m.retailer),
                                 }}
                               />
                               {m.retailer}
