@@ -24,16 +24,15 @@ import { useRouter } from "next/navigation"
 import { format, subDays } from "date-fns"
 import { Product, Price } from "@/types/database"
 import { RETAILERS } from "@/lib/config/retailers"
-import { RETAILER_COLOR_MAP, BRAND_COLORS } from "@/lib/config/colors"
 import { Card, CardContent } from "@/components/ui/card"
-import { 
-  Search, 
+import {
+  Search,
   Tag,
   Filter,
   Package,
   Clock,
-  TrendingUp,
-  TrendingDown,
+  ArrowUp,
+  ArrowDown,
   Minus
 } from "lucide-react"
 
@@ -99,18 +98,18 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
     return change
   }
 
+  // Price deltas use neutral directional treatment (muted ▲/▼), not red/green —
+  // a price moving up or down isn't inherently good or bad to the user.
   const getPriceChangeColor = (change: number | null) => {
     if (change === null) return ""
-    if (change > 0) return "text-red-500 dark:text-red-400"
-    if (change < 0) return "text-green-500 dark:text-green-400"
-    return "text-gray-500 dark:text-gray-400"
+    return "text-muted-foreground"
   }
 
   const getPriceChangeIcon = (change: number | null) => {
     if (change === null) return null
-    if (change > 0) return <TrendingUp className="h-3 w-3 mr-1" />
-    if (change < 0) return <TrendingDown className="h-3 w-3 mr-1" />
-    return <Minus className="h-3 w-3 mr-1" />
+    if (change > 0) return <ArrowUp className="h-3 w-3 mr-0.5" />
+    if (change < 0) return <ArrowDown className="h-3 w-3 mr-0.5" />
+    return <Minus className="h-3 w-3 mr-0.5" />
   }
 
   // Removed unused isPriceOutdated function
@@ -159,22 +158,22 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
 
   return (
     <div className="space-y-4">
-      <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <CardContent className="p-6">
+      <Card>
+        <CardContent className="p-4">
           <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:gap-4 items-start md:items-center">
             <div className="w-full md:w-auto relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search products..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 w-full md:w-[240px] h-10 bg-white dark:bg-gray-800 shadow-sm"
+                className="pl-9 w-full md:w-[240px]"
               />
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">
               {/* Category Filter */}
-              <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-md shadow-sm px-2 py-1">
+              <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="w-[140px] border-none shadow-none bg-transparent">
@@ -190,7 +189,7 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
               </div>
 
               {/* Retailer Filter */}
-              <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-md shadow-sm px-2 py-1">
+              <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
                 <Package className="h-4 w-4 text-muted-foreground" />
                 <Select value={retailerFilter} onValueChange={setRetailerFilter}>
                   <SelectTrigger className="w-[140px] border-none shadow-none bg-transparent">
@@ -206,10 +205,10 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
               </div>
 
               {/* Age Filter */}
-              <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-md shadow-sm px-2 py-1">
+              <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <Select 
-                  value={outOfDateFilter?.toString() || "none"} 
+                <Select
+                  value={outOfDateFilter?.toString() || "none"}
                   onValueChange={(val) => setOutOfDateFilter(val === "none" ? null : parseInt(val))}
                 >
                   <SelectTrigger className="w-[140px] border-none shadow-none bg-transparent">
@@ -224,11 +223,12 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
                 </Select>
               </div>
             </div>
-            
+
             <div className="w-full md:flex-1 flex justify-start md:justify-end">
-              <Button 
+              <Button
+                variant="brand"
                 onClick={() => router.push('/dashboard/prices/check')}
-                className="w-full md:w-auto whitespace-nowrap bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg"
+                className="w-full md:w-auto whitespace-nowrap"
               >
                 <Tag className="mr-2 h-4 w-4" />
                 Record New Prices
@@ -238,28 +238,25 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
         </CardContent>
       </Card>
 
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-md border border-border overflow-x-auto">
         <Table className="w-full">
-          <TableHeader className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+          <TableHeader>
             <TableRow>
-              <TableHead className="sticky left-0 font-semibold text-gray-700 dark:text-gray-300 w-[200px] min-w-[200px] z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+              <TableHead className="sticky left-0 z-20 w-[200px] min-w-[200px] border-r border-border bg-muted">
                 Product
               </TableHead>
-              <TableHead className="font-semibold text-gray-700 dark:text-gray-300 w-[120px] min-w-[120px]">
+              <TableHead className="w-[120px] min-w-[120px]">
                 Category
               </TableHead>
               {(retailerFilter === "all" ? availableRetailers : [retailerFilter]).map(retailer => (
-                <TableHead 
-                  key={retailer} 
-                  className="font-semibold text-gray-700 dark:text-gray-300 w-[140px] min-w-[140px] text-center"
-                  style={{ 
-                    borderBottom: `2px solid ${RETAILER_COLOR_MAP[retailer] || BRAND_COLORS.primary}20` 
-                  }}
+                <TableHead
+                  key={retailer}
+                  className="w-[140px] min-w-[140px] text-center"
                 >
                   {retailer}
                 </TableHead>
               ))}
-              <TableHead className="font-semibold text-gray-700 dark:text-gray-300 w-[160px] min-w-[160px]">
+              <TableHead className="w-[160px] min-w-[160px]">
                 Last Updated
               </TableHead>
             </TableRow>
@@ -272,11 +269,11 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
               }, product.prices[0])
 
               return (
-                <TableRow key={product.id} className="h-[80px]">
-                  <TableCell className="sticky left-0 bg-white dark:bg-gray-950 font-medium truncate max-w-[200px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                <TableRow key={product.id}>
+                  <TableCell className="sticky left-0 z-10 bg-background border-r border-border font-medium max-w-[200px]">
                     <div className="truncate">{product.name}</div>
                   </TableCell>
-                  <TableCell className="truncate max-w-[120px]">
+                  <TableCell className="max-w-[120px] text-muted-foreground">
                     <div className="truncate">{product.category_id}</div>
                   </TableCell>
                   {(retailerFilter === "all" ? availableRetailers : [retailerFilter]).map(retailer => {
@@ -284,41 +281,39 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
                     // Check if this product has an association with this retailer
                     // Based on existing price records
                     const hasRetailerAssociation = latestPrice !== null;
-                    
+
                     return (
-                      <TableCell key={retailer} className="text-center p-2 h-[80px] align-middle">
+                      <TableCell key={retailer} className="text-center align-middle">
                         {hasRetailerAssociation ? (
                           latestPrice ? (
                             (latestPrice.status === 'out_of_stock' || latestPrice.is_sold_out === true || (latestPrice.price === 0 && latestPrice.is_sold_out !== false)) ? (
-                              <div className="flex flex-col items-center justify-center h-full">
-                                <div className="bg-red-500 dark:bg-red-700 h-10 w-full rounded opacity-90 flex items-center justify-center">
-                                  <span className="text-sm font-medium text-white">Sold Out</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
+                              <div className="flex flex-col items-center gap-1">
+                                <Badge variant="muted">Sold out</Badge>
+                                <div className="text-xs text-muted-foreground">
                                   {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex flex-col items-center justify-center h-full">
-                                <div className="text-lg font-semibold">${latestPrice.price.toFixed(2)}</div>
-                                {latestPrice.is_promotion && (
-                                  <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium">
-                                    Promo
-                                  </span>
-                                )}
-                                <div className="text-xs text-muted-foreground mt-1">
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm font-semibold tabular-nums">${latestPrice.price.toFixed(2)}</span>
+                                  {latestPrice.is_promotion && (
+                                    <Badge variant="brand" className="px-1.5 py-0 text-[10px]">Promo</Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
                                   {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
                                 </div>
-                                {/* Price change indicator */}
+                                {/* Price change indicator (neutral) */}
                                 {(() => {
                                   const previousPrice = getPreviousPrice(product.prices, retailer, latestPrice)
                                   const priceChange = calculatePriceChange(latestPrice, previousPrice)
                                   const changeColor = getPriceChangeColor(priceChange)
                                   const changeIcon = getPriceChangeIcon(priceChange)
-                                  
+
                                   if (priceChange !== null) {
                                     return (
-                                      <div className={`flex items-center text-xs ${changeColor} mt-1`}>
+                                      <div className={`flex items-center text-xs tabular-nums ${changeColor}`}>
                                         {changeIcon}
                                         {Math.abs(priceChange).toFixed(1)}%
                                       </div>
@@ -330,14 +325,12 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
                             )
                           ) : (
                             // Product is associated with retailer but price is missing
-                            <div className="flex flex-col items-center justify-center h-full">
-                              <div className="bg-gray-200 dark:bg-gray-700 h-10 w-full rounded opacity-80 flex items-center justify-center">
-                                <span className="text-sm text-muted-foreground">Missing</span>
-                              </div>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-xs mt-1 h-6 px-2 text-blue-600 dark:text-blue-400"
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs text-muted-foreground">Missing</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs text-brand hover:text-brand"
                                 onClick={() => router.push(`/dashboard/prices/check?retailer=${encodeURIComponent(retailer)}&product=${product.id}`)}
                               >
                                 Add price
@@ -346,16 +339,12 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
                           )
                         ) : (
                           // Product is not associated with this retailer
-                          <div className="flex flex-col items-center justify-center h-full">
-                            <div className="bg-black dark:bg-gray-900 h-10 w-full rounded opacity-80 flex items-center justify-center">
-                              <span className="text-sm text-white dark:text-gray-400">Not Available</span>
-                            </div>
-                          </div>
+                          <span className="text-sm text-muted-foreground/50">—</span>
                         )}
                       </TableCell>
                     )
                   })}
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-muted-foreground tabular-nums">
                     {latestUpdate ? (
                       format(new Date(latestUpdate.timestamp), 'MMM d, yyyy h:mm a')
                     ) : (
@@ -385,25 +374,25 @@ export function RetailerPriceTable({ products }: RetailerPriceTableProps) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {outOfDateFilter && (
-            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">
+            <Badge variant="secondary">
               <Clock className="h-3 w-3 mr-1" />
               Older than {outOfDateFilter} days
             </Badge>
           )}
           {categoryFilter !== "all" && (
-            <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
+            <Badge variant="secondary">
               <Filter className="h-3 w-3 mr-1" />
               {categoryFilter}
             </Badge>
           )}
           {retailerFilter !== "all" && (
-            <Badge variant="outline" className="bg-green-50 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800">
+            <Badge variant="secondary">
               <Package className="h-3 w-3 mr-1" />
               {retailerFilter}
             </Badge>
           )}
           {search.trim() !== "" && (
-            <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800">
+            <Badge variant="secondary">
               <Search className="h-3 w-3 mr-1" />
               &quot;{search}&quot;
             </Badge>

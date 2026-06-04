@@ -115,13 +115,15 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
 
           // Calculate percentages for the 6-bucket chart
           const total = downOver10 + down5to10 + down0to5 + up0to5 + up5to10 + upOver10
+          // Neutral monochrome ramp (most-down = solid foreground → most-up = faint).
+          // No red/green: a price moving up or down isn't inherently good or bad.
           const buckets = [
-            { count: downOver10, pct: total > 0 ? (downOver10 / total) * 100 : 0, color: 'from-green-600 to-green-700', label: '> 10% down' },
-            { count: down5to10, pct: total > 0 ? (down5to10 / total) * 100 : 0, color: 'from-green-400 to-green-500', label: '5-10% down' },
-            { count: down0to5, pct: total > 0 ? (down0to5 / total) * 100 : 0, color: 'from-green-200 to-green-300', label: '0-5% down' },
-            { count: up0to5, pct: total > 0 ? (up0to5 / total) * 100 : 0, color: 'from-gray-300 to-gray-400', label: '0-5% up' },
-            { count: up5to10, pct: total > 0 ? (up5to10 / total) * 100 : 0, color: 'from-red-300 to-red-400', label: '5-10% up' },
-            { count: upOver10, pct: total > 0 ? (upOver10 / total) * 100 : 0, color: 'from-red-500 to-red-600', label: '> 10% up' },
+            { count: downOver10, pct: total > 0 ? (downOver10 / total) * 100 : 0, color: 'bg-foreground', label: '> 10% down' },
+            { count: down5to10, pct: total > 0 ? (down5to10 / total) * 100 : 0, color: 'bg-foreground/75', label: '5-10% down' },
+            { count: down0to5, pct: total > 0 ? (down0to5 / total) * 100 : 0, color: 'bg-foreground/50', label: '0-5% down' },
+            { count: up0to5, pct: total > 0 ? (up0to5 / total) * 100 : 0, color: 'bg-foreground/35', label: '0-5% up' },
+            { count: up5to10, pct: total > 0 ? (up5to10 / total) * 100 : 0, color: 'bg-foreground/25', label: '5-10% up' },
+            { count: upOver10, pct: total > 0 ? (upOver10 / total) * 100 : 0, color: 'bg-foreground/15', label: '> 10% up' },
           ]
           
           // Get the appropriate icon component for this retailer
@@ -131,9 +133,9 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
           const animDelay = index * 0.1;
           
           return (
-            <Card 
-              key={retailer} 
-              className="w-[320px] overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800"
+            <Card
+              key={retailer}
+              className="w-[320px] overflow-hidden"
               style={{
                 animationDelay: `${animDelay}s`,
                 animationFillMode: 'both',
@@ -189,34 +191,30 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
                     <span>Distribution</span>
                   </div>
                   <div
-                    className="h-8 w-full flex rounded-lg overflow-hidden shadow-inner bg-gray-100 dark:bg-gray-800"
+                    className="h-2.5 w-full flex rounded-full overflow-hidden bg-muted"
                     style={{ animation: 'fadeIn 0.5s ease-out forwards', animationDelay: `${animDelay + 0.3}s` }}
                   >
                     {buckets.map((bucket, i) => bucket.pct > 0 && (
                       <div
                         key={i}
-                        className={`h-full bg-gradient-to-r ${bucket.color} flex items-center justify-center text-xs text-white transition-all duration-1000 ease-out`}
+                        className={`h-full ${bucket.color} transition-all duration-1000 ease-out`}
                         style={{ width: `${bucket.pct}%` }}
                         title={`${bucket.label}: ${bucket.count}`}
-                      >
-                        {bucket.count > 0 && bucket.pct > 15 && (
-                          <span>{bucket.count}</span>
-                        )}
-                      </div>
+                      />
                     ))}
                   </div>
 
-                  <div className="flex flex-wrap justify-between text-xs text-muted-foreground mt-3 gap-x-2 gap-y-1">
+                  <div className="flex flex-wrap justify-between text-xs text-muted-foreground mt-3 gap-x-2 gap-y-1 tabular-nums">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-400 to-green-500 mr-1"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-foreground mr-1.5"></div>
                       <span>Down: {downOver10 + down5to10 + down0to5}</span>
                     </div>
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-gray-300 to-gray-400 mr-1"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-foreground/35 mr-1.5"></div>
                       <span>Flat: {up0to5}</span>
                     </div>
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-400 to-red-500 mr-1"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-foreground/15 mr-1.5"></div>
                       <span>Up: {up5to10 + upOver10}</span>
                     </div>
                   </div>
