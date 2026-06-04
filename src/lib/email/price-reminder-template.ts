@@ -1,4 +1,4 @@
-import { PRICES_URL } from "./config"
+import { PRICES_URL, EMAIL_LOGO_URL, ACCENT_COLOR } from "./config"
 
 // Pure: returns the rendered email parts. `test` only affects the subject prefix.
 export function buildPriceReminderEmail(opts?: { test?: boolean }): {
@@ -19,15 +19,20 @@ export function buildPriceReminderEmail(opts?: { test?: boolean }): {
 
   const html = `<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+  </head>
   <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:32px 0;">
       <tr>
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
             <tr>
-              <td style="background-color:#18181b;padding:24px 32px;">
-                <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.02em;">Wahl<span style="color:#e11d2a;">Tools</span></span>
-                <div style="color:#a1a1aa;font-size:12px;margin-top:2px;">Wahlburgers at Home — Price Tracker</div>
+              <td style="background-color:#18181b;padding:28px 32px;">
+                <img src="${EMAIL_LOGO_URL}" alt="WahlTools" width="180" style="display:block;width:180px;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;" />
+                <div style="color:#a1a1aa;font-size:12px;margin-top:8px;">Wahlburgers at Home &mdash; Price Tracker</div>
               </td>
             </tr>
             <tr>
@@ -38,8 +43,8 @@ export function buildPriceReminderEmail(opts?: { test?: boolean }): {
                 </p>
                 <table role="presentation" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td style="border-radius:8px;background-color:#e11d2a;">
-                      <a href="${PRICES_URL}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Update Prices →</a>
+                    <td style="border-radius:8px;background-color:${ACCENT_COLOR};">
+                      <a href="${PRICES_URL}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Update Prices &rarr;</a>
                     </td>
                   </tr>
                 </table>
