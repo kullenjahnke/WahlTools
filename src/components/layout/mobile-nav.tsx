@@ -9,21 +9,23 @@ import { WahltoolsLogo } from "@/components/icons/wahltools-logo"
 
 export function MobileNav() {
   const [open, setOpen] = useState(false)
-  
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" className="md:hidden">
-          <Menu className="h-6 w-6" />
+        <Button variant="ghost" size="icon" aria-label="Open navigation" className="md:hidden">
+          <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[240px] sm:w-[300px]">
-        <SheetTitle className="text-left">Navigation</SheetTitle>
-        <div className="px-1 py-6 space-y-6">
-          <WahltoolsLogo className="h-8 w-auto" />
-          <MainNav className="flex flex-col space-y-3" setOpen={setOpen} />
+      <SheetContent side="left" className="w-[260px] bg-sidebar p-0 text-sidebar-foreground">
+        <SheetTitle className="sr-only">Navigation</SheetTitle>
+        <div className="flex h-14 items-center border-b border-sidebar-border px-4">
+          <WahltoolsLogo className="h-5 w-auto text-foreground" />
+        </div>
+        <div className="p-2">
+          <MainNav setOpen={setOpen} />
         </div>
       </SheetContent>
     </Sheet>
   )
-} 
+}

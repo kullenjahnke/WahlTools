@@ -134,13 +134,13 @@ export function PriceCheckStatus() {
             <div key={status.retailer} className="flex items-center justify-between">
               <div className="flex items-center">
                 {status.status === 'ok' && (
-                  <CheckCircle2 className="h-4 w-4 text-green-500 mr-2" />
+                  <CheckCircle2 className="h-4 w-4 text-brand mr-2" />
                 )}
                 {status.status === 'warning' && (
-                  <Clock className="h-4 w-4 text-amber-500 mr-2" />
+                  <Clock className="h-4 w-4 text-muted-foreground mr-2" />
                 )}
                 {status.status === 'overdue' && (
-                  <Clock className="h-4 w-4 text-red-500 mr-2" />
+                  <Clock className="h-4 w-4 text-destructive mr-2" />
                 )}
                 <span className="text-sm">{status.retailer}</span>
               </div>

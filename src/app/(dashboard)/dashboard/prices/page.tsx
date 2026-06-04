@@ -91,7 +91,7 @@ async function ProductsDataLoader() {
             <TabsTrigger value="trends">Price Trends</TabsTrigger>
           </TabsList>
           <TabsContent value="table" className="space-y-4">
-            <RetailerPriceTable products={products} />
+            <RetailerPriceTable products={products} categories={categories} />
           </TabsContent>
           <TabsContent value="trends" className="space-y-4">
             <PriceHistoryChart products={products} />
@@ -102,7 +102,7 @@ async function ProductsDataLoader() {
   } catch (error) {
     console.error('Error in ProductsDataLoader:', error)
     return (
-      <div className="p-6 bg-red-50 text-red-600 rounded-lg">
+      <div className="p-6 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive">
         An unexpected error occurred. Please try refreshing the page.
         {error instanceof Error && <p className="mt-2 text-sm">{error.message}</p>}
       </div>

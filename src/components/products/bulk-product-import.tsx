@@ -173,11 +173,11 @@ export function BulkProductImport() {
                       <TableCell>{product.aliases}</TableCell>
                       <TableCell>
                         <span className={
-                          product.status === 'valid' 
-                            ? 'text-green-500' 
-                            : product.status === 'invalid' 
-                              ? 'text-red-500' 
-                              : 'text-yellow-500'
+                          product.status === 'valid'
+                            ? 'text-brand'
+                            : product.status === 'invalid'
+                              ? 'text-destructive'
+                              : 'text-muted-foreground'
                         }>
                           {product.status === 'valid' ? '✓ Valid' : product.error || 'Pending'}
                         </span>

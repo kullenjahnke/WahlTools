@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { format, subDays } from "date-fns"
 import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
+import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -25,6 +26,7 @@ interface ProductPriceHistoryProps {
   }
 
 export function ProductPriceHistory({ productId, prices }: ProductPriceHistoryProps) {
+  const chart = useChartTheme()
   const router = useRouter()
   const supabase = createClientClient()
   const [timeRange, setTimeRange] = useState("30") // days
@@ -152,25 +154,35 @@ export function ProductPriceHistory({ productId, prices }: ProductPriceHistoryPr
             )}
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
+                <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+                <XAxis
                   dataKey="date"
                   tickFormatter={(date) => format(new Date(date), 'MMM d')}
+                  stroke={chart.axis}
+                  tick={{ fill: chart.axis, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: chart.grid }}
                 />
-                <YAxis 
+                <YAxis
                   tickFormatter={(value) => `$${value.toFixed(2)}`}
+                  stroke={chart.axis}
+                  tick={{ fill: chart.axis, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: chart.grid }}
                 />
-                <Tooltip 
+                <Tooltip
                   labelFormatter={(date) => format(new Date(date), 'MMMM d, yyyy')}
                   formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
+                  contentStyle={{ backgroundColor: chart.tooltipBg, border: `1px solid ${chart.grid}`, borderRadius: 6, color: chart.tooltipText, fontSize: 12 }}
+                  labelStyle={{ color: chart.axis }}
                 />
-                <Legend />
-                {RETAILERS.map(retailer => (
+                <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+                {RETAILERS.map((retailer, index) => (
                   <Line
                     key={retailer}
                     type="monotone"
                     dataKey={retailer}
-                    stroke={RETAILER_COLORS[retailer]}
+                    stroke={RETAILER_COLORS[retailer] ?? chart.series[index % chart.series.length]}
                     name={retailer}
                     dot={false}
                     strokeWidth={2}

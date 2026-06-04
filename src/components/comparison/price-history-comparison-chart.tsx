@@ -21,6 +21,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { format, subDays } from "date-fns"
+import { useChartTheme } from "@/hooks/use-chart-theme"
 import type { Product, CompetitorProduct, Price, CompetitorPrice } from "@/types/database"
 
 
@@ -35,6 +36,7 @@ export function PriceHistoryComparisonChart({
   competitorProducts,
   selectedRetailer
 }: PriceHistoryComparisonChartProps) {
+  const chart = useChartTheme()
   const [timeRange, setTimeRange] = useState<string>("90")
 
   // Format the price history data for the chart
@@ -93,21 +95,22 @@ export function PriceHistoryComparisonChart({
   
   const chartData = formatChartData()
   
-  // Generate random colors for competitors
+  // Competitor products get a distinct, spaced palette (brand green is reserved
+  // for the primary Wahlburgers line).
   const getCompetitorColor = (index: number) => {
-    const colors = [
-      '#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c', 
-      '#0891b2', '#4f46e5', '#be123c', '#854d0e', '#15803d'
+    const palette = [
+      '#2563eb', '#7c3aed', '#0891b2', '#db2777', '#f59e0b',
+      '#64748b', '#e11d48', '#0d9488', '#4f46e5',
     ]
-    return colors[index % colors.length]
+    return palette[index % palette.length]
   }
   
   // Custom tooltip formatter
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ color: string; name: string; value: number }> | undefined; label?: string }) => {
     if (active && payload && payload.length && label) {
       return (
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700">
-          <p className="text-gray-500 text-sm font-medium mb-2">
+        <div className="bg-popover text-popover-foreground p-3 rounded-md shadow-md border border-border">
+          <p className="text-muted-foreground text-xs font-medium mb-2">
             {format(new Date(label), 'MMMM d, yyyy')}
           </p>
           {payload.map((entry: { color: string; name: string; value: number }, index: number) => (
@@ -148,32 +151,36 @@ export function PriceHistoryComparisonChart({
         <div className="h-[400px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-              <XAxis 
-                dataKey="date" 
+              <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
+              <XAxis
+                dataKey="date"
                 tickFormatter={(date) => format(new Date(date), 'MMM d')}
-                stroke="#9ca3af"
-                tick={{ fontSize: 12 }}
+                stroke={chart.axis}
+                tick={{ fill: chart.axis, fontSize: 12 }}
+                tickLine={false}
+                axisLine={{ stroke: chart.grid }}
               />
-              <YAxis 
+              <YAxis
                 tickFormatter={(value) => `$${value.toFixed(2)}`}
-                stroke="#9ca3af"
-                tick={{ fontSize: 12 }}
+                stroke={chart.axis}
+                tick={{ fill: chart.axis, fontSize: 12 }}
+                tickLine={false}
+                axisLine={{ stroke: chart.grid }}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              
-              {/* Wahlburgers line */}
+              <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+
+              {/* Wahlburgers line (primary — brand accent) */}
               <Line
                 type="monotone"
                 dataKey="Wahlburgers"
                 name="Wahlburgers"
-                stroke="#0284c7"
+                stroke={chart.brand}
                 strokeWidth={3}
-                dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
-                activeDot={{ r: 6, strokeWidth: 2 }}
+                dot={{ r: 3, strokeWidth: 0, fill: chart.brand }}
+                activeDot={{ r: 5, strokeWidth: 0 }}
               />
-              
+
               {/* Competitor lines */}
               {competitorProducts.map((competitor, index) => (
                 <Line
@@ -183,8 +190,8 @@ export function PriceHistoryComparisonChart({
                   name={competitor.name}
                   stroke={getCompetitorColor(index)}
                   strokeWidth={2}
-                  dot={{ r: 3, strokeWidth: 1, fill: 'white' }}
-                  activeDot={{ r: 5, strokeWidth: 1 }}
+                  dot={{ r: 2, strokeWidth: 0, fill: getCompetitorColor(index) }}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
                 />
               ))}
             </LineChart>

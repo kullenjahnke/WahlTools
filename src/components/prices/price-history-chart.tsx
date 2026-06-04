@@ -12,8 +12,9 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { format, subDays } from 'date-fns'
 import { Product, Price } from "@/types/database"
-import { RETAILERS } from "@/lib/config/retailers"
-import { RETAILER_COLOR_MAP, CHART_CONFIG, BRAND_COLORS } from "@/lib/config/colors"
+import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
+import { CHART_CONFIG } from "@/lib/config/colors"
+import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Calendar } from "lucide-react"
 
 type ProductWithPrices = Product & {
@@ -32,8 +33,8 @@ interface ChartDataEntry {
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ color: string; name: string; value: number }> | undefined; label?: string }) => {
   if (active && payload && payload.length && label) {
     return (
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700">
-        <p className="text-gray-500 text-sm font-medium mb-2">
+      <div className="bg-popover text-popover-foreground p-3 rounded-md shadow-md border border-border">
+        <p className="text-muted-foreground text-xs font-medium mb-2">
           {format(new Date(label), 'MMMM d, yyyy')}
         </p>
         {payload.map((entry: { color: string; name: string; value: number }, index: number) => (
@@ -55,6 +56,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export function PriceHistoryChart({ products }: PriceHistoryChartProps) {
+  const chart = useChartTheme()
   const [selectedProduct, setSelectedProduct] = useState<string>("")
   const [timeRange, setTimeRange] = useState<string>("90")
 
@@ -105,7 +107,7 @@ export function PriceHistoryChart({ products }: PriceHistoryChartProps) {
   const averagePrice = getAveragePrice()
 
   return (
-    <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex justify-between items-center">
           <CardTitle>Price History</CardTitle>
@@ -116,7 +118,7 @@ export function PriceHistoryChart({ products }: PriceHistoryChartProps) {
                 value={timeRange}
                 onValueChange={setTimeRange}
               >
-                <SelectTrigger className="w-[130px] bg-white dark:bg-gray-800">
+                <SelectTrigger className="w-[130px]">
                   <SelectValue placeholder="Select period" />
                 </SelectTrigger>
                 <SelectContent>
@@ -156,63 +158,61 @@ export function PriceHistoryChart({ products }: PriceHistoryChartProps) {
                 data={chartData}
                 margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
               >
-                <CartesianGrid 
-                  strokeDasharray={CHART_CONFIG.grid.strokeDasharray} 
-                  stroke={CHART_CONFIG.grid.stroke}
-                  vertical={CHART_CONFIG.grid.vertical}
-                  horizontal={CHART_CONFIG.grid.horizontal}
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={chart.grid}
+                  vertical={false}
                 />
-                <XAxis 
-                  dataKey="date" 
+                <XAxis
+                  dataKey="date"
                   tickFormatter={(date) => format(new Date(date), 'MMM d')}
+                  stroke={chart.axis}
+                  tick={{ fill: chart.axis, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: chart.grid }}
                 />
-                <YAxis 
+                <YAxis
                   tickFormatter={(value) => `$${value.toFixed(2)}`}
+                  stroke={chart.axis}
+                  tick={{ fill: chart.axis, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: chart.grid }}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend 
+                <Legend
                   verticalAlign="top"
-                  wrapperStyle={{ paddingBottom: "20px" }}
+                  wrapperStyle={{ paddingBottom: "20px", fontSize: 12 }}
                   iconType="circle"
-                  iconSize={10}
+                  iconSize={8}
                 />
-                
-                <ReferenceLine 
-                  y={averagePrice} 
-                  stroke={BRAND_COLORS.info} 
+
+                <ReferenceLine
+                  y={averagePrice}
+                  stroke={chart.brand}
                   strokeDasharray="3 3"
-                  label={{ 
+                  label={{
                     value: `Avg: $${averagePrice.toFixed(2)}`,
                     position: 'insideBottomRight',
-                    fill: BRAND_COLORS.info,
+                    fill: chart.axis,
                     fontSize: 12
                   }}
                 />
-                
-                {RETAILERS.map((retailer) => {
+
+                {RETAILERS.map((retailer, index) => {
                   const hasData = chartData.some((entry: ChartDataEntry) => entry[retailer] !== undefined)
                   if (!hasData) return null
-                  
+
+                  const color = RETAILER_COLORS[retailer] ?? chart.series[index % chart.series.length]
                   return (
                     <Line
                       key={retailer}
                       type="monotone"
                       dataKey={retailer}
                       name={retailer}
-                      stroke={RETAILER_COLOR_MAP[retailer] || BRAND_COLORS.chart.blue}
+                      stroke={color}
                       strokeWidth={CHART_CONFIG.common.strokeWidth}
-                      dot={{ 
-                        r: CHART_CONFIG.common.dotRadius,
-                        fill: RETAILER_COLOR_MAP[retailer] || BRAND_COLORS.chart.blue,
-                        strokeWidth: 1,
-                        stroke: "white"
-                      }}
-                      activeDot={{ 
-                        r: CHART_CONFIG.common.activeDotRadius,
-                        stroke: "white",
-                        strokeWidth: 2,
-                        fill: RETAILER_COLOR_MAP[retailer] || BRAND_COLORS.chart.blue
-                      }}
+                      dot={{ r: 2, fill: color, strokeWidth: 0 }}
+                      activeDot={{ r: 4, fill: color, strokeWidth: 0 }}
                       animationDuration={CHART_CONFIG.common.animationDuration}
                       animationEasing="ease"
                     />

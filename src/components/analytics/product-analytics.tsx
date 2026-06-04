@@ -24,6 +24,7 @@ import {
   ReferenceLine,
 } from "recharts"
 import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
+import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Product, Price } from "@/types/database"
 import { format, subDays, subMonths } from "date-fns"
 import {
@@ -87,6 +88,10 @@ function getWeekStartEST(date: Date): Date {
 }
 
 export function ProductAnalytics({ products }: ProductAnalyticsProps) {
+  const chart = useChartTheme()
+  // Distinct per-retailer brand/hybrid color (shared by line, legend swatch,
+  // and table swatch so they all agree).
+  const retailerColor = (retailer: string) => RETAILER_COLORS[retailer] ?? chart.axis
   const [selectedProductId, setSelectedProductId] = useState<string>("")
   const [timeRange, setTimeRange] = useState("90")
   const [enabledRetailers, setEnabledRetailers] = useState<Set<string>>(
@@ -300,7 +305,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                         <span
                           className="inline-block w-2.5 h-2.5 rounded-full mr-1"
                           style={{
-                            backgroundColor: RETAILER_COLORS[retailer],
+                            backgroundColor: retailerColor(retailer),
                           }}
                         />
                         {retailer}
@@ -328,15 +333,21 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                 <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
                       <XAxis
                         dataKey="date"
                         tickFormatter={(d) => format(new Date(d), "MMM d")}
-                        fontSize={12}
+                        stroke={chart.axis}
+                        tick={{ fill: chart.axis, fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={{ stroke: chart.grid }}
                       />
                       <YAxis
                         tickFormatter={(v) => `$${v.toFixed(2)}`}
-                        fontSize={12}
+                        stroke={chart.axis}
+                        tick={{ fill: chart.axis, fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={{ stroke: chart.grid }}
                         width={60}
                       />
                       <Tooltip
@@ -348,27 +359,28 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                           name,
                         ]}
                         contentStyle={{
-                          backgroundColor: "rgba(255,255,255,0.95)",
-                          border: "none",
+                          backgroundColor: chart.tooltipBg,
+                          border: `1px solid ${chart.grid}`,
                           borderRadius: "0.375rem",
-                          boxShadow:
-                            "0 4px 6px -1px rgba(0,0,0,0.1)",
-                          padding: "0.75rem",
+                          color: chart.tooltipText,
+                          fontSize: 12,
+                          padding: "0.5rem 0.75rem",
                         }}
+                        labelStyle={{ color: chart.axis }}
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
                       {metrics.length > 0 && (
                         <ReferenceLine
                           y={
                             metrics.reduce((s, m) => s + (m.avg || 0), 0) /
                             metrics.filter((m) => m.avg !== null).length
                           }
-                          stroke="#94a3b8"
+                          stroke={chart.brand}
                           strokeDasharray="5 5"
                           label={{
                             value: "Avg",
                             position: "insideTopRight",
-                            fill: "#94a3b8",
+                            fill: chart.axis,
                             fontSize: 11,
                           }}
                         />
@@ -384,10 +396,10 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                             key={retailer}
                             type="monotone"
                             dataKey={retailer}
-                            stroke={RETAILER_COLORS[retailer]}
+                            stroke={retailerColor(retailer)}
                             strokeWidth={2}
-                            dot={{ r: 3 }}
-                            activeDot={{ r: 5 }}
+                            dot={{ r: 2.5, strokeWidth: 0, fill: retailerColor(retailer) }}
+                            activeDot={{ r: 4, strokeWidth: 0, fill: retailerColor(retailer) }}
                             connectNulls
                           />
                         ))}
@@ -439,8 +451,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                               <span
                                 className="inline-block w-3 h-3 rounded-full"
                                 style={{
-                                  backgroundColor:
-                                    RETAILER_COLORS[m.retailer],
+                                  backgroundColor: retailerColor(m.retailer),
                                 }}
                               />
                               {m.retailer}
@@ -448,7 +459,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                           </td>
                           <td className="text-right py-2.5 px-3 font-mono">
                             {m.min !== null ? (
-                              <span className="text-green-600">
+                              <span className="text-foreground">
                                 <ArrowDown className="h-3 w-3 inline mr-0.5" />
                                 ${m.min.toFixed(2)}
                               </span>
@@ -458,7 +469,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                           </td>
                           <td className="text-right py-2.5 px-3 font-mono">
                             {m.max !== null ? (
-                              <span className="text-red-600">
+                              <span className="text-muted-foreground">
                                 <ArrowUp className="h-3 w-3 inline mr-0.5" />
                                 ${m.max.toFixed(2)}
                               </span>
@@ -476,16 +487,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                           </td>
                           <td className="text-right py-2.5 pl-3">
                             {m.wowChange !== null ? (
-                              <Badge
-                                variant="secondary"
-                                className={`font-mono ${
-                                  m.wowChange > 0.1
-                                    ? "bg-red-100 text-red-700"
-                                    : m.wowChange < -0.1
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-100 text-gray-700"
-                                }`}
-                              >
+                              <Badge variant="muted" className="font-mono tabular-nums">
                                 {m.wowChange > 0.1 ? (
                                   <TrendingUp className="h-3 w-3 mr-1" />
                                 ) : m.wowChange < -0.1 ? (

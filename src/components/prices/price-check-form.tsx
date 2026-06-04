@@ -367,7 +367,7 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
       {filteredProducts.length === 0 ? (
         <Card className="shadow-md">
           <CardContent className="p-8 text-center">
-            <Info className="h-12 w-12 mx-auto mb-4 text-blue-500 opacity-80" />
+            <Info className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-80" />
             <h3 className="text-lg font-medium mb-2">
               {category === "all" 
                 ? "No products available for price checking" 
@@ -386,8 +386,8 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-md bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-          <CardHeader className="border-b">
+        <Card>
+          <CardHeader className="border-b border-border">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <CardTitle className="flex items-center">
                 <div 
@@ -430,9 +430,9 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
             </div>
             
             <div className="relative pt-4 mb-6">
-              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500"
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
@@ -484,7 +484,7 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              className="text-xs h-7 px-2 text-blue-600 dark:text-blue-400 flex items-center gap-1"
+                              className="text-xs h-7 px-2 flex items-center gap-1"
                               onClick={() => openUrlsSequentially(categoryUrls)}
                               disabled={openingUrls}
                             >
@@ -548,13 +548,13 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
                               </div>
                               {promos[product.id] && (
                                 <div className="relative">
-                                  <TrendingDown className="absolute left-2.5 top-1/2 -translate-y-1/2 text-green-500 h-3 w-3" />
+                                  <TrendingDown className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground h-3 w-3" />
                                   <Input
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     placeholder="Orig"
-                                    className="pl-7 w-24 h-9 font-medium text-right text-sm border-green-200"
+                                    className="pl-7 w-24 h-9 font-medium text-right text-sm tabular-nums"
                                     value={originalPrices[product.id] || ''}
                                     onChange={(e) => handleOriginalPriceChange(product.id, e.target.value)}
                                     disabled={soldOut[product.id]}
@@ -562,7 +562,7 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
                                 </div>
                               )}
                               {promos[product.id] && prices[product.id] && originalPrices[product.id] && (
-                                <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs px-1.5 py-0.5">
+                                <Badge variant="brand" className="text-xs px-1.5 py-0.5">
                                   {Math.round(((parseFloat(originalPrices[product.id]) - parseFloat(prices[product.id])) / parseFloat(originalPrices[product.id])) * 100)}%
                                 </Badge>
                               )}
@@ -578,7 +578,7 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
                                 className="scale-90"
                               />
                               <Label htmlFor={`promo-${product.id}`} className="cursor-pointer text-xs lg:text-sm whitespace-nowrap">
-                                <Tag className="h-3 w-3 lg:h-4 lg:w-4 text-amber-500 inline mr-0.5" />
+                                <Tag className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground inline mr-0.5" />
                                 Sale
                               </Label>
                             </div>
@@ -593,7 +593,7 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
                                 className="scale-90"
                               />
                               <Label htmlFor={`soldout-${product.id}`} className="cursor-pointer text-xs lg:text-sm whitespace-nowrap">
-                                <AlertCircle className="h-3 w-3 lg:h-4 lg:w-4 text-red-500 inline mr-0.5" />
+                                <AlertCircle className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground inline mr-0.5" />
                                 Out
                               </Label>
                             </div>
@@ -607,7 +607,7 @@ export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
                                 className="scale-90"
                               />
                               <Label htmlFor={`notavailable-${product.id}`} className="cursor-pointer text-xs lg:text-sm whitespace-nowrap">
-                                <XCircle className="h-3 w-3 lg:h-4 lg:w-4 text-gray-500 inline mr-0.5" />
+                                <XCircle className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground inline mr-0.5" />
                                 N/A
                               </Label>
                             </div>

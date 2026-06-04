@@ -299,11 +299,7 @@ export default async function CompetitorProductDetailPage({ params }: { params: 
                             <h4 className="text-sm text-muted-foreground mb-1">Difference</h4>
                             {competitorPrice && wahlburgersPrice && 
                              !competitorPrice.is_sold_out && !wahlburgersPrice.is_sold_out ? (
-                              <p className={`font-medium ${
-                                priceDiff > 0 ? 'text-red-500' : 
-                                priceDiff < 0 ? 'text-green-500' : 
-                                'text-muted-foreground'
-                              }`}>
+                              <p className="font-medium tabular-nums text-muted-foreground">
                                 {priceDiff !== 0 ? (
                                   <>
                                     {priceDiff > 0 ? '+' : ''}${Math.abs(priceDiff).toFixed(2)} 

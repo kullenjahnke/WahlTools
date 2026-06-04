@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/table"
 import { RETAILERS } from "@/lib/config/retailers"
 import {
-  TrendingUp,
-  TrendingDown,
+  ArrowUp,
+  ArrowDown,
   Minus,
   X,
   Package,
@@ -327,9 +327,9 @@ export function EnhancedProductComparison({
                                       price.price !== null && price.price !== undefined && !price.is_sold_out) ? (
                                       <>
                                         <div className={cn(
-                                          "font-medium text-lg",
-                                          isLowest && "text-green-600",
-                                          isHighest && "text-red-600"
+                                          "text-base font-semibold tabular-nums",
+                                          isLowest && "text-brand",
+                                          isHighest && "text-muted-foreground"
                                         )}>
                                           ${price.price.toFixed(2)}
                                         </div>
@@ -346,39 +346,39 @@ export function EnhancedProductComparison({
                                           </div>
                                         )}
                                         {isLowest && (
-                                          <Badge variant="outline" className="text-xs bg-green-50">
-                                            <TrendingDown className="h-3 w-3 mr-1" />
+                                          <Badge variant="brand" className="text-xs">
+                                            <ArrowDown className="h-3 w-3 mr-1" />
                                             Lowest
                                           </Badge>
                                         )}
                                         {isHighest && (
-                                          <Badge variant="outline" className="text-xs bg-red-50">
-                                            <TrendingUp className="h-3 w-3 mr-1" />
+                                          <Badge variant="muted" className="text-xs">
+                                            <ArrowUp className="h-3 w-3 mr-1" />
                                             Highest
                                           </Badge>
                                         )}
                                       </>
                                     ) : (price.status === 'out_of_stock' || price.is_sold_out) ? (
-                                      <div className="flex flex-col items-center gap-1">
-                                        <XCircle className="h-4 w-4 text-red-500" />
-                                        <span className="text-xs text-red-500">Out of Stock</span>
+                                      <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                                        <XCircle className="h-4 w-4" />
+                                        <span className="text-xs">Out of Stock</span>
                                       </div>
                                     ) : price.status === 'not_carried' ? (
-                                      <div className="flex flex-col items-center gap-1">
-                                        <AlertCircle className="h-4 w-4 text-gray-400" />
-                                        <span className="text-xs text-gray-400">Not Available</span>
+                                      <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <span className="text-xs">Not Available</span>
                                       </div>
                                     ) : (
-                                      <div className="flex flex-col items-center gap-1">
-                                        <Minus className="h-4 w-4 text-gray-300" />
-                                        <span className="text-xs text-gray-300">No Price</span>
+                                      <div className="flex flex-col items-center gap-1 text-muted-foreground/60">
+                                        <Minus className="h-4 w-4" />
+                                        <span className="text-xs">No Price</span>
                                       </div>
                                     )}
                                   </div>
                                 ) : (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <Minus className="h-4 w-4 text-gray-300" />
-                                    <span className="text-xs text-gray-300">No Data</span>
+                                  <div className="flex flex-col items-center gap-1 text-muted-foreground/60">
+                                    <Minus className="h-4 w-4" />
+                                    <span className="text-xs">No Data</span>
                                   </div>
                                 )}
                               </TableCell>
@@ -400,13 +400,13 @@ export function EnhancedProductComparison({
                         <TableCell key={product.id} className="text-center">
                           {stats ? (
                             <div className="space-y-1">
-                              <div className="text-lg">${stats.avg.toFixed(2)}</div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-base font-semibold tabular-nums">${stats.avg.toFixed(2)}</div>
+                              <div className="text-xs text-muted-foreground tabular-nums">
                                 Range: ${stats.min.toFixed(2)} - ${stats.max.toFixed(2)}
                               </div>
                             </div>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
                       )
