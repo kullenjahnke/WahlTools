@@ -107,7 +107,7 @@ export function PriceHistoryChart({ products }: PriceHistoryChartProps) {
   const averagePrice = getAveragePrice()
 
   return (
-    <Card className="shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div className="flex justify-between items-center">
           <CardTitle>Price History</CardTitle>
@@ -118,7 +118,7 @@ export function PriceHistoryChart({ products }: PriceHistoryChartProps) {
                 value={timeRange}
                 onValueChange={setTimeRange}
               >
-                <SelectTrigger className="w-[130px] bg-white dark:bg-gray-800">
+                <SelectTrigger className="w-[130px]">
                   <SelectValue placeholder="Select period" />
                 </SelectTrigger>
                 <SelectContent>

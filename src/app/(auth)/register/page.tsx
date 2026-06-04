@@ -16,10 +16,10 @@ export default function RegisterPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+          <div className="mb-4 p-3 bg-muted/50 border border-border rounded-md">
             <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <div className="text-sm text-amber-800 dark:text-amber-200">
+              <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div className="text-sm text-muted-foreground">
                 <p className="font-medium">Restricted Registration</p>
                 <p className="mt-1 text-xs">
                   Only authorized email addresses can create accounts. 

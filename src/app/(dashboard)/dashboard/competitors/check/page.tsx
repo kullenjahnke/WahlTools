@@ -188,7 +188,7 @@ export default async function CompetitorPriceCheckPage({ searchParams }: PagePro
           </Link>
         </Button>
         
-        <div className="p-6 bg-red-50 text-red-600 rounded-lg">
+        <div className="p-6 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive">
           <h2 className="text-lg font-medium mb-2">Error Loading Products</h2>
           <p>{error instanceof Error ? error.message : 'An unexpected error occurred'}</p>
         </div>

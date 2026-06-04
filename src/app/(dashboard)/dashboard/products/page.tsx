@@ -84,10 +84,10 @@ export default async function ProductsPage() {
     console.error('Error in ProductsPage:', error)
     
     return (
-      <div className="p-6">
-        <h1 className="text-3xl font-bold">Products</h1>
+      <div className="p-4 md:p-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
         <Card className="p-6 mt-6">
-          <div className="text-red-500">
+          <div className="text-destructive">
             {errorMessage || 'Error loading products. Please try refreshing the page.'}
           </div>
         </Card>

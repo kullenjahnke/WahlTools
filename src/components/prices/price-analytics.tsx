@@ -82,9 +82,7 @@ export function PriceAnalytics({ products }: PriceAnalyticsProps) {
               <div className="text-2xl font-bold">
                 {totalProducts}
               </div>
-              <div className={`text-sm font-medium ${
-                averageChange > 0 ? 'text-red-500' : averageChange < 0 ? 'text-green-500' : 'text-muted-foreground'
-              }`}>
+              <div className="text-sm font-medium tabular-nums text-muted-foreground">
                 {averageChange !== 0 && (
                   <>
                     {averageChange > 0 ? <ChevronUp className="inline h-4 w-4" /> : <ChevronDown className="inline h-4 w-4" />}
@@ -99,11 +97,11 @@ export function PriceAnalytics({ products }: PriceAnalyticsProps) {
             <div className="mt-4 space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Increased</span>
-                <span className="font-medium text-red-500">{increasedPrices}</span>
+                <span className="font-medium tabular-nums">{increasedPrices}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Decreased</span>
-                <span className="font-medium text-green-500">{decreasedPrices}</span>
+                <span className="font-medium tabular-nums">{decreasedPrices}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Unchanged</span>

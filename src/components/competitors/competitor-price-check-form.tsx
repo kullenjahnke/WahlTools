@@ -174,7 +174,7 @@ export function CompetitorPriceCheckForm({ products, retailer }: CompetitorPrice
       {filteredProducts.length === 0 ? (
         <Card className="shadow-md">
           <CardContent className="p-8 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-amber-500 opacity-80" />
+            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-80" />
             <h3 className="text-lg font-medium mb-2">
               {category !== "all" || competitorFilter !== "all"
                 ? "No products match your filters" 
@@ -196,12 +196,12 @@ export function CompetitorPriceCheckForm({ products, retailer }: CompetitorPrice
           </CardContent>
         </Card>
       ) : (
-        <Card className="shadow-md bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-          <CardHeader className="border-b">
+        <Card>
+          <CardHeader className="border-b border-border">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <CardTitle className="flex items-center">
-                <div 
-                  className="w-4 h-4 rounded-full mr-2 bg-blue-500"
+                <div
+                  className="w-4 h-4 rounded-full mr-2 bg-brand"
                 ></div>
                 Competitor Price Check: {retailer}
               </CardTitle>
@@ -238,9 +238,9 @@ export function CompetitorPriceCheckForm({ products, retailer }: CompetitorPrice
           
           <CardContent className="pt-4">
             <div className="relative pt-4 mb-6">
-              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500"
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
@@ -314,7 +314,7 @@ export function CompetitorPriceCheckForm({ products, retailer }: CompetitorPrice
                                 disabled={soldOut[product.id]}
                               />
                               <Label htmlFor={`promo-${product.id}`} className="cursor-pointer">
-                                <Tag className="h-4 w-4 text-amber-500 inline mr-1" />
+                                <Tag className="h-4 w-4 text-muted-foreground inline mr-1" />
                                 Promo
                               </Label>
                             </div>
@@ -326,7 +326,7 @@ export function CompetitorPriceCheckForm({ products, retailer }: CompetitorPrice
                                 onCheckedChange={(checked) => handleSoldOutToggle(product.id, checked)}
                               />
                               <Label htmlFor={`soldout-${product.id}`} className="cursor-pointer">
-                                <AlertCircle className="h-4 w-4 text-red-500 inline mr-1" />
+                                <AlertCircle className="h-4 w-4 text-muted-foreground inline mr-1" />
                                 Sold Out
                               </Label>
                             </div>

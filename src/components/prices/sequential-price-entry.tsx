@@ -202,9 +202,9 @@ export function SequentialPriceEntry({ products }: SequentialPriceEntryProps) {
               {savedCount} saved
             </div>
           </div>
-          <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500 rounded-full"
+              className="h-full bg-brand transition-all duration-500 rounded-full"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -236,7 +236,7 @@ export function SequentialPriceEntry({ products }: SequentialPriceEntryProps) {
             <Button
               variant="outline"
               size="sm"
-              className="w-full justify-start text-blue-600"
+              className="w-full justify-start"
               onClick={() => window.open(currentUrl, "_blank")}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
@@ -273,20 +273,20 @@ export function SequentialPriceEntry({ products }: SequentialPriceEntryProps) {
             <div className="space-y-2">
               <Label>Original Price (before sale)</Label>
               <div className="relative">
-                <TrendingDown className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500 h-4 w-4" />
+                <TrendingDown className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
-                  className="pl-9 font-mono border-green-200"
+                  className="pl-9 font-mono"
                   value={originalPrice}
                   onChange={(e) => setOriginalPrice(e.target.value)}
                   disabled={isSoldOut || isNotAvailable}
                 />
               </div>
               {price && originalPrice && (
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
+                <Badge variant="brand">
                   {Math.round(
                     ((parseFloat(originalPrice) - parseFloat(price)) /
                       parseFloat(originalPrice)) *
@@ -308,7 +308,7 @@ export function SequentialPriceEntry({ products }: SequentialPriceEntryProps) {
                 disabled={isSoldOut || isNotAvailable}
               />
               <Label htmlFor="promo" className="text-xs cursor-pointer flex items-center gap-1">
-                <Tag className="h-3 w-3 text-amber-500" />
+                <Tag className="h-3 w-3 text-muted-foreground" />
                 Sale
               </Label>
             </div>
@@ -326,7 +326,7 @@ export function SequentialPriceEntry({ products }: SequentialPriceEntryProps) {
                 }}
               />
               <Label htmlFor="soldout" className="text-xs cursor-pointer flex items-center gap-1">
-                <AlertCircle className="h-3 w-3 text-red-500" />
+                <AlertCircle className="h-3 w-3 text-muted-foreground" />
                 Sold Out
               </Label>
             </div>
@@ -344,7 +344,7 @@ export function SequentialPriceEntry({ products }: SequentialPriceEntryProps) {
                 }}
               />
               <Label htmlFor="notavailable" className="text-xs cursor-pointer flex items-center gap-1">
-                <XCircle className="h-3 w-3 text-gray-500" />
+                <XCircle className="h-3 w-3 text-muted-foreground" />
                 N/A
               </Label>
             </div>

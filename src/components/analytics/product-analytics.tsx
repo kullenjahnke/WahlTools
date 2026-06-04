@@ -459,7 +459,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                           </td>
                           <td className="text-right py-2.5 px-3 font-mono">
                             {m.min !== null ? (
-                              <span className="text-green-600">
+                              <span className="text-foreground">
                                 <ArrowDown className="h-3 w-3 inline mr-0.5" />
                                 ${m.min.toFixed(2)}
                               </span>
@@ -469,7 +469,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                           </td>
                           <td className="text-right py-2.5 px-3 font-mono">
                             {m.max !== null ? (
-                              <span className="text-red-600">
+                              <span className="text-muted-foreground">
                                 <ArrowUp className="h-3 w-3 inline mr-0.5" />
                                 ${m.max.toFixed(2)}
                               </span>
@@ -487,16 +487,7 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                           </td>
                           <td className="text-right py-2.5 pl-3">
                             {m.wowChange !== null ? (
-                              <Badge
-                                variant="secondary"
-                                className={`font-mono ${
-                                  m.wowChange > 0.1
-                                    ? "bg-red-100 text-red-700"
-                                    : m.wowChange < -0.1
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-100 text-gray-700"
-                                }`}
-                              >
+                              <Badge variant="muted" className="font-mono tabular-nums">
                                 {m.wowChange > 0.1 ? (
                                   <TrendingUp className="h-3 w-3 mr-1" />
                                 ) : m.wowChange < -0.1 ? (
