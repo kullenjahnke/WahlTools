@@ -171,24 +171,24 @@ export function PriceSummary() {
           <CalendarCheck className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">
+          <div className="text-2xl font-semibold tabular-nums">
             {updatedThisWeek} / {freshTotal}{' '}
             <span className={`text-lg font-semibold ${
-              freshPercent >= 80 ? 'text-green-600' :
-              freshPercent >= 50 ? 'text-amber-600' :
-              'text-red-600'
+              freshPercent >= 80 ? 'text-brand' :
+              freshPercent >= 50 ? 'text-muted-foreground' :
+              'text-destructive'
             }`}>
               ({freshPercent}%)
             </span>
           </div>
           <p className="text-xs text-muted-foreground">Up-to-date this week</p>
           <div className="mt-3">
-            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  freshPercent >= 80 ? 'bg-green-500' :
-                  freshPercent >= 50 ? 'bg-amber-500' :
-                  'bg-red-500'
+                  freshPercent >= 80 ? 'bg-brand' :
+                  freshPercent >= 50 ? 'bg-muted-foreground' :
+                  'bg-destructive'
                 }`}
                 style={{ width: `${freshPercent}%` }}
               />
