@@ -3,6 +3,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { PriceAnalytics } from "@/components/prices/price-analytics"
 import { PriceHistoryView } from "@/components/prices/price-history-view"
 
+export const metadata = { title: "Price History" }
+
 export default async function PriceHistoryPage() {
   const supabase = await createSupabaseServerClient()
   

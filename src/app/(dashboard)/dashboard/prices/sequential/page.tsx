@@ -5,6 +5,8 @@ import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
 import type { ProductUrl } from "@/types/database"
 
+export const metadata = { title: "Sequential Entry" }
+
 export default async function SequentialEntryPage() {
   const supabase = await createSupabaseServerClient()
 

@@ -48,7 +48,6 @@ export function MainNav({ className, setOpen }: MainNavProps) {
         "/dashboard/prices",
         "/dashboard/prices/check",
         "/dashboard/prices/history",
-        "/dashboard/prices/bulk-update",
         "/dashboard/prices/reminders"
       ]
     },

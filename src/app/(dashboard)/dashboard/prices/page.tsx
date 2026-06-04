@@ -7,7 +7,7 @@ import { PriceHistoryChart } from "@/components/prices/price-history-chart"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Plus, History, Bell, PackageSearch, BarChart4, ListOrdered } from "lucide-react"
+import { Plus, History, Bell, BarChart4, ListOrdered } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ExportModal } from "@/components/prices/export-modal"
@@ -110,6 +110,8 @@ async function ProductsDataLoader() {
   }
 }
 
+export const metadata = { title: "Prices" }
+
 export default async function PricesPage() {
   return (
     <div className="p-6 space-y-6">
@@ -137,12 +139,6 @@ export default async function PricesPage() {
             <Link href="/dashboard/analytics">
               <BarChart4 className="h-4 w-4 mr-2" />
               Analytics
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/prices/bulk-update">
-              <PackageSearch className="h-4 w-4 mr-2" />
-              Bulk Price Entry
             </Link>
           </Button>
           <Button variant="outline" asChild>

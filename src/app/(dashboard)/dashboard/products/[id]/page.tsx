@@ -11,6 +11,8 @@ interface PageProps {
   }>
 }
 
+export const metadata = { title: "Edit Product" }
+
 export default async function EditProductPage({ params }: PageProps) {
   const { id } = await params
   

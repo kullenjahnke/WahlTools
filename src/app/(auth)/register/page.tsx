@@ -3,6 +3,8 @@ import { AuthForm } from "@/components/auth/auth-form"
 import Link from "next/link"
 import { AlertCircle } from "lucide-react"
 
+export const metadata = { title: "Register" }
+
 export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center">

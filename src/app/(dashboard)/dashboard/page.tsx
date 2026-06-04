@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PriceSummary } from "@/components/dashboard/price-summary"
 import { PriceCheckStatus } from "@/components/dashboard/price-check-status"
-import { CompetitorPriceSummary } from "@/components/dashboard/competitor-price-summary"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { 
   ArrowUpRight,
@@ -13,7 +12,8 @@ import {
   ShoppingBagIcon
 } from "lucide-react"
 import Link from "next/link"
-import { RETAILERS } from "@/lib/config/retailers"
+
+export const metadata = { title: "Dashboard" }
 
 export default async function DashboardPage() {
   try {
@@ -23,9 +23,7 @@ export default async function DashboardPage() {
       { count: productsCount },
       { data: recentPrices },
       { data: pendingChecks },
-      { data: activeRetailers },
-      { data: competitorProducts },
-      { data: wahlburgersProducts }
+      { data: activeRetailers }
     ] = await Promise.all([
       supabase
         .from('products')
@@ -46,24 +44,7 @@ export default async function DashboardPage() {
       supabase
         .from('prices')
         .select('retailer')
-        .eq('status', 'active'),
-
-      supabase
-        .from('products')
-        .select(`
-          *,
-          prices!inner (id, price, retailer, timestamp, status, is_promotion, is_sold_out)
-        `)
-        .eq('prices.status', 'active')
-        .eq('brand_id', 'competitor'),
-
-      supabase
-        .from('products')
-        .select(`
-          *,
-          prices!inner (id, price, retailer, timestamp, status, is_promotion, is_sold_out)
-        `)
-        .eq('prices.status', 'active')
+        .eq('status', 'active')
     ])
 
     const uniqueRetailers = new Set(activeRetailers?.map(r => r.retailer) || [])
@@ -202,15 +183,6 @@ export default async function DashboardPage() {
         
         <div className="grid gap-6 md:grid-cols-1">
           <PriceCheckStatus />
-        </div>
-        
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Competitor Analysis</h2>
-          <CompetitorPriceSummary
-            wahlburgersProducts={wahlburgersProducts || []}
-            competitorProducts={competitorProducts || []}
-            selectedRetailer={activeRetailers && activeRetailers.length > 0 ? activeRetailers[0].retailer : RETAILERS[0]}
-          />
         </div>
       </div>
     )

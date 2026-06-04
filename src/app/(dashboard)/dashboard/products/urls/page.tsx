@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
 
+export const metadata = { title: "Product URLs" }
+
 export default async function ProductUrlsPage() {
   const supabase = await createSupabaseServerClient()
   

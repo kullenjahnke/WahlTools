@@ -58,10 +58,10 @@ export const config = {
      * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     * - public assets
+     * - any static asset by extension (favicons, manifest, logos, etc.)
+     *   so they are publicly reachable without auth — notably email-logo.png,
+     *   which email clients fetch with no session.
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|assets).*)',
+    '/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)',
   ],
 }

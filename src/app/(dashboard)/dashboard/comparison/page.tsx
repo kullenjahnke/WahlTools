@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { BarChart, TrendingUp, Package } from "lucide-react"
 
+export const metadata = { title: "Comparison" }
+
 export default async function ComparisonPage() {
   const supabase = await createSupabaseServerClient()
   
