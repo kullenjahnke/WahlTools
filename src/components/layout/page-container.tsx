@@ -1,35 +1,15 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-// Single source of truth for page padding and max-width. Every dashboard page
-// wraps its content in this so horizontal/vertical padding stays consistent.
+// Single source of truth for page padding. Every dashboard page wraps its
+// content in this so horizontal/vertical padding stays consistent. Content
+// spans the full width of the main area, matching the Dashboard page.
 
-export interface PageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Constrain content width (default) or let it span the full area. */
-  width?: "default" | "wide" | "full";
-}
+export type PageContainerProps = React.HTMLAttributes<HTMLDivElement>;
 
-const WIDTHS: Record<NonNullable<PageContainerProps["width"]>, string> = {
-  default: "max-w-[1400px]",
-  wide: "max-w-[1600px]",
-  full: "max-w-none",
-};
-
-export function PageContainer({
-  width = "default",
-  className,
-  children,
-  ...props
-}: PageContainerProps) {
+export function PageContainer({ className, children, ...props }: PageContainerProps) {
   return (
-    <div
-      className={cn(
-        "mx-auto w-full px-4 py-6 md:px-8 md:py-8 space-y-6",
-        WIDTHS[width],
-        className
-      )}
-      {...props}
-    >
+    <div className={cn("w-full space-y-6 p-4 md:p-6", className)} {...props}>
       {children}
     </div>
   );

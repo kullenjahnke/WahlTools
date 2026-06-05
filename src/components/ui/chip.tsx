@@ -50,7 +50,8 @@ export interface ChipProps extends React.HTMLAttributes<HTMLSpanElement> {
   colorKey?: string;
   /** Show a leading color dot in the current text color. */
   dot?: boolean;
-  size?: "sm" | "md";
+  /** "lg" matches body/title text size (text-sm). */
+  size?: "sm" | "md" | "lg";
 }
 
 export function Chip({
@@ -75,7 +76,9 @@ export function Chip({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap",
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-0.5 text-xs",
+        size === "sm" && "px-2 py-0.5 text-[11px]",
+        size === "md" && "px-2.5 py-0.5 text-xs",
+        size === "lg" && "px-2.5 py-0.5 text-sm",
         toneClass,
         className
       )}

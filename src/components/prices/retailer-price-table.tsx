@@ -153,14 +153,21 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
     const retailerMatch = retailerFilter === "all" ||
       product.prices?.some(p => p.retailer === retailerFilter)
 
-    // Apply freshness filter (based on the product's most recent price overall,
-    // or for the selected retailer when one is chosen).
+    // Apply freshness filter per retailer-cell: when a retailer is selected, use
+    // that retailer's latest price; otherwise match if ANY retailer's latest
+    // price for this product falls in the selected freshness bucket.
     let freshnessMatch = true
     if (freshnessFilter !== "all") {
-      const relevant = retailerFilter === "all"
-        ? getLatestUpdate(product)
-        : getLatestPrice(product.prices, retailerFilter)
-      freshnessMatch = classifyFreshness(relevant?.timestamp).status === freshnessFilter
+      if (retailerFilter !== "all") {
+        const latest = getLatestPrice(product.prices, retailerFilter)
+        freshnessMatch = !!latest && classifyFreshness(latest.timestamp).status === freshnessFilter
+      } else {
+        const retailers = Array.from(new Set(product.prices?.map(p => p.retailer) || []))
+        freshnessMatch = retailers.some(r => {
+          const latest = getLatestPrice(product.prices, r)
+          return !!latest && classifyFreshness(latest.timestamp).status === freshnessFilter
+        })
+      }
     }
 
     return searchMatch && categoryMatch && retailerMatch && freshnessMatch
@@ -263,24 +270,16 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
           <TableBody>
             {filteredProducts.map((product) => {
               const latestUpdate = getLatestUpdate(product)
-              const rowFreshness = classifyFreshness(latestUpdate?.timestamp)
-              const rowMeta = freshnessMeta(rowFreshness.status)
               const categoryName = categoryMap.get(product.category_id)
 
               return (
-                <TableRow
-                  key={product.id}
-                  className={cn(
-                    rowFreshness.status === "stale" && "opacity-80",
-                    rowFreshness.status === "discontinued" && "opacity-55"
-                  )}
-                >
+                <TableRow key={product.id}>
                   <TableCell className="sticky left-0 z-10 bg-background border-r border-border font-medium max-w-[200px]">
                     <div className="truncate">{product.name}</div>
                   </TableCell>
                   <TableCell className="max-w-[140px]">
                     {categoryName ? (
-                      <Chip label={categoryName} size="sm" colorKey={product.category_id} />
+                      <Chip label={categoryName} size="lg" colorKey={product.category_id} />
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
@@ -295,15 +294,21 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                     const isSoldOut =
                       !!latestPrice &&
                       (latestPrice.status === 'out_of_stock' ||
-                        latestPrice.is_sold_out === true ||
-                        (latestPrice.price === 0 && latestPrice.is_sold_out !== false))
+                        latestPrice.is_sold_out === true)
+                    // Zero-priced records that aren't sold out are "N/A" markings
+                    // (e.g. product not carried / not applicable at this retailer).
+                    const isNA = !!latestPrice && !isSoldOut && latestPrice.price <= 0
 
                     return (
                       <TableCell key={retailer} className="text-center align-middle">
                         {hasRetailerAssociation && latestPrice ? (
-                          isSoldOut ? (
+                          isSoldOut || isNA ? (
                             <div className="flex flex-col items-center gap-1">
-                              <Badge variant="muted">Sold out</Badge>
+                              <Chip
+                                label={isSoldOut ? "Sold out" : "N/A"}
+                                tone="neutral"
+                                size="lg"
+                              />
                               <div className="text-xs text-muted-foreground">
                                 {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
                               </div>
@@ -355,22 +360,10 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                       </TableCell>
                     )
                   })}
-                  <TableCell className="text-sm">
-                    {latestUpdate ? (
-                      <div className="flex flex-col gap-1">
-                        <Chip
-                          label={rowMeta.label}
-                          tone={rowMeta.chipClass}
-                          size="sm"
-                          dot
-                        />
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                          {format(new Date(latestUpdate.timestamp), 'MMM d, yyyy')}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                  <TableCell className="text-sm text-muted-foreground tabular-nums">
+                    {latestUpdate
+                      ? format(new Date(latestUpdate.timestamp), 'MMM d, yyyy')
+                      : "—"}
                   </TableCell>
                 </TableRow>
               )

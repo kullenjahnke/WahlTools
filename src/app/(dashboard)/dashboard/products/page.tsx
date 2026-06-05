@@ -81,7 +81,6 @@ export default async function ProductsPage() {
       <PageContainer>
         <PageHeader
           title="Products"
-          description={`${products.length} product${products.length === 1 ? "" : "s"} tracked`}
           actions={
             <>
               <IconButton

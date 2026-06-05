@@ -351,6 +351,7 @@ export function EnhancedProductsList({
                   {product.brand_name ? (
                     <Chip
                       label={product.brand_name}
+                      size="lg"
                       tone={isWahlburgers ? "brand" : "auto"}
                       colorKey={product.brand_name}
                     />
@@ -360,7 +361,7 @@ export function EnhancedProductsList({
                 </TableCell>
                 <TableCell>
                   {categoryName ? (
-                    <Chip label={categoryName} colorKey={product.category_id} />
+                    <Chip label={categoryName} size="lg" colorKey={product.category_id} />
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}

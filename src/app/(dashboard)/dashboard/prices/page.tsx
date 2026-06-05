@@ -119,7 +119,6 @@ export default async function PricesPage() {
     <PageContainer>
       <PageHeader
         title="Prices"
-        description="Monitor product prices across retailers"
         actions={
           <>
             <IconButton
