@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
-import { formatDistanceToNow } from "date-fns"
-import { Package, DollarSign } from "lucide-react"
+import { RecentUpdatesList, type Update } from "./recent-updates-list"
 
 interface PriceRecord {
   id: string
@@ -13,15 +12,6 @@ interface PriceRecord {
   }[]
 }
 
-interface Update {
-  id: string
-  type: 'product' | 'price'
-  name: string
-  retailer?: string
-  price?: number
-  timestamp: string
-}
-
 async function getRecentUpdates(): Promise<Update[]> {
   const supabase = await createSupabaseServerClient()
 
@@ -30,7 +20,7 @@ async function getRecentUpdates(): Promise<Update[]> {
     .from('products')
     .select('id, name, updated_at')
     .order('updated_at', { ascending: false })
-    .limit(5)
+    .limit(12)
 
   // Get recent price updates
   const { data: prices } = await supabase
@@ -43,7 +33,7 @@ async function getRecentUpdates(): Promise<Update[]> {
       products!inner (name)
     `)
     .order('updated_at', { ascending: false })
-    .limit(5)
+    .limit(12)
 
   const updates: Update[] = []
 
@@ -71,67 +61,26 @@ async function getRecentUpdates(): Promise<Update[]> {
     })
   }
 
-  // Sort by timestamp and return top 10
+  // Sort by timestamp and return the most recent 20
   return updates
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 10)
+    .slice(0, 20)
 }
 
 export async function RecentActivity() {
   const updates = await getRecentUpdates()
 
-  if (updates.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-medium">Recent Updates</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No recent updates</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <Card>
-      <CardHeader>
+    <Card className="flex h-full flex-col">
+      <CardHeader className="pb-3">
         <CardTitle className="text-base font-medium">Recent Updates</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {updates.map((update) => {
-          const timeAgo = update.timestamp
-            ? formatDistanceToNow(new Date(update.timestamp), { addSuffix: true })
-            : 'Recently'
-
-          return (
-            <div key={`${update.type}-${update.id}`} className="flex items-start gap-3 text-sm">
-              <div className="mt-0.5">
-                {update.type === 'product' ? (
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
-              <div className="flex-1 space-y-1">
-                <div className="text-muted-foreground">
-                  {update.type === 'product' ? (
-                    <>Product &quot;{update.name}&quot; was updated</>
-                  ) : (
-                    <>
-                      Price updated for &quot;{update.name}&quot;
-                      {update.retailer && ` at ${update.retailer}`}
-                      {update.price && ` ($${update.price.toFixed(2)})`}
-                    </>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {timeAgo}
-                </div>
-              </div>
-            </div>
-          )
-        })}
+      <CardContent className="flex flex-1 flex-col">
+        {updates.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recent updates</p>
+        ) : (
+          <RecentUpdatesList updates={updates} />
+        )}
       </CardContent>
     </Card>
   )

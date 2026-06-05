@@ -1,62 +1,70 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { PriceSummary } from "@/components/dashboard/price-summary"
+import { IconButton } from "@/components/ui/icon-button"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import { PriceCheckStatus } from "@/components/dashboard/price-check-status"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
-import { 
+import {
   ArrowUpRight,
-  PackageIcon, 
-  ReceiptIcon, 
+  PackageIcon,
   CalendarIcon,
-  ShoppingBagIcon
+  ShoppingBagIcon,
+  CalendarCheck,
 } from "lucide-react"
-import Link from "next/link"
 
-export const metadata = { title: "Dashboard" }
+export const metadata = { title: "WahlTools | Dashboard" }
+
+/** Monday 00:00 of the current week in America/New_York, as an ISO string. */
+function getCurrentWeekStartISO(): string {
+  const now = new Date()
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+    hour12: false,
+  }).formatToParts(now)
+  const get = (type: string) => parts.find(p => p.type === type)?.value || ''
+  const dayMap: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }
+  const dayOffset = dayMap[get('weekday')] ?? 0
+  const monday = new Date(Date.UTC(parseInt(get('year')), parseInt(get('month')) - 1, parseInt(get('day')) - dayOffset, 5, 0, 0))
+  return monday.toISOString()
+}
 
 export default async function DashboardPage() {
   try {
     const supabase = await createSupabaseServerClient()
-    
+    const weekStart = getCurrentWeekStartISO()
+
     const [
       { count: productsCount },
       { data: recentPrices },
-      { data: pendingChecks },
-      { data: activeRetailers }
+      { data: activeRetailers },
+      { data: weeklyPrices },
     ] = await Promise.all([
-      supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true }),
-
-      supabase
-        .from('prices')
-        .select('retailer, timestamp')
-        .order('timestamp', { ascending: false })
-        .limit(1),
-
-      supabase
-        .from('price_check_logs')
-        .select('id')
-        .eq('completed', false)
-        .limit(1),
-
-      supabase
-        .from('prices')
-        .select('retailer')
-        .eq('status', 'active')
+      supabase.from('products').select('*', { count: 'exact', head: true }),
+      supabase.from('prices').select('retailer, timestamp').order('timestamp', { ascending: false }).limit(1),
+      supabase.from('prices').select('retailer').eq('status', 'active'),
+      supabase.from('prices').select('product_id').gte('timestamp', weekStart),
     ])
 
     const uniqueRetailers = new Set(activeRetailers?.map(r => r.retailer) || [])
+    const totalProducts = productsCount || 0
+    const updatedThisWeek = new Set((weeklyPrices || []).map(p => p.product_id)).size
+    const freshPercent = totalProducts > 0 ? Math.round((updatedThisWeek / totalProducts) * 100) : 0
+    const freshColor = freshPercent >= 80 ? 'text-brand' : freshPercent >= 50 ? 'text-foreground' : 'text-destructive'
+    const freshBar = freshPercent >= 80 ? 'bg-brand' : freshPercent >= 50 ? 'bg-muted-foreground' : 'bg-destructive'
 
     const stats = [
       {
         label: "Products Tracked",
-        value: productsCount || 0,
-        sub: "Total products in database",
+        value: totalProducts,
+        sub: "Total products in catalog",
         icon: PackageIcon,
         href: "/dashboard/products",
-        cta: "View All",
+        cta: "View products",
       },
       {
         label: "Retailers Tracked",
@@ -64,89 +72,98 @@ export default async function DashboardPage() {
         sub: "Retailers with price data",
         icon: ShoppingBagIcon,
         href: "/dashboard/prices",
-        cta: "View Prices",
+        cta: "View prices",
       },
       {
         label: "Latest Price Update",
         value: recentPrices?.[0]
-          ? new Date(recentPrices[0].timestamp).toLocaleDateString()
+          ? new Date(recentPrices[0].timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
           : "No updates yet",
         sub: recentPrices?.[0]?.retailer || "Last recorded price change",
         icon: CalendarIcon,
         href: "/dashboard/prices/history",
-        cta: "Price History",
-      },
-      {
-        label: "Pending Price Checks",
-        value: pendingChecks?.length || 0,
-        sub: "Scheduled checks to complete",
-        icon: ReceiptIcon,
-        href: "/dashboard/prices/check",
-        cta: "Record Prices",
+        cta: "Price history",
       },
     ]
 
     return (
-      <div className="p-4 md:p-6 space-y-6">
-        <div className="border-b border-border pb-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Monitor your product pricing across retailers</p>
-        </div>
+      <PageContainer>
+        <PageHeader title="Dashboard" />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => {
             const Icon = stat.icon
             return (
               <Card key={stat.label}>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
-                  <Icon className="h-4 w-4 text-muted-foreground" />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Icon className="size-4" />
+                    {stat.label}
+                  </CardTitle>
+                  <IconButton
+                    label={stat.cta}
+                    href={stat.href}
+                    icon={<ArrowUpRight className="size-4" />}
+                    variant="ghost"
+                    className="size-7 -mr-1 text-muted-foreground"
+                  />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-semibold tracking-tight tabular-nums">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground">{stat.sub}</p>
-                  <div className="mt-4 flex justify-end">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" asChild>
-                      <Link href={stat.href}>
-                        <ArrowUpRight className="h-3 w-3 mr-1" />
-                        {stat.cta}
-                      </Link>
-                    </Button>
-                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{stat.sub}</p>
                 </CardContent>
               </Card>
             )
           })}
+
+          {/* Weekly Freshness KPI (promoted from the old Price Summary) */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <CalendarCheck className="size-4" />
+                Weekly Freshness
+              </CardTitle>
+              <IconButton
+                label="Record prices"
+                href="/dashboard/prices/check"
+                icon={<ArrowUpRight className="size-4" />}
+                variant="ghost"
+                className="size-7 -mr-1 text-muted-foreground"
+              />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-semibold tabular-nums ${freshColor}`}>{freshPercent}%</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {updatedThisWeek}/{totalProducts} this week
+                </span>
+              </div>
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${freshBar}`}
+                  style={{ width: `${freshPercent}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </div>
-        
-        {/* Updated grid layout for summary components */}
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="md:col-span-1">
-            <PriceSummary />
-          </div>
-          <div className="md:col-span-1">
-            <RecentActivity />
-          </div>
-        </div>
-        
-        <div className="grid gap-6 md:grid-cols-1">
+
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">
+          <RecentActivity />
           <PriceCheckStatus />
         </div>
-      </div>
+      </PageContainer>
     )
   } catch (error) {
     console.error('Dashboard error:', error)
     return (
-      <div className="p-4 md:p-6">
-        <div className="border-b border-border pb-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Monitor your product pricing across retailers</p>
-        </div>
-        <div className="mt-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
+      <PageContainer>
+        <PageHeader title="Dashboard" />
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive">
           <p className="font-medium">Error loading dashboard data</p>
           <p className="mt-1 text-sm">Please try refreshing the page</p>
         </div>
-      </div>
+      </PageContainer>
     )
   }
 }

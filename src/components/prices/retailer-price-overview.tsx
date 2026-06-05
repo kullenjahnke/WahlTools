@@ -10,29 +10,7 @@ import {
   type CompetitivenessPoint,
 } from "@/lib/competitiveness"
 import { cn } from "@/lib/utils"
-
-// Import all retailer icon components
-import { BigYIcon } from "@/components/icons/retailers/big-y"
-import { GiantEagleIcon } from "@/components/icons/retailers/giant-eagle"
-import { GiantFoodStoresIcon } from "@/components/icons/retailers/giant-food-stores"
-import { JewelOscoIcon } from "@/components/icons/retailers/jewel-osco"
-import { PublixIcon } from "@/components/icons/retailers/publix"
-import { SafewayIcon } from "@/components/icons/retailers/safeway"
-import { ShawsIcon } from "@/components/icons/retailers/shaws"
-import { StopAndShopIcon } from "@/components/icons/retailers/stop-and-shop"
-import { AcmeIcon } from "@/components/icons/retailers/acme"
-// Create a map of retailer names to their icon components
-const retailerIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  'Acme': AcmeIcon,
-  'Big Y': BigYIcon,
-  'Giant Eagle': GiantEagleIcon,
-  'Giant Food Stores': GiantFoodStoresIcon,
-  'Jewel-Osco': JewelOscoIcon,
-  'Publix': PublixIcon,
-  'Safeway': SafewayIcon,
-  'Shaws': ShawsIcon,
-  'Stop & Shop': StopAndShopIcon,
-}
+import { RETAILER_ICONS } from "@/components/icons/retailers"
 
 interface RetailerStats {
   retailer: string
@@ -161,7 +139,7 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
           ]
 
           // Get the appropriate icon component for this retailer
-          const IconComponent = retailerIcons[retailer]
+          const IconComponent = RETAILER_ICONS[retailer]
 
           return (
             <Card key={retailer} className="w-[300px] overflow-hidden">

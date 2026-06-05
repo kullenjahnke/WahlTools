@@ -299,7 +299,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                 variant="ghost"
                 size="sm"
                 onClick={resetFilters}
-                className="md:ml-auto text-muted-foreground hover:text-foreground"
+                className="md:ml-auto text-sm text-muted-foreground hover:text-foreground"
               >
                 Reset filters
               </Button>
