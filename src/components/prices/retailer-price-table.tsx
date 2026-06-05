@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Chip } from "@/components/ui/chip"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -83,6 +84,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [retailerFilter, setRetailerFilter] = useState<string>("all")
   const [freshnessFilter, setFreshnessFilter] = useState<FreshnessFilter>("all")
+  const [highlightFreshness, setHighlightFreshness] = useState(false)
   const router = useRouter()
   const supabase = createClientClient()
 
@@ -266,6 +268,16 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Freshness highlight toggle */}
+              <label className="flex h-9 cursor-pointer select-none items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground">
+                <Switch
+                  checked={highlightFreshness}
+                  onCheckedChange={setHighlightFreshness}
+                  aria-label="Highlight freshness"
+                />
+                Highlight freshness
+              </label>
             </div>
           </div>
         </CardContent>
@@ -317,20 +329,29 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                     const soldOut = !!latestPrice && isSoldOutPrice(latestPrice)
                     const na = !!latestPrice && isNAPrice(latestPrice)
                     const stale = !!latestPrice && isStalePrice(latestPrice)
-                    // Faint tinted backgrounds make old/unavailable data easy to
-                    // scan against fresh prices: amber for stale, gray for N/A.
-                    const cellTint = na
-                      ? "bg-muted/50"
-                      : stale
-                        ? "bg-amber-500/10 dark:bg-amber-400/10"
-                        : ""
+                    // When a freshness filter is active, only cells in that state
+                    // are shown; the rest fall back to the empty-cell styling so
+                    // the filter acts as a spotlight.
+                    const matchesFilter =
+                      freshnessFilter === "all" ||
+                      (!!latestPrice && priceState(latestPrice) === freshnessFilter)
+                    const showCell = hasRetailerAssociation && !!latestPrice && matchesFilter
+                    // Faint tinted backgrounds (amber for stale, gray for N/A) only
+                    // appear when the "Highlight freshness" toggle is on.
+                    const cellTint = showCell && highlightFreshness
+                      ? na
+                        ? "bg-muted/50"
+                        : stale
+                          ? "bg-amber-500/10 dark:bg-amber-400/10"
+                          : ""
+                      : ""
 
                     return (
                       <TableCell
                         key={retailer}
                         className={cn("text-center align-middle", cellTint)}
                       >
-                        {hasRetailerAssociation && latestPrice ? (
+                        {showCell && latestPrice ? (
                           soldOut || na ? (
                             <div className="flex flex-col items-center gap-1">
                               <Chip
