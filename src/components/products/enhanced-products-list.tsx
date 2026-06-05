@@ -23,12 +23,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { createClientClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { 
-  Download, 
-  Plus, 
-  Search, 
-  Trash2, 
-  Grid, 
+import {
+  Download,
+  Search,
+  Trash2,
+  Grid,
   List,
   Package2,
   Edit2
@@ -37,6 +36,8 @@ import { format } from "date-fns"
 import Papa from 'papaparse'
 import Image from "next/image"
 import { CardContent } from "@/components/ui/card"
+import { Chip } from "@/components/ui/chip"
+import { RowActions } from "@/components/ui/row-actions"
 
 interface Category {
   id: string
@@ -303,28 +304,32 @@ export function EnhancedProductsList({
             <TableHead className="min-w-[120px]">Brand</TableHead>
             <TableHead className="min-w-[150px]">Category</TableHead>
             <TableHead className="min-w-[120px]">Created</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
+            <TableHead className="w-12">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filteredProducts.map((product) => {
             const mainImage = product.product_images?.find(img => img.main)
+            const categoryName = categories.find(c => c.id === product.category_id)?.name
+            const isWahlburgers = product.brand_type === 'wahlburgers'
 
             return (
-              <TableRow 
+              <TableRow
                 key={product.id}
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => router.push(`/dashboard/products/${product.id}/view`)}
               >
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Checkbox 
+                  <Checkbox
                     checked={selectedProducts.includes(product.id)}
                     onCheckedChange={(checked) => handleSelectProduct(product.id, !!checked)}
                   />
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 rounded-md overflow-hidden bg-muted">
+                    <div className="relative w-10 h-10 rounded-md overflow-hidden bg-muted shrink-0">
                       {mainImage ? (
                         <Image
                           src={mainImage.url}
@@ -339,32 +344,48 @@ export function EnhancedProductsList({
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{product.name}</span>
-                      {product.brand_type === 'wahlburgers' && (
-                        <span className="text-xs font-semibold text-yellow-600">⭐ Wahlburgers</span>
-                      )}
-                    </div>
+                    <span className="font-medium">{product.name}</span>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <span className={product.brand_type === 'wahlburgers' ? 'font-semibold' : ''}>
-                    {product.brand_name || '-'}
-                  </span>
+                  {product.brand_name ? (
+                    <Chip
+                      label={product.brand_name}
+                      tone={isWahlburgers ? "brand" : "auto"}
+                      colorKey={product.brand_name}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
-                  {categories.find(c => c.id === product.category_id)?.name}
+                  {categoryName ? (
+                    <Chip label={categoryName} colorKey={product.category_id} />
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
-                <TableCell suppressHydrationWarning>{format(new Date(product.created_at), 'MMM d, yyyy')}</TableCell>
+                <TableCell className="text-muted-foreground" suppressHydrationWarning>
+                  {format(new Date(product.created_at), 'MMM d, yyyy')}
+                </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/products/${product.id}`)}>
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(product.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  <RowActions
+                    label={`Actions for ${product.name}`}
+                    actions={[
+                      {
+                        label: "Edit",
+                        icon: <Edit2 className="size-4" />,
+                        href: `/dashboard/products/${product.id}`,
+                      },
+                      {
+                        label: "Delete",
+                        icon: <Trash2 className="size-4" />,
+                        destructive: true,
+                        separatorBefore: true,
+                        onSelect: () => handleDelete(product.id),
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             )
@@ -375,14 +396,16 @@ export function EnhancedProductsList({
   )
 
   const renderGridView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {filteredProducts.map((product) => {
         const mainImage = product.product_images?.find(img => img.main)
-        
+        const categoryName = categories.find(c => c.id === product.category_id)?.name
+        const isWahlburgers = product.brand_type === 'wahlburgers'
+
         return (
-          <Card 
-            key={product.id} 
-            className="cursor-pointer hover:shadow-md transition-shadow"
+          <Card
+            key={product.id}
+            className="group relative cursor-pointer overflow-hidden border-border/70 transition-all hover:border-border hover:shadow-md"
             onClick={() => router.push(`/dashboard/products/${product.id}/view`)}
           >
             <div className="aspect-square relative bg-muted">
@@ -391,38 +414,60 @@ export function EnhancedProductsList({
                   src={mainImage.url}
                   alt={product.name}
                   fill
-                  className="object-cover rounded-t-lg"
+                  className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Package2 className="h-12 w-12 text-muted-foreground" />
+                  <Package2 className="h-12 w-12 text-muted-foreground/60" />
                 </div>
               )}
+              <div
+                className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <RowActions
+                  label={`Actions for ${product.name}`}
+                  className="size-8 bg-background/80 backdrop-blur hover:bg-background"
+                  actions={[
+                    {
+                      label: "Edit",
+                      icon: <Edit2 className="size-4" />,
+                      href: `/dashboard/products/${product.id}`,
+                    },
+                    {
+                      label: "Delete",
+                      icon: <Trash2 className="size-4" />,
+                      destructive: true,
+                      separatorBefore: true,
+                      onSelect: () => handleDelete(product.id),
+                    },
+                  ]}
+                />
+              </div>
             </div>
-            <CardContent className="p-4">
-              <div className="space-y-2">
-                <div>
-                  <h3 className="font-medium line-clamp-1">{product.name}</h3>
-                  {product.brand_type === 'wahlburgers' && (
-                    <span className="text-xs font-semibold text-yellow-600">⭐ Wahlburgers</span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {product.description || 'No description'}
-                </p>
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-sm text-muted-foreground" suppressHydrationWarning>
-                    {format(new Date(product.created_at), 'MMM d, yyyy')}
-                  </span>
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/products/${product.id}`)}>
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(product.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
+            <CardContent className="space-y-3 p-4">
+              <h3 className="font-medium leading-snug line-clamp-1">{product.name}</h3>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {product.brand_name && (
+                  <Chip
+                    label={product.brand_name}
+                    size="sm"
+                    tone={isWahlburgers ? "brand" : "auto"}
+                    colorKey={product.brand_name}
+                  />
+                )}
+                {categoryName && (
+                  <Chip label={categoryName} size="sm" colorKey={product.category_id} />
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+                {product.description || 'No description'}
+              </p>
+              <div className="flex items-center border-t border-border/60 pt-3">
+                <span className="text-xs text-muted-foreground" suppressHydrationWarning>
+                  Added {format(new Date(product.created_at), 'MMM d, yyyy')}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -450,7 +495,7 @@ export function EnhancedProductsList({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Brands</SelectItem>
-              <SelectItem value="wahlburgers">⭐ Wahlburgers</SelectItem>
+              <SelectItem value="wahlburgers">Wahlburgers</SelectItem>
               <SelectItem value="competitors">Competitors</SelectItem>
               {brands.length > 0 && (
                 <>
@@ -492,20 +537,13 @@ export function EnhancedProductsList({
               <List className="h-4 w-4" />
             )}
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={exportProducts}
           >
             <Download className="mr-2 h-4 w-4" />
             Export
-          </Button>
-          <Button 
-            size="sm"
-            onClick={() => router.push('/dashboard/products/new')}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Product
           </Button>
         </div>
       </div>
