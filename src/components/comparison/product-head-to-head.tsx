@@ -328,7 +328,7 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-1 flex-col gap-4 lg:min-h-0">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as keyof Metrics)}>
@@ -383,10 +383,10 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
         )}
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row">
+      <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:flex-row">
         {/* Selection menu */}
-        <Card className="shrink-0 lg:w-72">
-          <CardContent className="space-y-3 p-3">
+        <Card className="shrink-0 lg:flex lg:w-72 lg:flex-col">
+          <CardContent className="flex flex-col space-y-3 p-3 lg:min-h-0 lg:flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -399,7 +399,7 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
             <div className="text-xs text-muted-foreground tabular-nums">
               {selected.length}/{MAX_PRODUCTS} selected
             </div>
-            <div className="max-h-[560px] space-y-1.5 overflow-y-auto pr-1">
+            <div className="max-h-[560px] space-y-1.5 overflow-y-auto pr-1 lg:max-h-none lg:flex-1">
               {filteredList.map((product) => {
                 const isSelected = selected.includes(product.id)
                 const atMax = !isSelected && selected.length >= MAX_PRODUCTS
@@ -452,9 +452,9 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
         </Card>
 
         {/* Comparison */}
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
           {orderedSelected.length < 2 ? (
-            <Card className="h-full">
+            <Card className="h-full lg:flex-1">
               <CardContent className="flex h-full flex-col items-center justify-center gap-2 p-12 text-center">
                 <Package className="size-10 text-muted-foreground/60" />
                 <p className="font-medium">Add at least two products to compare</p>
@@ -465,8 +465,8 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
               </CardContent>
             </Card>
           ) : (
-            <Card>
-              <CardContent className="overflow-x-auto p-4 sm:p-6">
+            <Card className="lg:flex lg:flex-1 lg:flex-col">
+              <CardContent className="overflow-x-auto p-4 sm:p-6 lg:flex-1 lg:overflow-auto">
                 <div className="grid min-w-[520px] items-center gap-x-3 gap-y-3" style={{ gridTemplateColumns }}>
                   {/* Header: entity cards */}
                   <div />

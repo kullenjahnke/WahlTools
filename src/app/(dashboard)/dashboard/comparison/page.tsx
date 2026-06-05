@@ -85,13 +85,15 @@ export default async function ComparisonPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer className="lg:flex lg:h-full lg:flex-col">
       <PageHeader title="Comparison" />
-      <ProductHeadToHead
-        products={products}
-        prices={prices || []}
-        categories={categories || []}
-      />
+      <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+        <ProductHeadToHead
+          products={products}
+          prices={prices || []}
+          categories={categories || []}
+        />
+      </div>
     </PageContainer>
   )
 }
