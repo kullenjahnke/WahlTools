@@ -75,7 +75,7 @@ export function RecentUpdatesList({ updates }: { updates: Update[] }) {
           <Button
             variant="ghost"
             size="sm"
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-sm text-muted-foreground hover:text-foreground"
             onClick={() => setExpanded((v) => !v)}
           >
             {expanded ? (

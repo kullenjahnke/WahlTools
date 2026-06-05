@@ -159,11 +159,13 @@ export function PriceCheckStatus() {
               return (
                 <div key={status.retailer} className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
-                    {Icon ? (
-                      <Icon className="h-4 w-auto max-w-6 shrink-0" />
-                    ) : (
-                      <span className={cn("size-2 shrink-0 rounded-full", meta.dot)} />
-                    )}
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                      {Icon ? (
+                        <Icon className="h-4 w-auto max-w-5" />
+                      ) : (
+                        <span className={cn("size-2 rounded-full", meta.dot)} />
+                      )}
+                    </span>
                     <span className="truncate text-sm">{status.retailer}</span>
                   </div>
                   <Chip label={relativeLabel(status)} tone={meta.chip} size="sm" />

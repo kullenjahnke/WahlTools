@@ -148,7 +148,7 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <div className="grid items-stretch gap-6 lg:grid-cols-2">
+        <div className="grid items-start gap-6 lg:grid-cols-2">
           <RecentActivity />
           <PriceCheckStatus />
         </div>
