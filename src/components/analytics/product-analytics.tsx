@@ -1,17 +1,25 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Chip } from "@/components/ui/chip"
 import {
   LineChart,
   Line,
@@ -19,30 +27,29 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts"
 import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Product, Price } from "@/types/database"
 import { format, subDays, subMonths } from "date-fns"
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  BarChart3,
-  ArrowDown,
-  ArrowUp,
-} from "lucide-react"
+import { BarChart3, Plus, TrendingDown, TrendingUp, X } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-type ProductWithPrices = Product & {
-  prices?: Price[]
-}
+type ProductWithPrices = Product & { prices?: Price[] }
 
 interface ProductAnalyticsProps {
   products: ProductWithPrices[]
+  categories: Array<{ id: string; name: string }>
 }
+
+type Mode = "retailer" | "product" | "category"
+
+const MODES: { value: Mode; label: string }[] = [
+  { value: "retailer", label: "By retailer" },
+  { value: "product", label: "By product" },
+  { value: "category", label: "By category" },
+]
 
 const TIME_RANGES = [
   { value: "30", label: "Last 30 days" },
@@ -51,8 +58,25 @@ const TIME_RANGES = [
   { value: "365", label: "Last 1 year" },
 ]
 
-interface RetailerMetric {
-  retailer: string
+// Palette for product/category series (retailers use their brand colors).
+const SERIES_PALETTE = [
+  "#2563eb", "#7c3aed", "#0891b2", "#db2777", "#f78427",
+  "#16a34a", "#e11d48", "#9333ea", "#0d9488", "#64748b",
+]
+
+const MAX_PRODUCT_SERIES = 8
+
+interface Series {
+  key: string
+  label: string
+  color: string
+  pointsByDate: Map<string, number>
+}
+
+interface SeriesMetric {
+  key: string
+  label: string
+  color: string
   min: number | null
   max: number | null
   avg: number | null
@@ -60,279 +84,350 @@ interface RetailerMetric {
   wowChange: number | null
 }
 
-/**
- * Get the Monday 00:00 EST of the week containing the given date.
- */
 function getWeekStartEST(date: Date): Date {
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     weekday: "short",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour12: false,
-  })
-  const parts = formatter.formatToParts(date)
-  const get = (type: string) =>
-    parts.find((p) => p.type === type)?.value || ""
-
-  const dayMap: Record<string, number> = {
-    Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6,
-  }
+  }).formatToParts(date)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || ""
+  const dayMap: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }
   const dayOffset = dayMap[get("weekday")] ?? 0
-  const y = parseInt(get("year"))
-  const m = parseInt(get("month")) - 1
-  const d = parseInt(get("day")) - dayOffset
-
-  return new Date(Date.UTC(y, m, d, 5, 0, 0))
+  return new Date(Date.UTC(parseInt(get("year")), parseInt(get("month")) - 1, parseInt(get("day")) - dayOffset, 5, 0, 0))
 }
 
-export function ProductAnalytics({ products }: ProductAnalyticsProps) {
+function aggregateByDate(
+  prices: { price: number | null; timestamp: string }[],
+  cutoffMs: number
+): Map<string, number> {
+  const buckets = new Map<string, number[]>()
+  for (const p of prices) {
+    if (p.price == null || p.price <= 0) continue
+    const t = new Date(p.timestamp).getTime()
+    if (cutoffMs && t < cutoffMs) continue
+    const key = format(new Date(p.timestamp), "yyyy-MM-dd")
+    const arr = buckets.get(key) ?? []
+    arr.push(p.price)
+    buckets.set(key, arr)
+  }
+  const out = new Map<string, number>()
+  for (const [k, arr] of buckets) out.set(k, arr.reduce((a, b) => a + b, 0) / arr.length)
+  return out
+}
+
+function computeMetric(series: Series): SeriesMetric {
+  const entries = [...series.pointsByDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  const values = entries.map(([, v]) => v)
+  if (values.length === 0) {
+    return { key: series.key, label: series.label, color: series.color, min: null, max: null, avg: null, count: 0, wowChange: null }
+  }
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const avg = values.reduce((a, b) => a + b, 0) / values.length
+
+  const currentWeekStart = getWeekStartEST(new Date())
+  const prevWeekStart = new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000)
+  let currentWeek: number | null = null
+  let prevWeek: number | null = null
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const d = new Date(entries[i][0])
+    if (d >= currentWeekStart && currentWeek === null) currentWeek = entries[i][1]
+    else if (d >= prevWeekStart && d < currentWeekStart && prevWeek === null) prevWeek = entries[i][1]
+  }
+  const wowChange =
+    currentWeek !== null && prevWeek !== null && prevWeek > 0
+      ? ((currentWeek - prevWeek) / prevWeek) * 100
+      : null
+
+  return { key: series.key, label: series.label, color: series.color, min, max, avg, count: values.length, wowChange }
+}
+
+export function ProductAnalytics({ products, categories }: ProductAnalyticsProps) {
   const chart = useChartTheme()
-  // Distinct per-retailer brand/hybrid color (shared by line, legend swatch,
-  // and table swatch so they all agree).
-  const retailerColor = (retailer: string) => RETAILER_COLORS[retailer] ?? chart.axis
-  const [selectedProductId, setSelectedProductId] = useState<string>("")
+  const [mode, setMode] = useState<Mode>("retailer")
   const [timeRange, setTimeRange] = useState("90")
-  const [enabledRetailers, setEnabledRetailers] = useState<Set<string>>(
-    new Set(RETAILERS as readonly string[])
-  )
+  const [selectedProductId, setSelectedProductId] = useState("")
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
+
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name || "Uncategorized"
+
+  const cutoffMs = useMemo(() => {
+    const days = parseInt(timeRange)
+    const cutoff = days <= 90 ? subDays(new Date(), days) : subMonths(new Date(), days / 30)
+    return cutoff.getTime()
+  }, [timeRange])
 
   const selectedProduct = products.find((p) => p.id === selectedProductId)
 
-  const toggleRetailer = (retailer: string) => {
-    setEnabledRetailers((prev) => {
-      const next = new Set(prev)
-      if (next.has(retailer)) {
-        next.delete(retailer)
-      } else {
-        next.add(retailer)
-      }
-      return next
-    })
-  }
-
-  // Build chart data: price by date, one key per retailer
-  const chartData = useMemo(() => {
-    if (!selectedProduct?.prices) return []
-
-    const days = parseInt(timeRange)
-    const cutoff = days <= 90 ? subDays(new Date(), days) : subMonths(new Date(), days / 30)
-
-    const filtered = selectedProduct.prices.filter(
-      (p) => new Date(p.timestamp) >= cutoff && p.price > 0
-    )
-
-    // Group by date
-    const byDate: Record<string, Record<string, number[]>> = {}
-    for (const p of filtered) {
-      const dateKey = format(new Date(p.timestamp), "yyyy-MM-dd")
-      if (!byDate[dateKey]) byDate[dateKey] = {}
-      if (!byDate[dateKey][p.retailer]) byDate[dateKey][p.retailer] = []
-      byDate[dateKey][p.retailer].push(p.price)
+  // Build the series for the current mode.
+  const series: Series[] = useMemo(() => {
+    if (mode === "retailer") {
+      if (!selectedProduct?.prices) return []
+      const withData = RETAILERS.filter((r) =>
+        selectedProduct.prices!.some(
+          (p) => p.retailer === r && p.price != null && p.price > 0 && new Date(p.timestamp).getTime() >= cutoffMs
+        )
+      )
+      return withData.map((retailer) => ({
+        key: retailer,
+        label: retailer,
+        color: RETAILER_COLORS[retailer] ?? chart.axis,
+        pointsByDate: aggregateByDate(
+          selectedProduct.prices!.filter((p) => p.retailer === retailer),
+          cutoffMs
+        ),
+      }))
     }
 
-    return Object.entries(byDate)
-      .map(([date, retailers]) => {
-        const entry: Record<string, string | number> = { date }
-        for (const [retailer, prices] of Object.entries(retailers)) {
-          // Use latest price for each date (prices are already sorted)
-          entry[retailer] = prices[prices.length - 1]
-        }
-        return entry
-      })
-      .sort((a, b) => (a.date as string).localeCompare(b.date as string))
-  }, [selectedProduct, timeRange])
-
-  // Calculate per-retailer metrics
-  const metrics: RetailerMetric[] = useMemo(() => {
-    if (!selectedProduct?.prices) return []
-
-    const days = parseInt(timeRange)
-    const cutoff = days <= 90 ? subDays(new Date(), days) : subMonths(new Date(), days / 30)
-
-    const filtered = selectedProduct.prices.filter(
-      (p) => new Date(p.timestamp) >= cutoff && p.price > 0
-    )
-
-    // WoW calculation
-    const now = new Date()
-    const currentWeekStart = getWeekStartEST(now)
-    const prevWeekStart = new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000)
-
-    return (RETAILERS as readonly string[])
-      .filter((r) => enabledRetailers.has(r))
-      .map((retailer) => {
-        const rPrices = filtered
-          .filter((p) => p.retailer === retailer)
-          .map((p) => p.price)
-
-        if (rPrices.length === 0) {
-          return { retailer, min: null, max: null, avg: null, count: 0, wowChange: null }
-        }
-
-        const min = Math.min(...rPrices)
-        const max = Math.max(...rPrices)
-        const avg = rPrices.reduce((s, v) => s + v, 0) / rPrices.length
-
-        // WoW: latest price in current week vs latest in previous week
-        const allPrices = selectedProduct.prices?.filter(
-          (p) => p.retailer === retailer && p.price > 0
-        ) || []
-
-        let currentWeekPrice: number | null = null
-        let prevWeekPrice: number | null = null
-
-        for (const p of allPrices.sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        )) {
-          const ts = new Date(p.timestamp)
-          if (ts >= currentWeekStart && currentWeekPrice === null) {
-            currentWeekPrice = p.price
-          } else if (ts >= prevWeekStart && ts < currentWeekStart && prevWeekPrice === null) {
-            prevWeekPrice = p.price
+    if (mode === "product") {
+      return selectedProductIds
+        .map((id, i) => {
+          const product = products.find((p) => p.id === id)
+          if (!product) return null
+          return {
+            key: id,
+            label: product.name,
+            color: SERIES_PALETTE[i % SERIES_PALETTE.length],
+            pointsByDate: aggregateByDate(product.prices ?? [], cutoffMs),
           }
-        }
+        })
+        .filter((s): s is Series => !!s && s.pointsByDate.size > 0)
+    }
 
-        const wowChange =
-          currentWeekPrice !== null && prevWeekPrice !== null && prevWeekPrice > 0
-            ? ((currentWeekPrice - prevWeekPrice) / prevWeekPrice) * 100
-            : null
-
-        return { retailer, min, max, avg, count: rPrices.length, wowChange }
+    // category mode
+    const byCategory = new Map<string, { price: number | null; timestamp: string }[]>()
+    for (const product of products) {
+      const arr = byCategory.get(product.category_id) ?? []
+      for (const price of product.prices ?? []) arr.push(price)
+      byCategory.set(product.category_id, arr)
+    }
+    let i = 0
+    const out: Series[] = []
+    for (const [catId, prices] of byCategory) {
+      const pointsByDate = aggregateByDate(prices, cutoffMs)
+      if (pointsByDate.size === 0) continue
+      out.push({
+        key: catId,
+        label: categoryName(catId),
+        color: SERIES_PALETTE[i % SERIES_PALETTE.length],
+        pointsByDate,
       })
-      .filter((m) => m.count > 0)
-  }, [selectedProduct, timeRange, enabledRetailers])
+      i++
+    }
+    return out.sort((a, b) => a.label.localeCompare(b.label))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, selectedProduct, selectedProductIds, products, cutoffMs, chart.axis])
 
-  // Retailers that actually have data for this product
-  const retailersWithData = useMemo(() => {
-    if (!selectedProduct?.prices) return new Set<string>()
-    return new Set(selectedProduct.prices.filter(p => p.price > 0).map((p) => p.retailer))
-  }, [selectedProduct])
+  const visibleSeries = series.filter((s) => !hidden.has(s.key))
+
+  const chartData = useMemo(() => {
+    const allDates = new Set<string>()
+    for (const s of visibleSeries) for (const d of s.pointsByDate.keys()) allDates.add(d)
+    return [...allDates]
+      .sort()
+      .map((date) => {
+        const row: Record<string, string | number> = { date }
+        for (const s of visibleSeries) {
+          const v = s.pointsByDate.get(date)
+          if (v != null) row[s.key] = v
+        }
+        return row
+      })
+  }, [visibleSeries])
+
+  const metrics = useMemo(() => visibleSeries.map(computeMetric), [visibleSeries])
+
+  const toggleSeries = (key: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  const addProduct = (id: string) => {
+    if (selectedProductIds.length < MAX_PRODUCT_SERIES && !selectedProductIds.includes(id)) {
+      setSelectedProductIds([...selectedProductIds, id])
+    }
+  }
+  const removeProduct = (id: string) =>
+    setSelectedProductIds(selectedProductIds.filter((x) => x !== id))
+
+  const groupedProducts = useMemo(() => {
+    const groups = new Map<string, ProductWithPrices[]>()
+    for (const p of products) {
+      if (mode === "product" && selectedProductIds.includes(p.id)) continue
+      const brand = p.brand_type === "wahlburgers" ? "Wahlburgers" : p.brand_name || "Other"
+      const arr = groups.get(brand) ?? []
+      arr.push(p)
+      groups.set(brand, arr)
+    }
+    return Array.from(groups.entries())
+  }, [products, mode, selectedProductIds])
+
+  const needsSelection =
+    (mode === "retailer" && !selectedProductId) ||
+    (mode === "product" && selectedProductIds.length === 0)
 
   return (
     <div className="space-y-6">
       {/* Controls */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Product Analytics
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Label className="text-sm font-medium mb-2 block">
-                Select Product
-              </Label>
-              <Select
-                value={selectedProductId}
-                onValueChange={setSelectedProductId}
-              >
+        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Compare</span>
+            <div className="inline-flex rounded-md border border-input p-0.5">
+              {MODES.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => { setMode(m.value); setHidden(new Set()) }}
+                  className={cn(
+                    "rounded px-3 py-1 text-sm transition-colors",
+                    mode === m.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {mode === "retailer" && (
+            <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Product</span>
+              <Select value={selectedProductId} onValueChange={setSelectedProductId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a product..." />
+                  <SelectValue placeholder="Choose a product…" />
                 </SelectTrigger>
                 <SelectContent>
                   {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-sm font-medium mb-2 block">
-                Time Range
-              </Label>
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue />
+          )}
+
+          {mode === "product" && (
+            <div className="flex min-w-[220px] flex-1 flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                Products ({selectedProductIds.length}/{MAX_PRODUCT_SERIES})
+              </span>
+              <Select value="" onValueChange={addProduct} disabled={selectedProductIds.length >= MAX_PRODUCT_SERIES}>
+                <SelectTrigger>
+                  <Plus className="size-4 text-muted-foreground" />
+                  <SelectValue placeholder={selectedProductIds.length >= MAX_PRODUCT_SERIES ? "Max reached" : "Add a product…"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIME_RANGES.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>
-                      {r.label}
-                    </SelectItem>
+                  {groupedProducts.map(([brand, items]) => (
+                    <SelectGroup key={brand}>
+                      <SelectLabel>{brand}</SelectLabel>
+                      {items.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Time range</span>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIME_RANGES.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {!selectedProductId ? (
+      {needsSelection ? (
         <Card>
           <CardContent className="p-12 text-center">
-            <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-medium mb-2">Select a product</h3>
+            <BarChart3 className="mx-auto mb-4 h-12 w-12 text-muted-foreground opacity-50" />
+            <h3 className="mb-2 text-lg font-medium">
+              {mode === "retailer" ? "Select a product" : "Add products to compare"}
+            </h3>
             <p className="text-muted-foreground">
-              Choose a product above to view its price analytics across
-              retailers.
+              {mode === "retailer"
+                ? "Choose a product to view its price trend across retailers."
+                : "Add one or more products to compare their price trends over time."}
             </p>
+          </CardContent>
+        </Card>
+      ) : series.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center text-muted-foreground">
+            No price data available for this selection and range.
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* Retailer filter */}
+          {/* Legend / toggles (only series that actually have data) */}
           <Card>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex flex-wrap gap-3">
-                <span className="text-sm font-medium text-muted-foreground mr-1 self-center">
-                  Retailers:
-                </span>
-                {(RETAILERS as readonly string[]).map((retailer) => {
-                  const hasData = retailersWithData.has(retailer)
-                  return (
-                    <div
-                      key={retailer}
-                      className="flex items-center gap-1.5"
-                    >
-                      <Checkbox
-                        id={`retailer-${retailer}`}
-                        checked={enabledRetailers.has(retailer)}
-                        onCheckedChange={() => toggleRetailer(retailer)}
-                        disabled={!hasData}
-                      />
-                      <Label
-                        htmlFor={`retailer-${retailer}`}
-                        className={`text-sm cursor-pointer ${
-                          !hasData ? "text-muted-foreground/50" : ""
-                        }`}
+            <CardContent className="flex flex-wrap items-center gap-2 p-3">
+              {series.map((s) => {
+                const isHidden = hidden.has(s.key)
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => toggleSeries(s.key)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                      isHidden
+                        ? "border-border text-muted-foreground/60"
+                        : "border-transparent bg-muted text-foreground"
+                    )}
+                  >
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: isHidden ? "currentColor" : s.color, opacity: isHidden ? 0.4 : 1 }}
+                    />
+                    <span className={cn(isHidden && "line-through")}>{s.label}</span>
+                    {mode === "product" && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Remove ${s.label}`}
+                        onClick={(e) => { e.stopPropagation(); removeProduct(s.key) }}
+                        className="ml-0.5 text-muted-foreground hover:text-foreground"
                       >
-                        <span
-                          className="inline-block w-2.5 h-2.5 rounded-full mr-1"
-                          style={{
-                            backgroundColor: retailerColor(retailer),
-                          }}
-                        />
-                        {retailer}
-                      </Label>
-                    </div>
-                  )
-                })}
-              </div>
+                        <X className="size-3" />
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </CardContent>
           </Card>
 
           {/* Chart */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Price Over Time — {selectedProduct?.name}
-              </CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Price over time</CardTitle>
             </CardHeader>
             <CardContent>
               {chartData.length === 0 ? (
-                <div className="h-[350px] flex items-center justify-center text-muted-foreground">
-                  No price data available for this range.
+                <div className="flex h-[360px] items-center justify-center text-muted-foreground">
+                  No visible series — toggle one on above.
                 </div>
               ) : (
-                <div className="h-[350px]">
+                <div className="h-[360px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
+                    <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
                       <XAxis
                         dataKey="date"
@@ -341,6 +436,8 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                         tick={{ fill: chart.axis, fontSize: 12 }}
                         tickLine={false}
                         axisLine={{ stroke: chart.grid }}
+                        minTickGap={32}
+                        interval="preserveStartEnd"
                       />
                       <YAxis
                         tickFormatter={(v) => `$${v.toFixed(2)}`}
@@ -348,61 +445,39 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
                         tick={{ fill: chart.axis, fontSize: 12 }}
                         tickLine={false}
                         axisLine={{ stroke: chart.grid }}
-                        width={60}
+                        width={64}
+                        domain={["auto", "auto"]}
                       />
                       <Tooltip
-                        labelFormatter={(d) =>
-                          format(new Date(d as string), "MMM d, yyyy")
-                        }
-                        formatter={(value: number, name: string) => [
-                          `$${value.toFixed(2)}`,
-                          name,
-                        ]}
+                        labelFormatter={(d) => format(new Date(d as string), "MMM d, yyyy")}
+                        formatter={(value: number, name: string) => {
+                          const s = series.find((x) => x.key === name)
+                          return [`$${value.toFixed(2)}`, s?.label ?? name]
+                        }}
                         contentStyle={{
                           backgroundColor: chart.tooltipBg,
                           border: `1px solid ${chart.grid}`,
-                          borderRadius: "0.375rem",
+                          borderRadius: "0.5rem",
                           color: chart.tooltipText,
                           fontSize: 12,
                           padding: "0.5rem 0.75rem",
                         }}
-                        labelStyle={{ color: chart.axis }}
+                        labelStyle={{ color: chart.axis, marginBottom: 4 }}
+                        itemSorter={(item) => -(item.value as number)}
                       />
-                      <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
-                      {metrics.length > 0 && (
-                        <ReferenceLine
-                          y={
-                            metrics.reduce((s, m) => s + (m.avg || 0), 0) /
-                            metrics.filter((m) => m.avg !== null).length
-                          }
-                          stroke={chart.brand}
-                          strokeDasharray="5 5"
-                          label={{
-                            value: "Avg",
-                            position: "insideTopRight",
-                            fill: chart.axis,
-                            fontSize: 11,
-                          }}
+                      {visibleSeries.map((s) => (
+                        <Line
+                          key={s.key}
+                          type="monotone"
+                          dataKey={s.key}
+                          name={s.key}
+                          stroke={s.color}
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 4, strokeWidth: 0, fill: s.color }}
+                          connectNulls
                         />
-                      )}
-                      {(RETAILERS as readonly string[])
-                        .filter(
-                          (r) =>
-                            enabledRetailers.has(r) &&
-                            retailersWithData.has(r)
-                        )
-                        .map((retailer) => (
-                          <Line
-                            key={retailer}
-                            type="monotone"
-                            dataKey={retailer}
-                            stroke={retailerColor(retailer)}
-                            strokeWidth={2}
-                            dot={{ r: 2.5, strokeWidth: 0, fill: retailerColor(retailer) }}
-                            activeDot={{ r: 4, strokeWidth: 0, fill: retailerColor(retailer) }}
-                            connectNulls
-                          />
-                        ))}
+                      ))}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -413,99 +488,71 @@ export function ProductAnalytics({ products }: ProductAnalyticsProps) {
           {/* Metrics table */}
           {metrics.length > 0 && (
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base">
-                  Retailer Metrics — {selectedProduct?.name}
+                  {mode === "retailer" ? "Retailer metrics" : mode === "product" ? "Product metrics" : "Category metrics"}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-0 pb-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 pr-4 font-medium">
-                          Retailer
-                        </th>
-                        <th className="text-right py-2 px-3 font-medium">
-                          Min
-                        </th>
-                        <th className="text-right py-2 px-3 font-medium">
-                          Max
-                        </th>
-                        <th className="text-right py-2 px-3 font-medium">
-                          Avg
-                        </th>
-                        <th className="text-right py-2 px-3 font-medium">
-                          Data Points
-                        </th>
-                        <th className="text-right py-2 pl-3 font-medium">
-                          WoW Change
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[160px]">
+                          {mode === "retailer" ? "Retailer" : mode === "product" ? "Product" : "Category"}
+                        </TableHead>
+                        <TableHead className="text-right">Min</TableHead>
+                        <TableHead className="text-right">Max</TableHead>
+                        <TableHead className="text-right">Avg</TableHead>
+                        <TableHead className="text-right">Points</TableHead>
+                        <TableHead className="text-right">WoW</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {metrics.map((m) => (
-                        <tr key={m.retailer} className="border-b last:border-0">
-                          <td className="py-2.5 pr-4">
+                        <TableRow key={m.key}>
+                          <TableCell>
                             <div className="flex items-center gap-2">
-                              <span
-                                className="inline-block w-3 h-3 rounded-full"
-                                style={{
-                                  backgroundColor: retailerColor(m.retailer),
-                                }}
-                              />
-                              {m.retailer}
+                              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: m.color }} />
+                              <span className="truncate font-medium">{m.label}</span>
                             </div>
-                          </td>
-                          <td className="text-right py-2.5 px-3 font-mono">
-                            {m.min !== null ? (
-                              <span className="text-foreground">
-                                <ArrowDown className="h-3 w-3 inline mr-0.5" />
-                                ${m.min.toFixed(2)}
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td className="text-right py-2.5 px-3 font-mono">
-                            {m.max !== null ? (
-                              <span className="text-muted-foreground">
-                                <ArrowUp className="h-3 w-3 inline mr-0.5" />
-                                ${m.max.toFixed(2)}
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td className="text-right py-2.5 px-3 font-mono">
-                            {m.avg !== null
-                              ? `$${m.avg.toFixed(2)}`
-                              : "—"}
-                          </td>
-                          <td className="text-right py-2.5 px-3">
-                            {m.count}
-                          </td>
-                          <td className="text-right py-2.5 pl-3">
-                            {m.wowChange !== null ? (
-                              <Badge variant="muted" className="font-mono tabular-nums">
-                                {m.wowChange > 0.1 ? (
-                                  <TrendingUp className="h-3 w-3 mr-1" />
-                                ) : m.wowChange < -0.1 ? (
-                                  <TrendingDown className="h-3 w-3 mr-1" />
-                                ) : (
-                                  <Minus className="h-3 w-3 mr-1" />
-                                )}
-                                {m.wowChange > 0 ? "+" : ""}
-                                {m.wowChange.toFixed(1)}%
-                              </Badge>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{m.min != null ? `$${m.min.toFixed(2)}` : "—"}</TableCell>
+                          <TableCell className="text-right tabular-nums">{m.max != null ? `$${m.max.toFixed(2)}` : "—"}</TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">{m.avg != null ? `$${m.avg.toFixed(2)}` : "—"}</TableCell>
+                          <TableCell className="text-right tabular-nums text-muted-foreground">{m.count}</TableCell>
+                          <TableCell className="text-right">
+                            {m.wowChange != null ? (
+                              <Chip
+                                size="sm"
+                                className="tabular-nums"
+                                tone={
+                                  m.wowChange < -0.1
+                                    ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300"
+                                    : m.wowChange > 0.1
+                                      ? "bg-destructive/12 text-destructive"
+                                      : "neutral"
+                                }
+                                label={
+                                  <>
+                                    {m.wowChange < -0.1 ? (
+                                      <TrendingDown className="size-3" />
+                                    ) : m.wowChange > 0.1 ? (
+                                      <TrendingUp className="size-3" />
+                                    ) : null}
+                                    {m.wowChange > 0 ? "+" : ""}
+                                    {m.wowChange.toFixed(1)}%
+                                  </>
+                                }
+                              />
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
