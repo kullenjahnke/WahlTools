@@ -5,19 +5,19 @@ import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Chip } from "@/components/ui/chip"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { formatDistanceToNow } from "date-fns"
-import { Package, Plus, X } from "lucide-react"
+import { Package, Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { median } from "@/lib/competitiveness"
+import { RETAILERS } from "@/lib/config/retailers"
+import { RETAILER_ICONS } from "@/components/icons/retailers"
 
 interface Product {
   id: string
@@ -58,7 +58,7 @@ const TIMEFRAMES = [
   { value: "all", label: "All time" },
 ] as const
 
-type Direction = "low" | "high" | "recent" | "boolTrue"
+type Direction = "low" | "high" | "boolTrue"
 
 interface Metrics {
   lowest: number | null
@@ -68,7 +68,7 @@ interface Metrics {
   change: number | null
   onPromo: boolean
   competitiveness: number | null // % below category median (positive = cheaper)
-  lastUpdated: number | null // ms
+  lastUpdated: number | null // whole days ago
 }
 
 interface MetricDef {
@@ -79,21 +79,15 @@ interface MetricDef {
   format: (v: number | boolean | null) => string
 }
 
-const money = (v: number | boolean | null) =>
-  typeof v === "number" ? `$${v.toFixed(2)}` : "—"
-const integer = (v: number | boolean | null) =>
-  typeof v === "number" ? `${v}` : "—"
+const money = (v: number | boolean | null) => (typeof v === "number" ? `$${v.toFixed(2)}` : "—")
+const integer = (v: number | boolean | null) => (typeof v === "number" ? `${v}` : "—")
 const signedPct = (v: number | boolean | null) =>
   typeof v === "number" ? `${v > 0 ? "+" : ""}${v.toFixed(1)}%` : "—"
 const yesNo = (v: number | boolean | null) => (v ? "Yes" : "No")
 const vsMedian = (v: number | boolean | null) =>
-  typeof v === "number"
-    ? v >= 0
-      ? `${v.toFixed(0)}% below`
-      : `${Math.abs(v).toFixed(0)}% above`
-    : "—"
-const relative = (v: number | boolean | null) =>
-  typeof v === "number" ? formatDistanceToNow(new Date(v), { addSuffix: true }) : "—"
+  typeof v === "number" ? (v >= 0 ? `${v.toFixed(0)}% below` : `${Math.abs(v).toFixed(0)}% above`) : "—"
+const relativeDays = (v: number | boolean | null) =>
+  typeof v === "number" ? (v === 0 ? "Today" : v === 1 ? "Yesterday" : `${v} days ago`) : "—"
 
 function isUsable(p: Price): boolean {
   return (
@@ -104,11 +98,35 @@ function isUsable(p: Price): boolean {
   )
 }
 
-export function ProductHeadToHead({ products, prices }: ProductHeadToHeadProps) {
+function rankValue(m: Metrics, key: keyof Metrics): number | null {
+  const v = m[key]
+  if (typeof v === "boolean") return v ? 1 : 0
+  return v
+}
+
+function rankExtents(vals: number[], better: Direction) {
+  const distinct = new Set(vals).size
+  if (distinct <= 1) return { best: null as number | null, worst: null as number | null }
+  if (better === "low") return { best: Math.min(...vals), worst: Math.max(...vals) }
+  if (better === "boolTrue") return { best: 1, worst: 0 }
+  return { best: Math.max(...vals), worst: Math.min(...vals) }
+}
+
+function pillTone(val: number | null, best: number | null, worst: number | null) {
+  if (val == null || best == null) return "bg-muted text-foreground"
+  if (val === best) return "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300"
+  if (val === worst) return "bg-destructive/12 text-destructive"
+  return "bg-muted text-foreground"
+}
+
+export function ProductHeadToHead({ products, prices, categories }: ProductHeadToHeadProps) {
   const [selected, setSelected] = useState<string[]>([])
   const [timeframe, setTimeframe] = useState<string>("90")
   const [mode, setMode] = useState<"average" | "total">("average")
   const [sortBy, setSortBy] = useState<keyof Metrics>("lowest")
+  const [search, setSearch] = useState("")
+
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name
 
   const cutoff = useMemo(() => {
     if (timeframe === "all") return 0
@@ -117,7 +135,7 @@ export function ProductHeadToHead({ products, prices }: ProductHeadToHeadProps) 
 
   // Latest usable price per (product, retailer) within the timeframe.
   const currentPrices = useMemo(() => {
-    const map = new Map<string, Map<string, Price>>() // productId -> retailer -> price
+    const map = new Map<string, Map<string, Price>>()
     for (const p of prices) {
       if (!isUsable(p)) continue
       if (cutoff && new Date(p.timestamp).getTime() < cutoff) continue
@@ -162,19 +180,16 @@ export function ProductHeadToHead({ products, prices }: ProductHeadToHeadProps) 
       const lowest = values.length ? Math.min(...values) : null
       const highest = values.length ? Math.max(...values) : null
       const sum = values.reduce((a, b) => a + b, 0)
-      const aggregate = values.length
-        ? mode === "average"
-          ? sum / values.length
-          : sum
-        : null
+      const avgPrice = values.length ? sum / values.length : null
+      const aggregate = values.length ? (mode === "average" ? sum / values.length : sum) : null
 
       // Price change %: current avg vs baseline avg (latest price per retailer
       // dated before the timeframe window).
       let change: number | null = null
-      if (values.length) {
+      if (values.length && byRetailer) {
         const currentAvg = sum / values.length
         const baseline: number[] = []
-        for (const retailer of byRetailer!.keys()) {
+        for (const retailer of byRetailer.keys()) {
           const prior = prices
             .filter(
               (p) =>
@@ -194,17 +209,15 @@ export function ProductHeadToHead({ products, prices }: ProductHeadToHeadProps) 
 
       const onPromo = current.some((p) => p.on_sale || p.is_promotion)
 
-      const avgPrice = values.length ? sum / values.length : null
       const med = categoryMedian.get(product.category_id)
       const competitiveness =
-        med != null && med > 0 && avgPrice != null
-          ? ((med - avgPrice) / med) * 100
-          : null
+        med != null && med > 0 && avgPrice != null ? ((med - avgPrice) / med) * 100 : null
 
       let lastUpdated: number | null = null
       const allForProduct = prices.filter((p) => p.product_id === product.id)
       if (allForProduct.length) {
-        lastUpdated = Math.max(...allForProduct.map((p) => new Date(p.timestamp).getTime()))
+        const maxMs = Math.max(...allForProduct.map((p) => new Date(p.timestamp).getTime()))
+        lastUpdated = Math.max(0, Math.floor((Date.now() - maxMs) / 86400000))
       }
 
       return {
@@ -241,14 +254,8 @@ export function ProductHeadToHead({ products, prices }: ProductHeadToHeadProps) 
     { key: "change", label: "Price change", better: "low", format: signedPct },
     { key: "onPromo", label: "On promotion", better: "boolTrue", format: yesNo },
     { key: "competitiveness", label: "vs. category median", better: "high", format: vsMedian },
-    { key: "lastUpdated", label: "Last updated", better: "recent", format: relative },
+    { key: "lastUpdated", label: "Last updated", better: "low", format: relativeDays },
   ]
-
-  const rankValue = (m: Metrics, key: keyof Metrics): number | null => {
-    const v = m[key]
-    if (typeof v === "boolean") return v ? 1 : 0
-    return v
-  }
 
   // Selected products ordered by the chosen "sort by" metric (best first).
   const orderedSelected = useMemo(() => {
@@ -268,54 +275,65 @@ export function ProductHeadToHead({ products, prices }: ProductHeadToHeadProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, products, metricsFor, sortBy])
 
-  const addProduct = (id: string) => {
-    if (selected.length < MAX_PRODUCTS && !selected.includes(id)) {
-      setSelected([...selected, id])
-    }
-  }
-  const removeProduct = (id: string) => setSelected(selected.filter((x) => x !== id))
+  // Retailers that every selected product is sold in (within the timeframe).
+  const commonRetailers = useMemo(() => {
+    if (orderedSelected.length < 2) return [] as string[]
+    const sets = orderedSelected.map((p) => new Set(currentPrices.get(p.id)?.keys() ?? []))
+    return RETAILERS.filter((r) => sets.every((s) => s.has(r)))
+  }, [orderedSelected, currentPrices])
 
-  // Grouped, still-addable products for the picker.
-  const grouped = useMemo(() => {
-    const groups = new Map<string, Product[]>()
-    for (const p of products) {
-      if (selected.includes(p.id)) continue
-      const brand = p.brand_type === "wahlburgers" ? "Wahlburgers" : p.brand_name || "Other"
-      const arr = groups.get(brand) ?? []
-      arr.push(p)
-      groups.set(brand, arr)
-    }
-    return Array.from(groups.entries())
-  }, [products, selected])
+  const toggleProduct = (id: string) => {
+    setSelected((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : prev.length < MAX_PRODUCTS
+          ? [...prev, id]
+          : prev
+    )
+  }
+
+  const filteredList = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return products
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.brand_name?.toLowerCase().includes(q) ?? false)
+    )
+  }, [products, search])
 
   const gridTemplateColumns = `minmax(8rem, 11rem) repeat(${orderedSelected.length}, minmax(0, 1fr))`
 
-  // Determine best/worst value for a metric across selected products.
-  const rankFor = (def: MetricDef) => {
+  const metricCells = (def: MetricDef) => {
     const vals = orderedSelected
       .map((p) => rankValue(metricsFor.get(p.id)!, def.key))
       .filter((v): v is number => v != null)
-    const distinct = new Set(vals).size
-    if (distinct <= 1) return { best: null as number | null, worst: null as number | null }
-    if (def.better === "low") return { best: Math.min(...vals), worst: Math.max(...vals) }
-    if (def.better === "boolTrue") return { best: 1, worst: 0 }
-    return { best: Math.max(...vals), worst: Math.min(...vals) }
+    const { best, worst } = rankExtents(vals, def.better)
+    return orderedSelected.map((p) => {
+      const m = metricsFor.get(p.id)!
+      const rank = rankValue(m, def.key)
+      return { id: p.id, display: def.format(m[def.key]), tone: pillTone(rank, best, worst) }
+    })
   }
 
-  const pillTone = (val: number | null, best: number | null, worst: number | null) => {
-    if (val == null || best == null) return "bg-muted text-foreground"
-    if (val === best) return "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300"
-    if (val === worst) return "bg-destructive/12 text-destructive"
-    return "bg-muted text-foreground"
+  const retailerCells = (retailer: string) => {
+    const vals = orderedSelected.map((p) => currentPrices.get(p.id)?.get(retailer)?.price ?? null)
+    const numeric = vals.filter((v): v is number => v != null)
+    const { best, worst } = rankExtents(numeric, "low")
+    return orderedSelected.map((p, i) => ({
+      id: p.id,
+      display: vals[i] != null ? `$${vals[i]!.toFixed(2)}` : "—",
+      tone: pillTone(vals[i], best, worst),
+    }))
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as keyof Metrics)}>
-          <SelectTrigger className="w-[190px]">
-            <span className="text-muted-foreground mr-1 text-sm">Sort by</span>
+          <SelectTrigger className="w-[200px]">
+            <span className="mr-1 text-sm text-muted-foreground">Sort by</span>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -345,9 +363,7 @@ export function ProductHeadToHead({ products, prices }: ProductHeadToHeadProps) 
               onClick={() => setMode(m)}
               className={cn(
                 "rounded px-3 py-1 text-sm capitalize transition-colors",
-                mode === m
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               )}
             >
               {m}
@@ -367,144 +383,186 @@ export function ProductHeadToHead({ products, prices }: ProductHeadToHeadProps) 
         )}
       </div>
 
-      {/* Add-product picker */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value="" onValueChange={addProduct} disabled={selected.length >= MAX_PRODUCTS}>
-          <SelectTrigger className="w-[260px]">
-            <Plus className="size-4 text-muted-foreground" />
-            <SelectValue placeholder={selected.length >= MAX_PRODUCTS ? "Maximum 4 products" : "Add a product to compare"} />
-          </SelectTrigger>
-          <SelectContent>
-            {grouped.map(([brand, items]) => (
-              <SelectGroup key={brand}>
-                <SelectLabel>{brand}</SelectLabel>
-                {items.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectGroup>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-muted-foreground tabular-nums">{selected.length}/{MAX_PRODUCTS} selected</span>
-      </div>
-
-      {orderedSelected.length < 2 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 p-12 text-center">
-            <Package className="size-10 text-muted-foreground/60" />
-            <p className="font-medium">Add at least two products to compare</p>
-            <p className="text-sm text-muted-foreground">
-              Pick up to {MAX_PRODUCTS} products to see them head-to-head, with the best value
-              in each metric highlighted green and the worst red.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="overflow-x-auto p-4 sm:p-6">
-            <div className="grid min-w-[640px] items-center gap-x-3 gap-y-3" style={{ gridTemplateColumns }}>
-              {/* Header: entity cards */}
-              <div />
-              {orderedSelected.map((product) => {
+      <div className="flex flex-col gap-4 lg:flex-row">
+        {/* Selection menu */}
+        <Card className="shrink-0 lg:w-72">
+          <CardContent className="space-y-3 p-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search products…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {selected.length}/{MAX_PRODUCTS} selected
+            </div>
+            <div className="max-h-[560px] space-y-1.5 overflow-y-auto pr-1">
+              {filteredList.map((product) => {
+                const isSelected = selected.includes(product.id)
+                const atMax = !isSelected && selected.length >= MAX_PRODUCTS
                 const mainImage = product.product_images?.find((i) => i.main) || product.product_images?.[0]
                 const isWahl = product.brand_type === "wahlburgers"
+                const cat = categoryName(product.category_id)
                 return (
-                  <div key={product.id} className="flex flex-col items-center gap-2 px-1 text-center">
-                    <div className="relative size-14 overflow-hidden rounded-xl bg-muted">
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => toggleProduct(product.id)}
+                    disabled={atMax}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-colors",
+                      isSelected
+                        ? "border-brand bg-brand-muted/40"
+                        : "border-border hover:bg-muted/50",
+                      atMax && "cursor-not-allowed opacity-50"
+                    )}
+                  >
+                    <div className="relative size-10 shrink-0 overflow-hidden rounded-md bg-muted">
                       {mainImage ? (
-                        <Image src={mainImage.url} alt={product.name} fill className="object-cover" sizes="56px" />
+                        <Image src={mainImage.url} alt={product.name} fill className="object-cover" sizes="40px" />
                       ) : (
                         <div className="flex size-full items-center justify-center">
-                          <Package className="size-6 text-muted-foreground/60" />
+                          <Package className="size-4 text-muted-foreground/60" />
                         </div>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => removeProduct(product.id)}
-                        aria-label={`Remove ${product.name}`}
-                        className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground"
-                      >
-                        <X className="size-3" />
-                      </button>
                     </div>
-                    <div className="min-w-0">
-                      <div className="line-clamp-2 text-sm font-medium leading-tight">{product.name}</div>
-                      <Chip
-                        label={isWahl ? product.brand_name || "Wahlburgers" : product.brand_name || "—"}
-                        tone={isWahl ? "brand" : "auto"}
-                        colorKey={product.brand_name || product.id}
-                        size="sm"
-                        className="mt-1"
-                      />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{product.name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {cat && <Chip label={cat} size="sm" colorKey={product.category_id} />}
+                        <Chip
+                          label={isWahl ? product.brand_name || "Wahlburgers" : product.brand_name || "—"}
+                          size="sm"
+                          tone={isWahl ? "brand" : "auto"}
+                          colorKey={product.brand_name || product.id}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 )
               })}
-
-              {/* Headline metrics */}
-              {metricDefs.filter((d) => d.headline).map((def) => {
-                const { best, worst } = rankFor(def)
-                return (
-                  <MetricRow
-                    key={def.key}
-                    def={def}
-                    products={orderedSelected}
-                    metricsFor={metricsFor}
-                    best={best}
-                    worst={worst}
-                    rankValue={rankValue}
-                    pillTone={pillTone}
-                    highlighted={def.key === sortBy}
-                  />
-                )
-              })}
-
-              {/* Divider between headline + detail metrics */}
-              <div className="col-span-full my-1 border-t border-border" />
-
-              {/* Detail metrics */}
-              {metricDefs.filter((d) => !d.headline).map((def) => {
-                const { best, worst } = rankFor(def)
-                return (
-                  <MetricRow
-                    key={def.key}
-                    def={def}
-                    products={orderedSelected}
-                    metricsFor={metricsFor}
-                    best={best}
-                    worst={worst}
-                    rankValue={rankValue}
-                    pillTone={pillTone}
-                    highlighted={def.key === sortBy}
-                  />
-                )
-              })}
+              {filteredList.length === 0 && (
+                <p className="py-6 text-center text-sm text-muted-foreground">No products found</p>
+              )}
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* Comparison */}
+        <div className="min-w-0 flex-1">
+          {orderedSelected.length < 2 ? (
+            <Card className="h-full">
+              <CardContent className="flex h-full flex-col items-center justify-center gap-2 p-12 text-center">
+                <Package className="size-10 text-muted-foreground/60" />
+                <p className="font-medium">Add at least two products to compare</p>
+                <p className="text-sm text-muted-foreground">
+                  Pick up to {MAX_PRODUCTS} products from the list. The best value in each metric is
+                  highlighted green, the worst red.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="overflow-x-auto p-4 sm:p-6">
+                <div className="grid min-w-[520px] items-center gap-x-3 gap-y-3" style={{ gridTemplateColumns }}>
+                  {/* Header: entity cards */}
+                  <div />
+                  {orderedSelected.map((product) => {
+                    const mainImage = product.product_images?.find((i) => i.main) || product.product_images?.[0]
+                    const isWahl = product.brand_type === "wahlburgers"
+                    return (
+                      <div key={product.id} className="flex flex-col items-center gap-2 px-1 text-center">
+                        <div className="relative size-14 overflow-hidden rounded-xl bg-muted">
+                          {mainImage ? (
+                            <Image src={mainImage.url} alt={product.name} fill className="object-cover" sizes="56px" />
+                          ) : (
+                            <div className="flex size-full items-center justify-center">
+                              <Package className="size-6 text-muted-foreground/60" />
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => toggleProduct(product.id)}
+                            aria-label={`Remove ${product.name}`}
+                            className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="line-clamp-2 text-sm font-medium leading-tight">{product.name}</div>
+                          <Chip
+                            label={isWahl ? product.brand_name || "Wahlburgers" : product.brand_name || "—"}
+                            tone={isWahl ? "brand" : "auto"}
+                            colorKey={product.brand_name || product.id}
+                            size="sm"
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Headline metrics */}
+                  {metricDefs.filter((d) => d.headline).map((def) => (
+                    <Row key={def.key} label={def.label} highlighted={def.key === sortBy} cells={metricCells(def)} />
+                  ))}
+
+                  <div className="col-span-full my-1 border-t border-border" />
+
+                  {/* Detail metrics */}
+                  {metricDefs.filter((d) => !d.headline).map((def) => (
+                    <Row key={def.key} label={def.label} highlighted={def.key === sortBy} cells={metricCells(def)} />
+                  ))}
+
+                  {/* Price-by-retailer section */}
+                  <div className="col-span-full mt-2 border-t border-border pt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Price by retailer
+                  </div>
+                  {commonRetailers.length === 0 ? (
+                    <div className="col-span-full pb-1 text-sm text-muted-foreground">
+                      No retailer carries all selected products.
+                    </div>
+                  ) : (
+                    commonRetailers.map((retailer) => {
+                      const Icon = RETAILER_ICONS[retailer]
+                      return (
+                        <Row
+                          key={retailer}
+                          label={
+                            <span className="flex items-center gap-2">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted">
+                                {Icon ? <Icon className="h-3.5 w-auto max-w-4" /> : null}
+                              </span>
+                              <span className="truncate">{retailer}</span>
+                            </span>
+                          }
+                          cells={retailerCells(retailer)}
+                        />
+                      )
+                    })
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
-function MetricRow({
-  def,
-  products,
-  metricsFor,
-  best,
-  worst,
-  rankValue,
-  pillTone,
+function Row({
+  label,
   highlighted,
+  cells,
 }: {
-  def: MetricDef
-  products: Product[]
-  metricsFor: Map<string, Metrics>
-  best: number | null
-  worst: number | null
-  rankValue: (m: Metrics, key: keyof Metrics) => number | null
-  pillTone: (val: number | null, best: number | null, worst: number | null) => string
-  highlighted: boolean
+  label: React.ReactNode
+  highlighted?: boolean
+  cells: { id: string; display: string; tone: string }[]
 }) {
   return (
     <>
@@ -514,23 +572,13 @@ function MetricRow({
           highlighted && "bg-muted/60 font-medium text-foreground"
         )}
       >
-        {def.label}
+        {label}
       </div>
-      {products.map((product) => {
-        const metrics = metricsFor.get(product.id)!
-        const raw = metrics[def.key]
-        const rank = rankValue(metrics, def.key)
-        return (
-          <div key={product.id} className="flex justify-center">
-            <Chip
-              label={def.format(raw)}
-              tone={pillTone(rank, best, worst)}
-              size="lg"
-              className="justify-center tabular-nums"
-            />
-          </div>
-        )
-      })}
+      {cells.map((c) => (
+        <div key={c.id} className="flex justify-center">
+          <Chip label={c.display} tone={c.tone} size="lg" className="justify-center tabular-nums" />
+        </div>
+      ))}
     </>
   )
 }
