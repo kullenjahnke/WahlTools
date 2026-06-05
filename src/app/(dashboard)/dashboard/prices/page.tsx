@@ -6,6 +6,9 @@ import { RetailerPriceTable } from "@/components/prices/retailer-price-table"
 import { PriceHistoryChart } from "@/components/prices/price-history-chart"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import { IconButton } from "@/components/ui/icon-button"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import Link from "next/link"
 import { Plus, History, Bell, BarChart4, ListOrdered } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -76,20 +79,19 @@ async function ProductsDataLoader() {
 
     return (
       <>
-        <div className="flex justify-end">
-          <ExportModal products={products} categories={categories} />
-        </div>
-
         <RetailerPriceOverview
           products={products}
           priceStats={priceStats}
         />
 
         <Tabs defaultValue="table" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="table">Price Table</TabsTrigger>
-            <TabsTrigger value="trends">Price Trends</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between gap-2">
+            <TabsList>
+              <TabsTrigger value="table">Price Table</TabsTrigger>
+              <TabsTrigger value="trends">Price Trends</TabsTrigger>
+            </TabsList>
+            <ExportModal products={products} categories={categories} />
+          </div>
           <TabsContent value="table" className="space-y-4">
             <RetailerPriceTable products={products} categories={categories} />
           </TabsContent>
@@ -110,55 +112,53 @@ async function ProductsDataLoader() {
   }
 }
 
-export const metadata = { title: "Prices" }
+export const metadata = { title: "WahlTools | Prices" }
 
 export default async function PricesPage() {
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold">Prices</h1>
-          <p className="text-muted-foreground">
-            Manage and monitor product prices across retailers
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/prices/reminders">
-              <Bell className="h-4 w-4 mr-2" />
-              Reminders
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/prices/history">
-              <History className="h-4 w-4 mr-2" />
-              History
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/analytics">
-              <BarChart4 className="h-4 w-4 mr-2" />
-              Analytics
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/prices/sequential">
-              <ListOrdered className="h-4 w-4 mr-2" />
-              Sequential Entry
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/dashboard/prices/check">
-              <Plus className="h-4 w-4 mr-2" />
-              Record Prices
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Prices"
+        description="Monitor product prices across retailers"
+        actions={
+          <>
+            <IconButton
+              label="Sequential entry"
+              href="/dashboard/prices/sequential"
+              icon={<ListOrdered className="size-4" />}
+              variant="outline"
+            />
+            <IconButton
+              label="Analytics"
+              href="/dashboard/analytics"
+              icon={<BarChart4 className="size-4" />}
+              variant="outline"
+            />
+            <IconButton
+              label="Price history"
+              href="/dashboard/prices/history"
+              icon={<History className="size-4" />}
+              variant="outline"
+            />
+            <IconButton
+              label="Reminders"
+              href="/dashboard/prices/reminders"
+              icon={<Bell className="size-4" />}
+              variant="outline"
+            />
+            <Button asChild>
+              <Link href="/dashboard/prices/check">
+                <Plus className="size-4" />
+                Record prices
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <Suspense fallback={<PricesTableSkeleton />}>
         <ProductsDataLoader />
       </Suspense>
-    </div>
+    </PageContainer>
   )
 }
