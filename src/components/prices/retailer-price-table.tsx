@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Chip } from "@/components/ui/chip"
 import { Switch } from "@/components/ui/switch"
@@ -87,6 +88,19 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
   const [highlightFreshness, setHighlightFreshness] = useState(false)
   const router = useRouter()
   const supabase = createClientClient()
+
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    categoryFilter !== "all" ||
+    retailerFilter !== "all" ||
+    freshnessFilter !== "all"
+
+  const resetFilters = () => {
+    setSearch("")
+    setCategoryFilter("all")
+    setRetailerFilter("all")
+    setFreshnessFilter("all")
+  }
 
   // Resolve category_id -> name, and list only categories present in the products
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
@@ -270,7 +284,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
               </div>
 
               {/* Freshness highlight toggle */}
-              <label className="flex h-9 cursor-pointer select-none items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground">
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-foreground">
                 <Switch
                   checked={highlightFreshness}
                   onCheckedChange={setHighlightFreshness}
@@ -279,6 +293,17 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                 Highlight freshness
               </label>
             </div>
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                className="md:ml-auto text-muted-foreground hover:text-foreground"
+              >
+                Reset filters
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -336,14 +361,15 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                       freshnessFilter === "all" ||
                       (!!latestPrice && priceState(latestPrice) === freshnessFilter)
                     const showCell = hasRetailerAssociation && !!latestPrice && matchesFilter
-                    // Faint tinted backgrounds (amber for stale, gray for N/A) only
-                    // appear when the "Highlight freshness" toggle is on.
+                    // Faint tinted backgrounds (green for active, amber for stale,
+                    // gray for N/A) only appear when the "Highlight freshness"
+                    // toggle is on.
                     const cellTint = showCell && highlightFreshness
                       ? na
                         ? "bg-muted/50"
                         : stale
                           ? "bg-amber-500/10 dark:bg-amber-400/10"
-                          : ""
+                          : "bg-emerald-500/10 dark:bg-emerald-400/10"
                       : ""
 
                     return (
@@ -371,17 +397,9 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                                   <Badge variant="brand" className="px-1.5 py-0 text-[10px]">Promo</Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                {stale && (
-                                  <span
-                                    className="inline-block size-1.5 rounded-full bg-amber-500 dark:bg-amber-400"
-                                    title="Stale — not recently re-checked"
-                                  />
-                                )}
-                                <span>
-                                  {stale ? "Last seen " : ""}
-                                  {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
-                                </span>
+                              <div className="text-xs text-muted-foreground">
+                                {stale ? "Last seen " : ""}
+                                {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
                               </div>
                               {/* Price change indicator (semantic green/red) */}
                               {(() => {
