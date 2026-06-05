@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { Product, Price } from "@/types/database"
 import { RETAILERS } from "@/lib/config/retailers"
-import { classifyFreshness, freshnessMeta, type FreshnessStatus } from "@/lib/freshness"
+import { daysSince, FRESHNESS_THRESHOLDS } from "@/lib/freshness"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -46,7 +46,37 @@ interface RetailerPriceTableProps {
   categories?: { id: string; name: string }[]
 }
 
-type FreshnessFilter = "all" | FreshnessStatus
+// Cell state model (matches the on-table labels):
+//  - active:      a real price updated within the staleness window
+//  - stale:       a real price not re-checked in a while ("Last seen")
+//  - unavailable: explicitly marked N/A (price 0, not sold out) — no longer sold
+type CellState = "active" | "stale" | "unavailable"
+type FreshnessFilter = "all" | CellState
+
+const STALE_DAYS = FRESHNESS_THRESHOLDS.staleDays
+
+const FRESHNESS_LABEL: Record<CellState, string> = {
+  active: "Active",
+  stale: "Stale",
+  unavailable: "Unavailable",
+}
+
+function isSoldOutPrice(p: Price) {
+  return p.status === "out_of_stock" || p.is_sold_out === true
+}
+
+function isNAPrice(p: Price) {
+  return !isSoldOutPrice(p) && p.price <= 0
+}
+
+function isStalePrice(p: Price) {
+  return !isNAPrice(p) && (daysSince(p.timestamp) ?? 0) >= STALE_DAYS
+}
+
+function priceState(p: Price): CellState {
+  if (isNAPrice(p)) return "unavailable"
+  return (daysSince(p.timestamp) ?? 0) >= STALE_DAYS ? "stale" : "active"
+}
 
 export function RetailerPriceTable({ products, categories = [] }: RetailerPriceTableProps) {
   const [search, setSearch] = useState("")
@@ -155,19 +185,16 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
 
     // Apply freshness filter per retailer-cell: when a retailer is selected, use
     // that retailer's latest price; otherwise match if ANY retailer's latest
-    // price for this product falls in the selected freshness bucket.
+    // price for this product is in the selected state.
     let freshnessMatch = true
     if (freshnessFilter !== "all") {
-      if (retailerFilter !== "all") {
-        const latest = getLatestPrice(product.prices, retailerFilter)
-        freshnessMatch = !!latest && classifyFreshness(latest.timestamp).status === freshnessFilter
-      } else {
-        const retailers = Array.from(new Set(product.prices?.map(p => p.retailer) || []))
-        freshnessMatch = retailers.some(r => {
-          const latest = getLatestPrice(product.prices, r)
-          return !!latest && classifyFreshness(latest.timestamp).status === freshnessFilter
-        })
-      }
+      const retailersToCheck = retailerFilter === "all"
+        ? Array.from(new Set(product.prices?.map(p => p.retailer) || []))
+        : [retailerFilter]
+      freshnessMatch = retailersToCheck.some(r => {
+        const latest = getLatestPrice(product.prices, r)
+        return !!latest && priceState(latest) === freshnessFilter
+      })
     }
 
     return searchMatch && categoryMatch && retailerMatch && freshnessMatch
@@ -228,14 +255,14 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                   value={freshnessFilter}
                   onValueChange={(val) => setFreshnessFilter(val as FreshnessFilter)}
                 >
-                  <SelectTrigger className="w-[150px] border-none shadow-none bg-transparent">
+                  <SelectTrigger className="w-[160px] border-none shadow-none bg-transparent">
                     <SelectValue placeholder="Freshness" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All freshness</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="stale">Stale</SelectItem>
-                    <SelectItem value="discontinued">Likely discontinued</SelectItem>
+                    <SelectItem value="unavailable">Unavailable (N/A)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -262,7 +289,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                   {retailer}
                 </TableHead>
               ))}
-              <TableHead className="w-[180px] min-w-[180px]">
+              <TableHead className="w-[160px] min-w-[160px]">
                 Last Updated
               </TableHead>
             </TableRow>
@@ -287,25 +314,27 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                   {displayedRetailers.map(retailer => {
                     const latestPrice = getLatestPrice(product.prices, retailer)
                     const hasRetailerAssociation = latestPrice !== null
-                    const cellStatus = latestPrice
-                      ? classifyFreshness(latestPrice.timestamp).status
-                      : "active"
-                    const cellMeta = freshnessMeta(cellStatus)
-                    const isSoldOut =
-                      !!latestPrice &&
-                      (latestPrice.status === 'out_of_stock' ||
-                        latestPrice.is_sold_out === true)
-                    // Zero-priced records that aren't sold out are "N/A" markings
-                    // (e.g. product not carried / not applicable at this retailer).
-                    const isNA = !!latestPrice && !isSoldOut && latestPrice.price <= 0
+                    const soldOut = !!latestPrice && isSoldOutPrice(latestPrice)
+                    const na = !!latestPrice && isNAPrice(latestPrice)
+                    const stale = !!latestPrice && isStalePrice(latestPrice)
+                    // Faint tinted backgrounds make old/unavailable data easy to
+                    // scan against fresh prices: amber for stale, gray for N/A.
+                    const cellTint = na
+                      ? "bg-muted/50"
+                      : stale
+                        ? "bg-amber-500/10 dark:bg-amber-400/10"
+                        : ""
 
                     return (
-                      <TableCell key={retailer} className="text-center align-middle">
+                      <TableCell
+                        key={retailer}
+                        className={cn("text-center align-middle", cellTint)}
+                      >
                         {hasRetailerAssociation && latestPrice ? (
-                          isSoldOut || isNA ? (
+                          soldOut || na ? (
                             <div className="flex flex-col items-center gap-1">
                               <Chip
-                                label={isSoldOut ? "Sold out" : "N/A"}
+                                label={soldOut ? "Sold out" : "N/A"}
                                 tone="neutral"
                                 size="lg"
                               />
@@ -314,12 +343,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                               </div>
                             </div>
                           ) : (
-                            <div
-                              className={cn(
-                                "flex flex-col items-center gap-1",
-                                cellStatus !== "active" && "opacity-80"
-                              )}
-                            >
+                            <div className="flex flex-col items-center gap-1">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-sm font-semibold tabular-nums">${latestPrice.price.toFixed(2)}</span>
                                 {latestPrice.is_promotion && (
@@ -327,14 +351,14 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                                 )}
                               </div>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                {cellStatus !== "active" && (
+                                {stale && (
                                   <span
-                                    className={cn("inline-block size-1.5 rounded-full", cellMeta.dotClass)}
-                                    title={cellMeta.label}
+                                    className="inline-block size-1.5 rounded-full bg-amber-500 dark:bg-amber-400"
+                                    title="Stale — not recently re-checked"
                                   />
                                 )}
                                 <span>
-                                  {cellStatus === "active" ? "" : "Last seen "}
+                                  {stale ? "Last seen " : ""}
                                   {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
                                 </span>
                               </div>
@@ -342,7 +366,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                               {(() => {
                                 const previousPrice = getPreviousPrice(product.prices, retailer, latestPrice)
                                 const priceChange = calculatePriceChange(latestPrice, previousPrice)
-                                if (priceChange !== null && cellStatus !== "discontinued") {
+                                if (priceChange !== null) {
                                   return (
                                     <div className={`flex items-center text-xs tabular-nums ${getPriceChangeColor(priceChange)}`}>
                                       {getPriceChangeIcon(priceChange)}
@@ -390,7 +414,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
           {freshnessFilter !== "all" && (
             <Badge variant="secondary">
               <Sparkles className="h-3 w-3 mr-1" />
-              {freshnessMeta(freshnessFilter).label}
+              {FRESHNESS_LABEL[freshnessFilter]}
             </Badge>
           )}
           {categoryFilter !== "all" && (
