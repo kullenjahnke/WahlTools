@@ -2,23 +2,18 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { PriceHistoryComparisonChart } from "@/components/comparison/price-history-comparison-chart"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { RETAILERS } from "@/lib/config/retailers"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
+import { HistoryComparisonControls } from "@/components/comparison/history-comparison-controls"
 
 interface PageProps {
   searchParams: Promise<{ retailer?: string; product?: string }>
 }
 
-export const metadata = { title: "Comparison History" }
+export const metadata = { title: "WahlTools | Comparison History" }
 
 export default async function PriceHistoryComparisonPage({ searchParams }: PageProps) {
   const params = await searchParams
@@ -84,66 +79,25 @@ export default async function PriceHistoryComparisonPage({ searchParams }: PageP
   )
   
   return (
-    <div className="container py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild className="mb-auto">
-            <Link href="/dashboard/comparison">
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Back to Comparison
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Price History Comparison</h1>
-            <p className="text-muted-foreground">
-              Compare price trends between Wahlburgers and competitor products
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex flex-col items-end gap-2">
-          <Select 
-            defaultValue={selectedRetailer}
-            onValueChange={(value) => {
-              const url = new URL(window.location.href)
-              url.searchParams.set('retailer', value)
-              window.location.href = url.toString()
-            }}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select retailer" />
-            </SelectTrigger>
-            <SelectContent>
-              {RETAILERS.map((retailer) => (
-                <SelectItem key={retailer} value={retailer}>
-                  {retailer}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Select 
-            defaultValue={effectiveProductId || ''}
-            onValueChange={(value) => {
-              const url = new URL(window.location.href)
-              url.searchParams.set('product', value)
-              window.location.href = url.toString()
-            }}
-          >
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Select product" />
-            </SelectTrigger>
-            <SelectContent>
-              {wahlburgersProducts?.map((product) => (
-                <SelectItem key={product.id} value={product.id}>
-                  {product.name} ({categoryMap.get(product.category_id) || 'Uncategorized'})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      
+    <PageContainer>
+      <PageHeader
+        title="Price History Comparison"
+        breadcrumbs={[
+          { label: "Comparison", href: "/dashboard/comparison" },
+          { label: "History" },
+        ]}
+        actions={
+          <HistoryComparisonControls
+            products={(wahlburgersProducts || []).map((p) => ({
+              id: p.id,
+              label: `${p.name} (${categoryMap.get(p.category_id) || "Uncategorized"})`,
+            }))}
+            retailer={selectedRetailer}
+            productId={effectiveProductId || ""}
+          />
+        }
+      />
+
       {selectedProduct ? (
         <div className="space-y-6">
           <Card>
@@ -181,6 +135,6 @@ export default async function PriceHistoryComparisonPage({ searchParams }: PageP
           </Button>
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }

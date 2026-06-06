@@ -1,10 +1,13 @@
-export const metadata = { title: "Settings" }
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
+
+export const metadata = { title: "WahlTools | Settings" }
 
 export default function SettingsPage() {
-    return (
-      <div className="p-6">
-        <h1 className="text-3xl font-bold mb-6">Settings</h1>
-        <p>Settings management coming soon...</p>
-      </div>
-    )
-  }
+  return (
+    <PageContainer>
+      <PageHeader title="Settings" />
+      <p className="text-muted-foreground">Settings management coming soon…</p>
+    </PageContainer>
+  )
+}

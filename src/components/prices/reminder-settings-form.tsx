@@ -109,7 +109,7 @@ export function ReminderSettingsForm({ initial }: { initial: ReminderSettings })
               onChange={(e) => setRecipients(e.target.value)}
               placeholder="name@example.com, name2@example.com"
             />
-            <p className="text-xs text-muted-foreground">Separate multiple emails with commas. Times are America/Detroit.</p>
+            <p className="text-xs text-muted-foreground">Separate multiple emails with commas. The reminder is sent on the selected day each week (morning, US&nbsp;Eastern).</p>
           </div>
         </CardContent>
       </Card>

@@ -1,11 +1,10 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { SequentialPriceEntry } from "@/components/prices/sequential-price-entry"
-import { Button } from "@/components/ui/button"
-import { ChevronLeft } from "lucide-react"
-import Link from "next/link"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import type { ProductUrl } from "@/types/database"
 
-export const metadata = { title: "Sequential Entry" }
+export const metadata = { title: "WahlTools | Sequential Entry" }
 
 export default async function SequentialEntryPage() {
   const supabase = await createSupabaseServerClient()
@@ -22,11 +21,18 @@ export default async function SequentialEntryPage() {
 
   if (productsResult.error) {
     return (
-      <div className="container mx-auto py-6">
+      <PageContainer>
+        <PageHeader
+          title="Sequential Price Entry"
+          breadcrumbs={[
+            { label: "Prices", href: "/dashboard/prices" },
+            { label: "Sequential entry" },
+          ]}
+        />
         <div className="p-6 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive">
           <p>Error loading products: {productsResult.error.message}</p>
         </div>
-      </div>
+      </PageContainer>
     )
   }
 
@@ -45,24 +51,15 @@ export default async function SequentialEntryPage() {
   }))
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center space-x-2">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard/prices">
-            <ChevronLeft className="h-4 w-4" />
-            Back to Prices
-          </Link>
-        </Button>
-      </div>
-
-      <div>
-        <h1 className="text-3xl font-bold">Sequential Price Entry</h1>
-        <p className="text-muted-foreground">
-          Enter prices one at a time — auto-advances through retailers, then products.
-        </p>
-      </div>
-
+    <PageContainer>
+      <PageHeader
+        title="Sequential Price Entry"
+        breadcrumbs={[
+          { label: "Prices", href: "/dashboard/prices" },
+          { label: "Sequential entry" },
+        ]}
+      />
       <SequentialPriceEntry products={products} />
-    </div>
+    </PageContainer>
   )
 }
