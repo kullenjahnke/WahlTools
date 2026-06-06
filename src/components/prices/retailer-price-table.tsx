@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ import { format } from "date-fns"
 import { Product, Price } from "@/types/database"
 import { RETAILERS } from "@/lib/config/retailers"
 import { daysSince, FRESHNESS_THRESHOLDS } from "@/lib/freshness"
+import { BRANDS, productMatchesBrand } from "@/lib/config/brands"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -34,6 +35,7 @@ import {
   Filter,
   Package,
   Sparkles,
+  Tag,
   ArrowUp,
   ArrowDown,
   Minus,
@@ -46,6 +48,8 @@ type ProductWithPrices = Product & {
 interface RetailerPriceTableProps {
   products: ProductWithPrices[]
   categories?: { id: string; name: string }[]
+  /** Rendered at the far right of the filter toolbar (e.g. an Export button). */
+  exportSlot?: ReactNode
 }
 
 // Cell state model (matches the on-table labels):
@@ -80,9 +84,10 @@ function priceState(p: Price): CellState {
   return (daysSince(p.timestamp) ?? 0) >= STALE_DAYS ? "stale" : "active"
 }
 
-export function RetailerPriceTable({ products, categories = [] }: RetailerPriceTableProps) {
+export function RetailerPriceTable({ products, categories = [], exportSlot }: RetailerPriceTableProps) {
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [brandFilter, setBrandFilter] = useState<string>("all")
   const [retailerFilter, setRetailerFilter] = useState<string>("all")
   const [freshnessFilter, setFreshnessFilter] = useState<FreshnessFilter>("all")
   const [highlightFreshness, setHighlightFreshness] = useState(false)
@@ -92,12 +97,14 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
   const hasActiveFilters =
     search.trim() !== "" ||
     categoryFilter !== "all" ||
+    brandFilter !== "all" ||
     retailerFilter !== "all" ||
     freshnessFilter !== "all"
 
   const resetFilters = () => {
     setSearch("")
     setCategoryFilter("all")
+    setBrandFilter("all")
     setRetailerFilter("all")
     setFreshnessFilter("all")
   }
@@ -195,6 +202,9 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
     // Apply category filter
     const categoryMatch = categoryFilter === "all" || product.category_id === categoryFilter
 
+    // Apply brand filter
+    const brandMatch = brandFilter === "all" || productMatchesBrand(product, brandFilter)
+
     // Apply retailer filter
     const retailerMatch = retailerFilter === "all" ||
       product.prices?.some(p => p.retailer === retailerFilter)
@@ -213,7 +223,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
       })
     }
 
-    return searchMatch && categoryMatch && retailerMatch && freshnessMatch
+    return searchMatch && categoryMatch && brandMatch && retailerMatch && freshnessMatch
   })
 
   return (
@@ -243,6 +253,22 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                     <SelectItem value="all">All Categories</SelectItem>
                     {categoryOptions.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Brand Filter */}
+              <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                <Select value={brandFilter} onValueChange={setBrandFilter}>
+                  <SelectTrigger className="w-[140px] border-none shadow-none bg-transparent">
+                    <SelectValue placeholder="Brand" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Brands</SelectItem>
+                    {BRANDS.map((brand) => (
+                      <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -294,16 +320,19 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
               </label>
             </div>
 
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetFilters}
-                className="md:ml-auto text-sm text-muted-foreground hover:text-foreground"
-              >
-                Reset filters
-              </Button>
-            )}
+            <div className="flex items-center gap-2 md:ml-auto">
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Reset filters
+                </Button>
+              )}
+              {exportSlot}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -460,6 +489,12 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
             <Badge variant="secondary">
               <Filter className="h-3 w-3 mr-1" />
               {categoryMap.get(categoryFilter) || categoryFilter}
+            </Badge>
+          )}
+          {brandFilter !== "all" && (
+            <Badge variant="secondary">
+              <Tag className="h-3 w-3 mr-1" />
+              {brandFilter}
             </Badge>
           )}
           {retailerFilter !== "all" && (

@@ -14,7 +14,7 @@ export default async function ProductsPage() {
   const supabase = await createSupabaseServerClient()
   
   try {
-    const [productsResponse, categoriesResponse, brandsResponse] = await Promise.all([
+    const [productsResponse, categoriesResponse] = await Promise.all([
       supabase
         .from('products')
         .select(`
@@ -42,11 +42,6 @@ export default async function ProductsPage() {
         .from('product_categories')
         .select('*')
         .order('name')
-        .limit(100),
-      supabase
-        .from('brands')
-        .select('*')
-        .order('name')
         .limit(100)
     ])
 
@@ -68,11 +63,6 @@ export default async function ProductsPage() {
         code: categoriesResponse.error.code
       })
       throw categoriesResponse.error
-    }
-
-    if (brandsResponse.error) {
-      console.error('Error fetching brands:', brandsResponse.error)
-      throw brandsResponse.error
     }
 
     const products = productsResponse.data || []
@@ -101,7 +91,6 @@ export default async function ProductsPage() {
         <EnhancedProductsList
           products={products}
           categories={categoriesResponse.data || []}
-          brands={brandsResponse.data || []}
         />
       </PageContainer>
     )

@@ -3,14 +3,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { getPriceChangeStats } from "@/app/actions/prices"
 import { RetailerPriceOverview } from "@/components/prices/retailer-price-overview"
 import { RetailerPriceTable } from "@/components/prices/retailer-price-table"
-import { PriceHistoryChart } from "@/components/prices/price-history-chart"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { IconButton } from "@/components/ui/icon-button"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 import Link from "next/link"
-import { Plus, History, Bell, BarChart4, ListOrdered } from "lucide-react"
+import { Plus, History, Bell, ListOrdered } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ExportModal } from "@/components/prices/export-modal"
@@ -84,21 +82,11 @@ async function ProductsDataLoader() {
           priceStats={priceStats}
         />
 
-        <Tabs defaultValue="table" className="space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <TabsList>
-              <TabsTrigger value="table">Price Table</TabsTrigger>
-              <TabsTrigger value="trends">Price Trends</TabsTrigger>
-            </TabsList>
-            <ExportModal products={products} categories={categories} />
-          </div>
-          <TabsContent value="table" className="space-y-4">
-            <RetailerPriceTable products={products} categories={categories} />
-          </TabsContent>
-          <TabsContent value="trends" className="space-y-4">
-            <PriceHistoryChart products={products} />
-          </TabsContent>
-        </Tabs>
+        <RetailerPriceTable
+          products={products}
+          categories={categories}
+          exportSlot={<ExportModal products={products} categories={categories} />}
+        />
       </>
     )
   } catch (error) {
@@ -125,12 +113,6 @@ export default async function PricesPage() {
               label="Sequential entry"
               href="/dashboard/prices/sequential"
               icon={<ListOrdered className="size-4" />}
-              variant="outline"
-            />
-            <IconButton
-              label="Analytics"
-              href="/dashboard/analytics"
-              icon={<BarChart4 className="size-4" />}
               variant="outline"
             />
             <IconButton

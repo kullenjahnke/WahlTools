@@ -38,16 +38,11 @@ import Image from "next/image"
 import { CardContent } from "@/components/ui/card"
 import { Chip } from "@/components/ui/chip"
 import { RowActions } from "@/components/ui/row-actions"
+import { BRANDS, productMatchesBrand } from "@/lib/config/brands"
 
 interface Category {
   id: string
   name: string
-}
-
-interface Brand {
-  id: string
-  name: string
-  type: string
 }
 
 interface Product {
@@ -78,13 +73,11 @@ interface Product {
 interface EnhancedProductsListProps {
   products?: Product[];
   categories: Category[];
-  brands?: Brand[];
 }
 
-export function EnhancedProductsList({ 
-  products: initialProducts = [], 
+export function EnhancedProductsList({
+  products: initialProducts = [],
   categories,
-  brands = []
 }: EnhancedProductsListProps) {
   const [view, setView] = useState<'list' | 'grid'>('list')
   const [search, setSearch] = useState("")
@@ -135,11 +128,8 @@ export function EnhancedProductsList({
         categoryFilter === "all" || 
         product.category_id === categoryFilter;
 
-      const brandMatch = 
-        brandFilter === "all" || 
-        product.brand_id === brandFilter ||
-        (brandFilter === "wahlburgers" && product.brand_type === "wahlburgers") ||
-        (brandFilter === "competitors" && product.brand_type === "competitor");
+      const brandMatch =
+        brandFilter === "all" || productMatchesBrand(product, brandFilter);
 
       return searchMatch && categoryMatch && brandMatch;
     })
@@ -496,20 +486,11 @@ export function EnhancedProductsList({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Brands</SelectItem>
-              <SelectItem value="wahlburgers">Wahlburgers</SelectItem>
-              <SelectItem value="competitors">Competitors</SelectItem>
-              {brands.length > 0 && (
-                <>
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground border-t">
-                    Individual Brands
-                  </div>
-                  {brands.map((brand) => (
-                    <SelectItem key={brand.id} value={brand.id}>
-                      {brand.name}
-                    </SelectItem>
-                  ))}
-                </>
-              )}
+              {BRANDS.map((brand) => (
+                <SelectItem key={brand} value={brand}>
+                  {brand}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -580,9 +561,13 @@ export function EnhancedProductsList({
         </div>
       )}
 
-      <Card className="overflow-hidden border rounded-lg w-full">
-        {view === 'list' ? renderListView() : renderGridView()}
-      </Card>
+      {view === 'list' ? (
+        <Card className="overflow-hidden border rounded-lg w-full">
+          {renderListView()}
+        </Card>
+      ) : (
+        renderGridView()
+      )}
 
       {filteredProducts.length === 0 && (
         <div className="text-center py-10 text-muted-foreground">

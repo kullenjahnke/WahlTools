@@ -143,7 +143,7 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
 
           return (
             <Card key={retailer} className="w-[300px] overflow-hidden">
-              <CardHeader className="flex items-center justify-center border-b py-3">
+              <CardHeader className="flex items-center justify-center py-3">
                 <CardTitle className="flex w-full items-center justify-center text-base font-semibold">
                   {IconComponent ? (
                     <div className="flex h-9 items-center justify-center">
@@ -181,15 +181,6 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
                         {Math.abs(score).toFixed(1)}%
                       </span>
                     )}
-                    <span className="text-xs text-muted-foreground">
-                      {direction === "none"
-                        ? "Not enough overlap"
-                        : direction === "cheaper"
-                          ? `cheaper · ${competitiveness.matchedProducts} matched`
-                          : direction === "pricier"
-                            ? `pricier · ${competitiveness.matchedProducts} matched`
-                            : `at market · ${competitiveness.matchedProducts} matched`}
-                    </span>
                   </div>
 
                   <div className="flex flex-col items-end">
@@ -228,7 +219,7 @@ export function RetailerPriceOverview({ products, priceStats }: RetailerPriceOve
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-1 border-t pt-2 text-xs text-muted-foreground">
+                <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3 opacity-70" />
                   {lastUpdate ? (
                     <span>Updated {formatDistanceToNow(new Date(lastUpdate), { addSuffix: true })}</span>

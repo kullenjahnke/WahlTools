@@ -33,7 +33,7 @@ import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Product, Price } from "@/types/database"
 import { format, subDays, subMonths } from "date-fns"
-import { BarChart3, Plus, TrendingDown, TrendingUp, X } from "lucide-react"
+import { BarChart3, Package, Plus, Store, Tags, TrendingDown, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type ProductWithPrices = Product & { prices?: Price[] }
@@ -45,10 +45,10 @@ interface ProductAnalyticsProps {
 
 type Mode = "retailer" | "product" | "category"
 
-const MODES: { value: Mode; label: string }[] = [
-  { value: "retailer", label: "By retailer" },
-  { value: "product", label: "By product" },
-  { value: "category", label: "By category" },
+const MODES: { value: Mode; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: "retailer", label: "Retailer", icon: Store },
+  { value: "product", label: "Product", icon: Package },
+  { value: "category", label: "Category", icon: Tags },
 ]
 
 const TIME_RANGES = [
@@ -279,21 +279,25 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
       <Card>
         <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Compare</span>
+            <span className="text-xs font-medium text-muted-foreground">Compare by</span>
             <div className="inline-flex rounded-md border border-input p-0.5">
-              {MODES.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => { setMode(m.value); setHidden(new Set()) }}
-                  className={cn(
-                    "rounded px-3 py-1 text-sm transition-colors",
-                    mode === m.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {m.label}
-                </button>
-              ))}
+              {MODES.map((m) => {
+                const Icon = m.icon
+                return (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => { setMode(m.value); setHidden(new Set()) }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded px-3 py-1 text-sm transition-colors",
+                      mode === m.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="size-4" />
+                    {m.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
