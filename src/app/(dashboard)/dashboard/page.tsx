@@ -110,7 +110,6 @@ export default async function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-semibold tracking-tight tabular-nums">{stat.value}</div>
-                  <p className="mt-1 text-xs text-muted-foreground">{stat.sub}</p>
                 </CardContent>
               </Card>
             )

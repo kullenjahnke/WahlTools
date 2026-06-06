@@ -7,18 +7,18 @@ import { cn } from "@/lib/utils";
 // and adapt to light/dark mode.
 
 const CHIP_TONES = [
-  "bg-blue-500/12 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300",
-  "bg-violet-500/12 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
-  "bg-rose-500/12 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
-  "bg-amber-500/12 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
-  "bg-teal-500/12 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300",
-  "bg-cyan-500/12 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-300",
-  "bg-fuchsia-500/12 text-fuchsia-700 dark:bg-fuchsia-400/15 dark:text-fuchsia-300",
-  "bg-indigo-500/12 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300",
-  "bg-orange-500/12 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
-  "bg-sky-500/12 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
-  "bg-emerald-500/12 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
-  "bg-pink-500/12 text-pink-700 dark:bg-pink-400/15 dark:text-pink-300",
+  "bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300",
+  "bg-violet-100 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
+  "bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
+  "bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+  "bg-teal-100 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300",
+  "bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-300",
+  "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-400/15 dark:text-fuchsia-300",
+  "bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300",
+  "bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
+  "bg-sky-100 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+  "bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+  "bg-pink-100 text-pink-700 dark:bg-pink-400/15 dark:text-pink-300",
 ] as const;
 
 const BRAND_TONE = "bg-brand-muted text-brand";

@@ -399,7 +399,7 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
             <div className="text-xs text-muted-foreground tabular-nums">
               {selected.length}/{MAX_PRODUCTS} selected
             </div>
-            <div className="max-h-[560px] space-y-1.5 overflow-y-auto pr-1 lg:max-h-none lg:flex-1">
+            <div className="no-scrollbar max-h-[560px] space-y-1.5 overflow-y-auto pr-1 lg:max-h-none lg:flex-1">
               {filteredList.map((product) => {
                 const isSelected = selected.includes(product.id)
                 const atMax = !isSelected && selected.length >= MAX_PRODUCTS

@@ -20,7 +20,7 @@
     --accent-foreground: 0 0% 9%;
     --brand: 123 45% 49%;          /* #44B549 — semantic green */
     --brand-foreground: 0 0% 100%;
-    --brand-muted: 123 45% 49% / 0.12; /* low-opacity tint */
+    --brand-muted: 123 45% 49% / 0.2; /* low-opacity tint */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 91%;
@@ -57,7 +57,7 @@
     --accent-foreground: 0 0% 95%;
     --brand: 123 45% 52%;
     --brand-foreground: 0 0% 8%;
-    --brand-muted: 123 45% 52% / 0.16;
+    --brand-muted: 123 45% 52% / 0.2;
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 16%;
@@ -87,5 +87,16 @@
   /* Tabular figures for price/number cells */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Scrollable but with the scrollbar hidden. */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
