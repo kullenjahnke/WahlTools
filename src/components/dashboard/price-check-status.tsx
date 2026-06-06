@@ -125,7 +125,7 @@ export function PriceCheckStatus() {
   }
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-base font-medium">Price Check Status</CardTitle>
         <IconButton

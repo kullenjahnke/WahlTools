@@ -71,7 +71,7 @@ export function RecentUpdatesList({ updates }: { updates: Update[] }) {
       </div>
 
       {canExpand && (
-        <div className="mt-2 flex justify-center border-t border-border/60 pt-2">
+        <div className="mt-2 flex justify-center">
           <Button
             variant="ghost"
             size="sm"

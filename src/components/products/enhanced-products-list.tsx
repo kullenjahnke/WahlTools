@@ -98,6 +98,10 @@ export function EnhancedProductsList({
   const { toast } = useToast()
   const supabase = createClientClient()
 
+  // Only surface categories that actually have products as filter options.
+  const usedCategoryIds = new Set(initialProducts.map((p) => p.category_id))
+  const categoryOptions = categories.filter((c) => usedCategoryIds.has(c.id))
+
   if (!initialProducts || initialProducts.length === 0) {
     return (
       <div className="text-center py-10 text-muted-foreground">
@@ -506,7 +510,7 @@ export function EnhancedProductsList({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
+                {categoryOptions.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Chip } from "@/components/ui/chip"
@@ -125,6 +125,8 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
   const [mode, setMode] = useState<"average" | "total">("average")
   const [sortBy, setSortBy] = useState<keyof Metrics>("lowest")
   const [search, setSearch] = useState("")
+  const listRef = useRef<HTMLDivElement>(null)
+  const [atBottom, setAtBottom] = useState(true)
 
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name
 
@@ -302,6 +304,13 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
     )
   }, [products, search])
 
+  // Hide the bottom fade once the list is scrolled to the end.
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 8)
+  }, [filteredList])
+
   const gridTemplateColumns = `minmax(8rem, 11rem) repeat(${orderedSelected.length}, minmax(0, 1fr))`
 
   const metricCells = (def: MetricDef) => {
@@ -399,7 +408,15 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
             <div className="text-xs text-muted-foreground tabular-nums">
               {selected.length}/{MAX_PRODUCTS} selected
             </div>
-            <div className="no-scrollbar max-h-[560px] space-y-1.5 overflow-y-auto pr-1 lg:max-h-none lg:flex-1">
+            <div className="relative min-h-0 lg:flex-1">
+            <div
+              ref={listRef}
+              onScroll={(e) => {
+                const el = e.currentTarget
+                setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 8)
+              }}
+              className="no-scrollbar h-full max-h-[560px] space-y-1.5 overflow-y-auto pr-1 lg:max-h-none"
+            >
               {filteredList.map((product) => {
                 const isSelected = selected.includes(product.id)
                 const atMax = !isSelected && selected.length >= MAX_PRODUCTS
@@ -447,6 +464,13 @@ export function ProductHeadToHead({ products, prices, categories }: ProductHeadT
               {filteredList.length === 0 && (
                 <p className="py-6 text-center text-sm text-muted-foreground">No products found</p>
               )}
+            </div>
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent transition-opacity duration-300",
+                atBottom ? "opacity-0" : "opacity-100"
+              )}
+            />
             </div>
           </CardContent>
         </Card>

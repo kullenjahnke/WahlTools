@@ -71,7 +71,7 @@ export async function RecentActivity() {
   const updates = await getRecentUpdates()
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-medium">Recent Updates</CardTitle>
       </CardHeader>
