@@ -1,19 +1,18 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { PriceCheckForm } from "@/components/prices/price-check-form"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
 import { RETAILERS } from "@/lib/config/retailers"
 import { Card, CardContent } from "@/components/ui/card"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import type { ProductUrl } from "@/types/database"
-
-
 
 interface PageProps {
   searchParams: Promise<{ retailer?: string }>
 }
 
-export const metadata = { title: "Record Prices" }
+export const metadata = { title: "WahlTools | Record Prices" }
 
 export default async function PriceCheckPage({ searchParams }: PageProps) {
   const params = await searchParams
@@ -97,26 +96,16 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
     );
 
     return (
-      <div className="container mx-auto py-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/dashboard/prices">
-                <ChevronLeft className="h-4 w-4" />
-                Back to Prices
-              </Link>
-            </Button>
-          </div>
-        </div>
+      <PageContainer>
+        <PageHeader
+          title="Record Prices"
+          breadcrumbs={[
+            { label: "Prices", href: "/dashboard/prices" },
+            { label: "Record prices" },
+          ]}
+        />
 
         <div className="grid gap-6">
-          <div>
-            <h1 className="text-3xl font-bold">Record Price Check</h1>
-            <p className="text-muted-foreground">
-              Record prices for {effectiveRetailer}
-            </p>
-          </div>
-
           <div className="flex gap-2 overflow-x-auto pb-2">
             {retailersToShow.map(retailer => (
               <Button
@@ -154,24 +143,24 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
             </Card>
           )}
         </div>
-      </div>
+      </PageContainer>
     )
   } catch (error) {
     console.error('Error in PriceCheckPage:', error)
     return (
-      <div className="container mx-auto py-6 space-y-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard/prices">
-            <ChevronLeft className="h-4 w-4" />
-            Back to Prices
-          </Link>
-        </Button>
-        
+      <PageContainer>
+        <PageHeader
+          title="Record Prices"
+          breadcrumbs={[
+            { label: "Prices", href: "/dashboard/prices" },
+            { label: "Record prices" },
+          ]}
+        />
         <div className="p-6 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive">
           <h2 className="text-lg font-medium mb-2">Error Loading Products</h2>
           <p>{error instanceof Error ? error.message : 'An unexpected error occurred'}</p>
         </div>
-      </div>
+      </PageContainer>
     )
   }
 }

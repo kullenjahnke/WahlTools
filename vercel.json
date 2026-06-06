@@ -1,6 +1,5 @@
 {
   "crons": [
-    { "path": "/api/cron/price-reminder", "schedule": "0 13 * * 3" },
-    { "path": "/api/cron/price-reminder", "schedule": "0 14 * * 3" }
+    { "path": "/api/cron/price-reminder", "schedule": "0 13 * * *" }
   ]
 }

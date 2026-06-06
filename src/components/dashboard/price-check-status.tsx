@@ -2,29 +2,53 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { ArrowUpRight, CalendarClock, CheckCircle2, Clock } from "lucide-react"
+import { Chip } from "@/components/ui/chip"
+import { IconButton } from "@/components/ui/icon-button"
+import { ClipboardCheck } from "lucide-react"
 import { createClientClient } from "@/lib/supabase/client"
 import { RETAILERS } from "@/lib/config/retailers"
-import { useRouter } from "next/navigation"
+import { RETAILER_ICONS } from "@/components/icons/retailers"
+import { cn } from "@/lib/utils"
+
+type CheckState = "ok" | "warning" | "overdue"
 
 interface RetailerStatus {
   retailer: string
   lastCheck: string | null
-  status: 'ok' | 'warning' | 'overdue'
+  status: CheckState
   daysAgo: number | null
+}
+
+const STATUS_META: Record<CheckState, { label: string; chip: string; dot: string }> = {
+  ok: { label: "Current", chip: "bg-brand-muted text-brand", dot: "bg-brand" },
+  warning: {
+    label: "Due soon",
+    chip: "bg-amber-500/12 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+    dot: "bg-amber-500 dark:bg-amber-400",
+  },
+  overdue: {
+    label: "Overdue",
+    chip: "bg-destructive/12 text-destructive",
+    dot: "bg-destructive",
+  },
+}
+
+function relativeLabel(status: RetailerStatus) {
+  if (!status.lastCheck || status.daysAgo === null) return "Never"
+  if (status.daysAgo === 0) return "Today"
+  if (status.daysAgo === 1) return "Yesterday"
+  return `${status.daysAgo}d ago`
 }
 
 export function PriceCheckStatus() {
   const [retailerStatuses, setRetailerStatuses] = useState<RetailerStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
   const supabase = createClientClient()
 
   const fetchPriceCheckStatus = useCallback(async () => {
     try {
       setIsLoading(true)
-      
+
       const statuses = await Promise.all(
         RETAILERS.map(async (retailer) => {
           const { data, error } = await supabase
@@ -34,11 +58,11 @@ export function PriceCheckStatus() {
             .eq('completed', true)
             .order('completed_at', { ascending: false })
             .limit(1)
-          
+
           if (error) throw error
-          
+
           const lastCheck = data?.[0]?.completed_at || null
-          
+
           let daysAgo = null
           if (lastCheck) {
             const lastCheckDate = new Date(lastCheck)
@@ -46,28 +70,19 @@ export function PriceCheckStatus() {
             const diffTime = today.getTime() - lastCheckDate.getTime()
             daysAgo = Math.floor(diffTime / (1000 * 60 * 60 * 24))
           }
-          
-          let status: 'ok' | 'warning' | 'overdue' = 'ok'
-          
+
+          let status: CheckState = 'ok'
           if (!lastCheck) {
             status = 'overdue'
           } else if (daysAgo !== null) {
-            if (daysAgo > 14) {
-              status = 'overdue'
-            } else if (daysAgo > 7) {
-              status = 'warning'
-            }
+            if (daysAgo > 14) status = 'overdue'
+            else if (daysAgo > 7) status = 'warning'
           }
-          
-          return {
-            retailer,
-            lastCheck,
-            status,
-            daysAgo
-          }
+
+          return { retailer, lastCheck, status, daysAgo }
         })
       )
-      
+
       setRetailerStatuses(statuses)
     } catch (error) {
       console.error('Error fetching price check status:', error instanceof Error ? error.message : 'Unknown error')
@@ -78,8 +93,7 @@ export function PriceCheckStatus() {
 
   useEffect(() => {
     fetchPriceCheckStatus()
-    
-    // Subscribe to price check log updates
+
     const channel = supabase
       .channel('price-check-logs')
       .on('postgres_changes', {
@@ -90,7 +104,7 @@ export function PriceCheckStatus() {
         fetchPriceCheckStatus()
       })
       .subscribe()
-      
+
     return () => {
       supabase.removeChannel(channel)
     }
@@ -98,87 +112,68 @@ export function PriceCheckStatus() {
 
   const sortedStatuses = [...retailerStatuses].sort((a, b) => {
     const statusPriority = { overdue: 0, warning: 1, ok: 2 }
-    
     if (statusPriority[a.status] !== statusPriority[b.status]) {
       return statusPriority[a.status] - statusPriority[b.status]
     }
-    
-    if (!a.daysAgo) return -1
-    if (!b.daysAgo) return 1
-    
-    return b.daysAgo - a.daysAgo
+    return (b.daysAgo ?? Infinity) - (a.daysAgo ?? Infinity)
   })
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Price Check Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          Loading...
-        </CardContent>
-      </Card>
-    )
+  const counts = {
+    overdue: retailerStatuses.filter((s) => s.status === 'overdue').length,
+    warning: retailerStatuses.filter((s) => s.status === 'warning').length,
+    ok: retailerStatuses.filter((s) => s.status === 'ok').length,
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">Price Check Status</CardTitle>
-        <CalendarClock className="h-4 w-4 text-muted-foreground" />
+    <Card className="flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-base font-medium">Price Check Status</CardTitle>
+        <IconButton
+          label="Record prices"
+          href="/dashboard/prices/check"
+          icon={<ClipboardCheck className="size-4" />}
+          variant="outline"
+          className="size-8"
+        />
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {sortedStatuses.slice(0, 5).map((status) => (
-            <div key={status.retailer} className="flex items-center justify-between">
-              <div className="flex items-center">
-                {status.status === 'ok' && (
-                  <CheckCircle2 className="h-4 w-4 text-brand mr-2" />
-                )}
-                {status.status === 'warning' && (
-                  <Clock className="h-4 w-4 text-muted-foreground mr-2" />
-                )}
-                {status.status === 'overdue' && (
-                  <Clock className="h-4 w-4 text-destructive mr-2" />
-                )}
-                <span className="text-sm">{status.retailer}</span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {status.lastCheck ? (
-                  <span>
-                    {status.daysAgo === 0 ? 'Today' : 
-                     status.daysAgo === 1 ? 'Yesterday' : 
-                     `${status.daysAgo} days ago`}
-                  </span>
-                ) : (
-                  <span>Never checked</span>
-                )}
-              </div>
-            </div>
-          ))}
-          
-          {sortedStatuses.length === 0 && (
-            <div className="text-center py-4 text-muted-foreground">
-              <p>No price check data available</p>
-            </div>
-          )}
-          
-          <div className="mt-2 pt-2 border-t flex justify-between">
-            <span className="text-xs text-muted-foreground">
-              {sortedStatuses.filter(s => s.status === 'overdue').length} overdue
+      <CardContent className="flex flex-1 flex-col gap-4">
+        {/* Summary counts */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {(["overdue", "warning", "ok"] as const).map((key) => (
+            <span key={key} className="flex items-center gap-1.5">
+              <span className={cn("size-2 rounded-full", STATUS_META[key].dot)} />
+              {counts[key]} {STATUS_META[key].label.toLowerCase()}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground"
-              onClick={() => router.push('/dashboard/prices/check')}
-            >
-              <ArrowUpRight className="h-3 w-3 mr-1" />
-              Check Now
-            </Button>
-          </div>
+          ))}
         </div>
+
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : sortedStatuses.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No price check data available</p>
+        ) : (
+          <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+            {sortedStatuses.map((status) => {
+              const Icon = RETAILER_ICONS[status.retailer]
+              const meta = STATUS_META[status.status]
+              return (
+                <div key={status.retailer} className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                      {Icon ? (
+                        <Icon className="h-4 w-auto max-w-5" />
+                      ) : (
+                        <span className={cn("size-2 rounded-full", meta.dot)} />
+                      )}
+                    </span>
+                    <span className="truncate text-sm">{status.retailer}</span>
+                  </div>
+                  <Chip label={relativeLabel(status)} tone={meta.chip} size="sm" />
+                </div>
+              )
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

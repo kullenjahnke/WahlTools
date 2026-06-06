@@ -1,14 +1,20 @@
+import Link from "next/link"
+import { Plus, Upload } from "lucide-react"
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { EnhancedProductsList } from "@/components/products/enhanced-products-list"
 import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { IconButton } from "@/components/ui/icon-button"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 
-export const metadata = { title: "Products" }
+export const metadata = { title: "WahlTools | Products" }
 
 export default async function ProductsPage() {
   const supabase = await createSupabaseServerClient()
   
   try {
-    const [productsResponse, categoriesResponse, brandsResponse] = await Promise.all([
+    const [productsResponse, categoriesResponse] = await Promise.all([
       supabase
         .from('products')
         .select(`
@@ -36,11 +42,6 @@ export default async function ProductsPage() {
         .from('product_categories')
         .select('*')
         .order('name')
-        .limit(100),
-      supabase
-        .from('brands')
-        .select('*')
-        .order('name')
         .limit(100)
     ])
 
@@ -64,34 +65,48 @@ export default async function ProductsPage() {
       throw categoriesResponse.error
     }
 
-    if (brandsResponse.error) {
-      console.error('Error fetching brands:', brandsResponse.error)
-      throw brandsResponse.error
-    }
+    const products = productsResponse.data || []
 
     return (
-      <div className="container space-y-6">
-        <h1 className="text-3xl font-bold">Products</h1>
-        <EnhancedProductsList 
-          products={productsResponse.data || []} 
-          categories={categoriesResponse.data || []}
-          brands={brandsResponse.data || []}
+      <PageContainer>
+        <PageHeader
+          title="Products"
+          actions={
+            <>
+              <IconButton
+                label="Import products"
+                href="/dashboard/products/import"
+                icon={<Upload className="size-4" />}
+                variant="outline"
+              />
+              <Button asChild>
+                <Link href="/dashboard/products/new">
+                  <Plus className="size-4" />
+                  Add product
+                </Link>
+              </Button>
+            </>
+          }
         />
-      </div>
+        <EnhancedProductsList
+          products={products}
+          categories={categoriesResponse.data || []}
+        />
+      </PageContainer>
     )
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     console.error('Error in ProductsPage:', error)
     
     return (
-      <div className="p-4 md:p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
-        <Card className="p-6 mt-6">
+      <PageContainer>
+        <PageHeader title="Products" />
+        <Card className="p-6">
           <div className="text-destructive">
             {errorMessage || 'Error loading products. Please try refreshing the page.'}
           </div>
         </Card>
-      </div>
+      </PageContainer>
     )
   }
 }

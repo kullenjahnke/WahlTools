@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import {
   Table,
   TableBody,
@@ -12,7 +12,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
+import { Chip } from "@/components/ui/chip"
+import { Switch } from "@/components/ui/switch"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -21,19 +23,22 @@ import {
 } from "@/components/ui/select"
 import { createClientClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { format, subDays } from "date-fns"
+import { format } from "date-fns"
 import { Product, Price } from "@/types/database"
 import { RETAILERS } from "@/lib/config/retailers"
+import { daysSince, FRESHNESS_THRESHOLDS } from "@/lib/freshness"
+import { BRANDS, productMatchesBrand } from "@/lib/config/brands"
+import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Search,
-  Tag,
   Filter,
   Package,
-  Clock,
+  Sparkles,
+  Tag,
   ArrowUp,
   ArrowDown,
-  Minus
+  Minus,
 } from "lucide-react"
 
 type ProductWithPrices = Product & {
@@ -43,31 +48,83 @@ type ProductWithPrices = Product & {
 interface RetailerPriceTableProps {
   products: ProductWithPrices[]
   categories?: { id: string; name: string }[]
+  /** Rendered at the far right of the filter toolbar (e.g. an Export button). */
+  exportSlot?: ReactNode
 }
 
-export function RetailerPriceTable({ products, categories = [] }: RetailerPriceTableProps) {
+// Cell state model (matches the on-table labels):
+//  - active:      a real price updated within the staleness window
+//  - stale:       a real price not re-checked in a while ("Last seen")
+//  - unavailable: explicitly marked N/A (price 0, not sold out) — no longer sold
+type CellState = "active" | "stale" | "unavailable"
+type FreshnessFilter = "all" | CellState
+
+const STALE_DAYS = FRESHNESS_THRESHOLDS.staleDays
+
+const FRESHNESS_LABEL: Record<CellState, string> = {
+  active: "Active",
+  stale: "Stale",
+  unavailable: "Unavailable",
+}
+
+function isSoldOutPrice(p: Price) {
+  return p.status === "out_of_stock" || p.is_sold_out === true
+}
+
+function isNAPrice(p: Price) {
+  return !isSoldOutPrice(p) && p.price <= 0
+}
+
+function isStalePrice(p: Price) {
+  return !isNAPrice(p) && (daysSince(p.timestamp) ?? 0) >= STALE_DAYS
+}
+
+function priceState(p: Price): CellState {
+  if (isNAPrice(p)) return "unavailable"
+  return (daysSince(p.timestamp) ?? 0) >= STALE_DAYS ? "stale" : "active"
+}
+
+export function RetailerPriceTable({ products, categories = [], exportSlot }: RetailerPriceTableProps) {
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [brandFilter, setBrandFilter] = useState<string>("all")
   const [retailerFilter, setRetailerFilter] = useState<string>("all")
-  const [outOfDateFilter, setOutOfDateFilter] = useState<number | null>(null)
+  const [freshnessFilter, setFreshnessFilter] = useState<FreshnessFilter>("all")
+  const [highlightFreshness, setHighlightFreshness] = useState(false)
   const router = useRouter()
   const supabase = createClientClient()
+
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    categoryFilter !== "all" ||
+    brandFilter !== "all" ||
+    retailerFilter !== "all" ||
+    freshnessFilter !== "all"
+
+  const resetFilters = () => {
+    setSearch("")
+    setCategoryFilter("all")
+    setBrandFilter("all")
+    setRetailerFilter("all")
+    setFreshnessFilter("all")
+  }
 
   // Resolve category_id -> name, and list only categories present in the products
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
   const categoryOptions = Array.from(
     new Set(products.map((p) => p.category_id).filter(Boolean))
   ).map((id) => ({ id, name: categoryMap.get(id) || id }))
-  
+
   // Get unique retailers that have associations with any product
   const relevantRetailers = Array.from(new Set(
-    products.flatMap(product => 
+    products.flatMap(product =>
       product.prices?.map(p => p.retailer) || []
     )
   )).filter(Boolean);
-  
+
   // Use these for the retailer filter and headers
   const availableRetailers = relevantRetailers.length > 0 ? relevantRetailers : RETAILERS;
+  const displayedRetailers = retailerFilter === "all" ? availableRetailers : [retailerFilter]
 
   useEffect(() => {
     // Subscribe to real-time updates
@@ -92,7 +149,7 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
     const retailerPrices = prices
       .filter(p => p.retailer === retailer && p.id !== latestPrice.id)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    
+
     return retailerPrices[0] || null
   }
 
@@ -102,11 +159,12 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
     return change
   }
 
-  // Price deltas use neutral directional treatment (muted ▲/▼), not red/green —
-  // a price moving up or down isn't inherently good or bad to the user.
+  // Restored semantic coloring: a price drop is good (green), a rise is bad (red).
   const getPriceChangeColor = (change: number | null) => {
-    if (change === null) return ""
-    return "text-muted-foreground"
+    if (change === null || change === 0) return "text-muted-foreground"
+    return change < 0
+      ? "text-emerald-600 dark:text-emerald-400"
+      : "text-destructive"
   }
 
   const getPriceChangeIcon = (change: number | null) => {
@@ -115,33 +173,6 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
     if (change < 0) return <ArrowDown className="h-3 w-3 mr-0.5" />
     return <Minus className="h-3 w-3 mr-0.5" />
   }
-
-  const filteredProducts = products.filter(product => {
-    // Apply text search filter
-    const searchMatch = search.trim() === "" || 
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
-      (product.aliases?.some(alias => alias.toLowerCase().includes(search.toLowerCase())) ?? false)
-
-    // Apply category filter
-    const categoryMatch = categoryFilter === "all" || product.category_id === categoryFilter
-
-    // Apply retailer filter
-    const retailerMatch = retailerFilter === "all" || 
-      product.prices?.some(p => p.retailer === retailerFilter)
-
-    // Apply out-of-date filter
-    let outOfDateMatch = true
-    if (outOfDateFilter !== null) {
-      const cutoffDate = subDays(new Date(), outOfDateFilter)
-      const hasRecentPrice = product.prices?.some(p => 
-        new Date(p.timestamp) >= cutoffDate &&
-        (retailerFilter === "all" || p.retailer === retailerFilter)
-      )
-      outOfDateMatch = !hasRecentPrice
-    }
-
-    return searchMatch && categoryMatch && retailerMatch && outOfDateMatch
-  })
 
   const getLatestPrice = (prices: Price[] | undefined, retailer: string) => {
     if (!prices) return null;
@@ -154,11 +185,52 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
     }, retailerPrices[0])
   }
 
+  const getLatestUpdate = (product: ProductWithPrices) =>
+    product.prices && product.prices.length > 0
+      ? product.prices.reduce((latest, current) => {
+          if (!latest) return current
+          return new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest
+        }, product.prices[0])
+      : null
+
+  const filteredProducts = products.filter(product => {
+    // Apply text search filter
+    const searchMatch = search.trim() === "" ||
+      product.name.toLowerCase().includes(search.toLowerCase()) ||
+      (product.aliases?.some(alias => alias.toLowerCase().includes(search.toLowerCase())) ?? false)
+
+    // Apply category filter
+    const categoryMatch = categoryFilter === "all" || product.category_id === categoryFilter
+
+    // Apply brand filter
+    const brandMatch = brandFilter === "all" || productMatchesBrand(product, brandFilter)
+
+    // Apply retailer filter
+    const retailerMatch = retailerFilter === "all" ||
+      product.prices?.some(p => p.retailer === retailerFilter)
+
+    // Apply freshness filter per retailer-cell: when a retailer is selected, use
+    // that retailer's latest price; otherwise match if ANY retailer's latest
+    // price for this product is in the selected state.
+    let freshnessMatch = true
+    if (freshnessFilter !== "all") {
+      const retailersToCheck = retailerFilter === "all"
+        ? Array.from(new Set(product.prices?.map(p => p.retailer) || []))
+        : [retailerFilter]
+      freshnessMatch = retailersToCheck.some(r => {
+        const latest = getLatestPrice(product.prices, r)
+        return !!latest && priceState(latest) === freshnessFilter
+      })
+    }
+
+    return searchMatch && categoryMatch && brandMatch && retailerMatch && freshnessMatch
+  })
+
   return (
     <div className="space-y-4">
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:gap-4 items-start md:items-center">
+          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:gap-4 md:items-center md:flex-wrap">
             <div className="w-full md:w-auto relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -186,6 +258,22 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                 </Select>
               </div>
 
+              {/* Brand Filter */}
+              <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                <Select value={brandFilter} onValueChange={setBrandFilter}>
+                  <SelectTrigger className="w-[140px] border-none shadow-none bg-transparent">
+                    <SelectValue placeholder="Brand" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Brands</SelectItem>
+                    {BRANDS.map((brand) => (
+                      <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Retailer Filter */}
               <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
                 <Package className="h-4 w-4 text-muted-foreground" />
@@ -202,35 +290,48 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
                 </Select>
               </div>
 
-              {/* Age Filter */}
+              {/* Freshness Filter */}
               <div className="flex items-center gap-1 rounded-md border border-input bg-background px-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
                 <Select
-                  value={outOfDateFilter?.toString() || "none"}
-                  onValueChange={(val) => setOutOfDateFilter(val === "none" ? null : parseInt(val))}
+                  value={freshnessFilter}
+                  onValueChange={(val) => setFreshnessFilter(val as FreshnessFilter)}
                 >
-                  <SelectTrigger className="w-[140px] border-none shadow-none bg-transparent">
-                    <SelectValue placeholder="Price Age" />
+                  <SelectTrigger className="w-[160px] border-none shadow-none bg-transparent">
+                    <SelectValue placeholder="Freshness" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">All Prices</SelectItem>
-                    <SelectItem value="7">Older than 7 days</SelectItem>
-                    <SelectItem value="14">Older than 14 days</SelectItem>
-                    <SelectItem value="30">Older than 30 days</SelectItem>
+                    <SelectItem value="all">All freshness</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="stale">Stale</SelectItem>
+                    <SelectItem value="unavailable">Unavailable (N/A)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Freshness highlight toggle */}
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-foreground">
+                <Switch
+                  checked={highlightFreshness}
+                  onCheckedChange={setHighlightFreshness}
+                  aria-label="Highlight freshness"
+                />
+                Highlight freshness
+              </label>
             </div>
 
-            <div className="w-full md:flex-1 flex justify-start md:justify-end">
-              <Button
-                variant="brand"
-                onClick={() => router.push('/dashboard/prices/check')}
-                className="w-full md:w-auto whitespace-nowrap"
-              >
-                <Tag className="mr-2 h-4 w-4" />
-                Record New Prices
-              </Button>
+            <div className="flex items-center gap-2 md:ml-auto">
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Reset filters
+                </Button>
+              )}
+              {exportSlot}
             </div>
           </div>
         </CardContent>
@@ -243,10 +344,10 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
               <TableHead className="sticky left-0 z-20 w-[200px] min-w-[200px] border-r border-border bg-muted">
                 Product
               </TableHead>
-              <TableHead className="w-[120px] min-w-[120px]">
+              <TableHead className="w-[140px] min-w-[140px]">
                 Category
               </TableHead>
-              {(retailerFilter === "all" ? availableRetailers : [retailerFilter]).map(retailer => (
+              {displayedRetailers.map(retailer => (
                 <TableHead
                   key={retailer}
                   className="w-[140px] min-w-[140px] text-center"
@@ -261,100 +362,107 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
           </TableHeader>
           <TableBody>
             {filteredProducts.map((product) => {
-              const latestUpdate = product.prices?.reduce((latest, current) => {
-                if (!latest) return current
-                return new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest
-              }, product.prices[0])
+              const latestUpdate = getLatestUpdate(product)
+              const categoryName = categoryMap.get(product.category_id)
 
               return (
                 <TableRow key={product.id}>
                   <TableCell className="sticky left-0 z-10 bg-background border-r border-border font-medium max-w-[200px]">
                     <div className="truncate">{product.name}</div>
                   </TableCell>
-                  <TableCell className="max-w-[120px] text-muted-foreground">
-                    <div className="truncate">{categoryMap.get(product.category_id) || "—"}</div>
+                  <TableCell className="max-w-[140px]">
+                    {categoryName ? (
+                      <Chip label={categoryName} size="lg" colorKey={product.category_id} />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
-                  {(retailerFilter === "all" ? availableRetailers : [retailerFilter]).map(retailer => {
+                  {displayedRetailers.map(retailer => {
                     const latestPrice = getLatestPrice(product.prices, retailer)
-                    // Check if this product has an association with this retailer
-                    // Based on existing price records
-                    const hasRetailerAssociation = latestPrice !== null;
+                    const hasRetailerAssociation = latestPrice !== null
+                    const soldOut = !!latestPrice && isSoldOutPrice(latestPrice)
+                    const na = !!latestPrice && isNAPrice(latestPrice)
+                    const stale = !!latestPrice && isStalePrice(latestPrice)
+                    // When a freshness filter is active, only cells in that state
+                    // are shown; the rest fall back to the empty-cell styling so
+                    // the filter acts as a spotlight.
+                    const matchesFilter =
+                      freshnessFilter === "all" ||
+                      (!!latestPrice && priceState(latestPrice) === freshnessFilter)
+                    const showCell = hasRetailerAssociation && !!latestPrice && matchesFilter
+                    // Faint tinted backgrounds (green for active, amber for stale,
+                    // gray for N/A) only appear when the "Highlight freshness"
+                    // toggle is on.
+                    const cellTint = showCell && highlightFreshness
+                      ? na
+                        ? "bg-muted/50"
+                        : stale
+                          ? "bg-amber-500/10 dark:bg-amber-400/10"
+                          : "bg-emerald-500/10 dark:bg-emerald-400/10"
+                      : ""
 
                     return (
-                      <TableCell key={retailer} className="text-center align-middle">
-                        {hasRetailerAssociation ? (
-                          latestPrice ? (
-                            (latestPrice.status === 'out_of_stock' || latestPrice.is_sold_out === true || (latestPrice.price === 0 && latestPrice.is_sold_out !== false)) ? (
-                              <div className="flex flex-col items-center gap-1">
-                                <Badge variant="muted">Sold out</Badge>
-                                <div className="text-xs text-muted-foreground">
-                                  {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col items-center gap-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm font-semibold tabular-nums">${latestPrice.price.toFixed(2)}</span>
-                                  {latestPrice.is_promotion && (
-                                    <Badge variant="brand" className="px-1.5 py-0 text-[10px]">Promo</Badge>
-                                  )}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
-                                </div>
-                                {/* Price change indicator (neutral) */}
-                                {(() => {
-                                  const previousPrice = getPreviousPrice(product.prices, retailer, latestPrice)
-                                  const priceChange = calculatePriceChange(latestPrice, previousPrice)
-                                  const changeColor = getPriceChangeColor(priceChange)
-                                  const changeIcon = getPriceChangeIcon(priceChange)
-
-                                  if (priceChange !== null) {
-                                    return (
-                                      <div className={`flex items-center text-xs tabular-nums ${changeColor}`}>
-                                        {changeIcon}
-                                        {Math.abs(priceChange).toFixed(1)}%
-                                      </div>
-                                    )
-                                  }
-                                  return null
-                                })()}
-                              </div>
-                            )
-                          ) : (
-                            // Product is associated with retailer but price is missing
+                      <TableCell
+                        key={retailer}
+                        className={cn("text-center align-middle", cellTint)}
+                      >
+                        {showCell && latestPrice ? (
+                          soldOut || na ? (
                             <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs text-muted-foreground">Missing</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs text-brand hover:text-brand"
-                                onClick={() => router.push(`/dashboard/prices/check?retailer=${encodeURIComponent(retailer)}&product=${product.id}`)}
-                              >
-                                Add price
-                              </Button>
+                              <Chip
+                                label={soldOut ? "Sold out" : "N/A"}
+                                tone="neutral"
+                                size="lg"
+                              />
+                              <div className="text-xs text-muted-foreground">
+                                {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-semibold tabular-nums">${latestPrice.price.toFixed(2)}</span>
+                                {latestPrice.is_promotion && (
+                                  <Badge variant="brand" className="px-1.5 py-0 text-[10px]">Promo</Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {stale ? "Last seen " : ""}
+                                {format(new Date(latestPrice.timestamp), 'MMM d, yyyy')}
+                              </div>
+                              {/* Price change indicator (semantic green/red) */}
+                              {(() => {
+                                const previousPrice = getPreviousPrice(product.prices, retailer, latestPrice)
+                                const priceChange = calculatePriceChange(latestPrice, previousPrice)
+                                if (priceChange !== null) {
+                                  return (
+                                    <div className={`flex items-center text-xs tabular-nums ${getPriceChangeColor(priceChange)}`}>
+                                      {getPriceChangeIcon(priceChange)}
+                                      {Math.abs(priceChange).toFixed(1)}%
+                                    </div>
+                                  )
+                                }
+                                return null
+                              })()}
                             </div>
                           )
                         ) : (
-                          // Product is not associated with this retailer
                           <span className="text-sm text-muted-foreground/50">—</span>
                         )}
                       </TableCell>
                     )
                   })}
                   <TableCell className="text-sm text-muted-foreground tabular-nums">
-                    {latestUpdate ? (
-                      format(new Date(latestUpdate.timestamp), 'MMM d, yyyy h:mm a')
-                    ) : (
-                      "-"
-                    )}
+                    {latestUpdate
+                      ? format(new Date(latestUpdate.timestamp), 'MMM d, yyyy')
+                      : "—"}
                   </TableCell>
                 </TableRow>
               )
             })}
             {filteredProducts.length === 0 && (
               <TableRow>
-                <TableCell colSpan={availableRetailers.length + 3} className="text-center py-8">
+                <TableCell colSpan={displayedRetailers.length + 3} className="text-center py-8">
                   <div className="flex flex-col items-center justify-center">
                     <Package className="h-12 w-12 text-muted-foreground opacity-30 mb-2" />
                     <p className="text-muted-foreground">No products found</p>
@@ -371,16 +479,22 @@ export function RetailerPriceTable({ products, categories = [] }: RetailerPriceT
           Showing <span className="font-medium text-foreground">{filteredProducts.length}</span> of <span className="font-medium text-foreground">{products.length}</span> products
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {outOfDateFilter && (
+          {freshnessFilter !== "all" && (
             <Badge variant="secondary">
-              <Clock className="h-3 w-3 mr-1" />
-              Older than {outOfDateFilter} days
+              <Sparkles className="h-3 w-3 mr-1" />
+              {FRESHNESS_LABEL[freshnessFilter]}
             </Badge>
           )}
           {categoryFilter !== "all" && (
             <Badge variant="secondary">
               <Filter className="h-3 w-3 mr-1" />
               {categoryMap.get(categoryFilter) || categoryFilter}
+            </Badge>
+          )}
+          {brandFilter !== "all" && (
+            <Badge variant="secondary">
+              <Tag className="h-3 w-3 mr-1" />
+              {brandFilter}
             </Badge>
           )}
           {retailerFilter !== "all" && (

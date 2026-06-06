@@ -1,13 +1,14 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Edit2, Package2 } from "lucide-react"
 import Image from "next/image"
 import { format } from "date-fns"
+import { PageContainer } from "@/components/layout/page-container"
+import { PageHeader } from "@/components/layout/page-header"
 import { BigYIcon } from "@/components/icons/retailers/big-y"
 import { GiantEagleIcon } from "@/components/icons/retailers/giant-eagle"
 import { GiantFoodStoresIcon } from "@/components/icons/retailers/giant-food-stores"
@@ -97,18 +98,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const mainImage = product.product_images?.find((img: ProductImage) => img.main)
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-4">
-        <Button variant="ghost" asChild>
-          <Link href="/dashboard/products">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Products
-          </Link>
-        </Button>
-      </div>
-
-      <div className="container mx-auto px-6 pt-6">
-        <div className="grid gap-6 grid-cols-12">
+    <PageContainer>
+      <PageHeader
+        title={product.name}
+        breadcrumbs={[
+          { label: "Products", href: "/dashboard/products" },
+          { label: "Details" },
+        ]}
+        actions={
+          <Button asChild>
+            <Link href={`/dashboard/products/${id}`}>
+              <Edit2 className="size-4" />
+              Edit product
+            </Link>
+          </Button>
+        }
+      />
+      <div className="grid gap-6 grid-cols-12">
           {/* Sidebar */}
           <div className="col-span-12 md:col-span-4 space-y-6">
             <Card>
@@ -128,22 +134,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   )}
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <h1 className="text-2xl font-bold">{product.name}</h1>
-                    <p className="text-muted-foreground mt-1">
-                      Added {format(new Date(product.created_at), 'MMMM d, yyyy')}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button asChild>
-                      <Link href={`/dashboard/products/${id}`}>
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        Edit Product
-                      </Link>
-                    </Button>
-                  </div>
+                <div>
+                  <p className="text-base font-semibold">{product.name}</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Added {format(new Date(product.created_at), 'MMMM d, yyyy')}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -248,7 +243,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </Card>
           </div>
         </div>
-      </div>
-    </div>
+    </PageContainer>
   )
-} 
+}
