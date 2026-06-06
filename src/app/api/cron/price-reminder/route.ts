@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
-import { shouldSendReminder } from "@/lib/email/schedule"
+import { getDetroitParts } from "@/lib/email/schedule"
+import { createSupabaseAdminClient } from "@/lib/supabase/admin"
+import { normalizeSettings, type ReminderSettings } from "@/lib/email/settings"
 import { sendPriceReminder } from "@/lib/email/send-price-reminder"
+import { sendFollowupReminder } from "@/lib/email/send-followup"
+import { sendNADigest } from "@/lib/email/send-na-digest"
+import { getStaleRetailers, getRecentNAProducts } from "@/lib/email/reminder-data"
 
 export const dynamic = "force-dynamic"
 
+// Runs hourly (see vercel.json). Reads the editable schedule from
+// reminder_settings and fires the weekly reminder, the follow-up, and the
+// N/A digest when the current America/Detroit day + hour match.
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET
   const auth = request.headers.get("authorization")
@@ -13,16 +21,50 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Unauthorized", { status: 401 })
   }
 
-  if (!shouldSendReminder(new Date())) {
-    // Not the 9 AM Wednesday Detroit window — the other weekly cron will handle it.
-    return new NextResponse(null, { status: 204 })
+  let admin
+  try {
+    admin = createSupabaseAdminClient()
+  } catch (error) {
+    console.error("reminder cron: admin client unavailable:", error)
+    return new NextResponse("Admin client unavailable", { status: 500 })
   }
 
+  const { data } = await admin.from("reminder_settings").select("*").eq("id", 1).maybeSingle()
+  const settings = normalizeSettings(data as Partial<ReminderSettings> | null)
+
+  const { weekday, hour } = getDetroitParts(new Date())
+  const actions: Record<string, unknown> = {}
+
   try {
-    const result = await sendPriceReminder()
-    return NextResponse.json({ sent: true, id: result.id })
+    // Weekly reminder
+    if (weekday === settings.weekly_day && hour === settings.weekly_hour) {
+      const r = await sendPriceReminder({ to: settings.recipients })
+      actions.weekly = r.id
+    }
+
+    // Follow-up + N/A digest: `followup_days_after` days after the weekly day,
+    // at the same hour.
+    const followupDay = (settings.weekly_day + settings.followup_days_after) % 7
+    if (weekday === followupDay && hour === settings.weekly_hour) {
+      if (settings.followup_enabled) {
+        const stale = await getStaleRetailers(admin, settings.stale_threshold_days)
+        if (stale.length > 0) {
+          const r = await sendFollowupReminder(settings.recipients, stale)
+          actions.followup = { id: r.id, count: stale.length }
+        }
+      }
+      if (settings.na_digest_enabled) {
+        const na = await getRecentNAProducts(admin, 7)
+        if (na.length > 0) {
+          const r = await sendNADigest(settings.na_recipients, na)
+          actions.naDigest = { id: r.id, count: na.length }
+        }
+      }
+    }
   } catch (error) {
-    console.error("price-reminder cron failed:", error)
+    console.error("reminder cron send failed:", error)
     return new NextResponse("Send failed", { status: 500 })
   }
+
+  return NextResponse.json({ ran: true, weekday, hour, actions })
 }
