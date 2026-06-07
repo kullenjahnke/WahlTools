@@ -259,7 +259,9 @@ export async function getRetailerCheckStatus(): Promise<Record<string, string>> 
     for (const row of data || []) {
       const at = (row.completed_at as string | null) || (row.check_date as string)
       if (!at) continue
-      if (!map[row.retailer] || at > map[row.retailer]) map[row.retailer] = at
+      if (!map[row.retailer] || new Date(at).getTime() > new Date(map[row.retailer]).getTime()) {
+        map[row.retailer] = at
+      }
     }
     return map
   } catch (error) {

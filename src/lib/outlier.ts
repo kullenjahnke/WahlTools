@@ -26,6 +26,7 @@ export function median(values: number[]): number {
  * Primary rule: > ±OUTLIER_LAST_PRICE_PCT vs the most recent price at the SAME retailer.
  * Fallback (no same-retailer history): > ±OUTLIER_MEDIAN_PCT vs the cross-retailer
  * median of the latest price per retailer. Returns null when not an outlier.
+ * Returns null for non-positive prices (price <= 0 is the app's N/A convention).
  */
 export function detectPriceOutlier(params: {
   retailer: string
@@ -53,7 +54,7 @@ export function detectPriceOutlier(params: {
     if (!latestByRetailer.has(h.retailer)) latestByRetailer.set(h.retailer, h.price)
   }
   const med = median([...latestByRetailer.values()])
-  if (!med) return null
+  if (med === 0) return null
   const pct = ((newPrice - med) / med) * 100
   return Math.abs(pct) > OUTLIER_MEDIAN_PCT
     ? { isOutlier: true, pct, reference: med, basis: "median" }
