@@ -61,6 +61,16 @@ type DatePreset = "4w" | "q" | "all" | "custom"
 export function ExportModal({ products, categories }: ExportModalProps) {
   const [open, setOpen] = useState(false)
 
+  // Only categories that actually have active products
+  const availableCategories = useMemo(() => {
+    const ids = new Set(
+      products
+        .filter((p) => (p as { is_active?: boolean | null }).is_active !== false)
+        .map((p) => p.category_id)
+    )
+    return categories.filter((c) => ids.has(c.id))
+  }, [products, categories])
+
   // Format
   const [fmt, setFmt] = useState<"xlsx" | "csv">("xlsx")
 
@@ -77,32 +87,29 @@ export function ExportModal({ products, categories }: ExportModalProps) {
     new Set(BRANDS as readonly string[])
   )
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
-    new Set(categories.map((c) => c.id))
+    new Set(availableCategories.map((c) => c.id))
   )
   const [selectedColumns, setSelectedColumns] =
     useState<Set<ColumnKey>>(new Set(DEFAULT_COLUMNS))
 
-  // Track which filter sections have been changed (for contextual Reset)
-  const [touched, setTouched] = useState<Set<FilterSection>>(new Set())
-
-  const markTouched = (section: FilterSection) =>
-    setTouched((prev) => new Set([...prev, section]))
+  // A section is "modified" (and shows its Reset) whenever its selection is not
+  // the full default set. Re-selecting back to the full set hides Reset again.
+  const isModified = (section: FilterSection) => {
+    if (section === "retailers") return selectedRetailers.size !== (RETAILERS as readonly string[]).length
+    if (section === "brands") return selectedBrands.size !== (BRANDS as readonly string[]).length
+    if (section === "categories") return selectedCategories.size !== availableCategories.length
+    return selectedColumns.size !== DEFAULT_COLUMNS.length
+  }
 
   const resetSection = (section: FilterSection) => {
     if (section === "retailers") setSelectedRetailers(new Set(RETAILERS as readonly string[]))
     if (section === "brands") setSelectedBrands(new Set(BRANDS as readonly string[]))
-    if (section === "categories") setSelectedCategories(new Set(categories.map((c) => c.id)))
+    if (section === "categories") setSelectedCategories(new Set(availableCategories.map((c) => c.id)))
     if (section === "columns") setSelectedColumns(new Set(DEFAULT_COLUMNS))
-    setTouched((prev) => {
-      const next = new Set(prev)
-      next.delete(section)
-      return next
-    })
   }
 
   // Toggle helpers
   const toggleRetailer = (retailer: string) => {
-    markTouched("retailers")
     setSelectedRetailers((prev) => {
       const next = new Set(prev)
       if (next.has(retailer)) next.delete(retailer)
@@ -112,7 +119,6 @@ export function ExportModal({ products, categories }: ExportModalProps) {
   }
 
   const toggleBrand = (brand: string) => {
-    markTouched("brands")
     setSelectedBrands((prev) => {
       const next = new Set(prev)
       if (next.has(brand)) next.delete(brand)
@@ -122,7 +128,6 @@ export function ExportModal({ products, categories }: ExportModalProps) {
   }
 
   const toggleCategory = (catId: string) => {
-    markTouched("categories")
     setSelectedCategories((prev) => {
       const next = new Set(prev)
       if (next.has(catId)) next.delete(catId)
@@ -132,7 +137,6 @@ export function ExportModal({ products, categories }: ExportModalProps) {
   }
 
   const toggleColumn = (col: ColumnKey) => {
-    markTouched("columns")
     setSelectedColumns((prev) => {
       const next = new Set(prev)
       if (next.has(col)) next.delete(col)
@@ -140,6 +144,15 @@ export function ExportModal({ products, categories }: ExportModalProps) {
       return next
     })
   }
+
+  // Shared chip styling — clear on/off contrast (filled brand vs dashed/dimmed)
+  const chipClass = (on: boolean) =>
+    cn(
+      "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+      on
+        ? "border-[hsl(var(--brand))] bg-[hsl(var(--brand)/0.15)] text-[hsl(var(--brand))] font-semibold"
+        : "border-dashed border-border bg-transparent text-muted-foreground opacity-60 hover:opacity-100"
+    )
 
   // Category name map
   const categoryMap = useMemo(
@@ -426,7 +439,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
           <div className="space-y-2">
             <SectionHeader
               label="Retailers"
-              touched={touched.has("retailers")}
+              modified={isModified("retailers")}
               onReset={() => resetSection("retailers")}
             />
             <div className="flex flex-wrap gap-1.5">
@@ -438,12 +451,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
                     key={retailer}
                     type="button"
                     onClick={() => toggleRetailer(retailer)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
-                      on
-                        ? "border-[--brand]/40 bg-[--brand]/5 text-[--brand]"
-                        : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                    )}
+                    className={chipClass(on)}
                   >
                     <span
                       className="inline-block h-2 w-2 shrink-0 rounded-full"
@@ -460,7 +468,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
           <div className="space-y-2">
             <SectionHeader
               label="Brands"
-              touched={touched.has("brands")}
+              modified={isModified("brands")}
               onReset={() => resetSection("brands")}
             />
             <div className="flex flex-wrap gap-1.5">
@@ -472,12 +480,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
                     key={brand}
                     type="button"
                     onClick={() => toggleBrand(brand)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
-                      on
-                        ? "border-[--brand]/40 bg-[--brand]/5 text-[--brand]"
-                        : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                    )}
+                    className={chipClass(on)}
                   >
                     {/* Square swatch (vs. round for retailers) */}
                     <span
@@ -495,23 +498,18 @@ export function ExportModal({ products, categories }: ExportModalProps) {
           <div className="space-y-2">
             <SectionHeader
               label="Categories"
-              touched={touched.has("categories")}
+              modified={isModified("categories")}
               onReset={() => resetSection("categories")}
             />
             <div className="flex flex-wrap gap-1.5">
-              {categories.map((cat) => {
+              {availableCategories.map((cat) => {
                 const on = selectedCategories.has(cat.id)
                 return (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => toggleCategory(cat.id)}
-                    className={cn(
-                      "inline-flex items-center rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
-                      on
-                        ? "border-[--brand]/40 bg-[--brand]/5 text-[--brand]"
-                        : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                    )}
+                    className={chipClass(on)}
                   >
                     {cat.name}
                   </button>
@@ -525,7 +523,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
             <div className="space-y-2">
               <SectionHeader
                 label="Columns"
-                touched={touched.has("columns")}
+                modified={isModified("columns")}
                 onReset={() => resetSection("columns")}
               />
               <div className="flex flex-wrap gap-1.5">
@@ -536,12 +534,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
                       key={col.key}
                       type="button"
                       onClick={() => toggleColumn(col.key)}
-                      className={cn(
-                        "inline-flex items-center rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
-                        on
-                          ? "border-[--brand]/40 bg-[--brand]/5 text-[--brand]"
-                          : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                      )}
+                      className={chipClass(on)}
                     >
                       {col.label}
                     </button>
@@ -605,11 +598,11 @@ export function ExportModal({ products, categories }: ExportModalProps) {
 // Small sub-component for consistent section header + contextual Reset button
 function SectionHeader({
   label,
-  touched,
+  modified,
   onReset,
 }: {
   label: string
-  touched: boolean
+  modified: boolean
   onReset: () => void
 }) {
   return (
@@ -617,7 +610,7 @@ function SectionHeader({
       <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      {touched && (
+      {modified && (
         <button
           type="button"
           onClick={onReset}
