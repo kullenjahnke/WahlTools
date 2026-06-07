@@ -1,6 +1,11 @@
 import type { Price, Product } from "@/types/database"
 
-/** Monday-based week label "YYYY-MM-DD/YYYY-MM-DD" (Mon..Sun) for a date. */
+/**
+ * Monday-based week label "YYYY-MM-DD/YYYY-MM-DD" (Mon..Sun) for a date.
+ * NOTE: bucketing uses the browser's LOCAL calendar date (getFullYear/Month/Date),
+ * so week boundaries align with local midnight rather than UTC — this matches the
+ * US-Eastern price-check-day convention for this tool.
+ */
 export function weekKey(d: Date): string {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
   const day = (date.getUTCDay() + 6) % 7 // Mon=0
@@ -41,10 +46,13 @@ export function buildPriceMatrix(args: {
       )
       if (rows.length === 0) continue
       colProducts.push({ id: product.id, name: product.name, brandName: productBrand(product) })
+      // Ascending by time so the chronologically newest price wins its week,
+      // independent of the order rows arrive from the DB.
+      rows.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       for (const pr of rows) {
         const wk = weekKey(new Date(pr.timestamp))
         weeksSet.add(wk)
-        ;(value[wk] ||= {})[product.id] = pr.price // last write per week wins
+        ;(value[wk] ||= {})[product.id] = pr.price // newest entry in the week wins
       }
     }
 

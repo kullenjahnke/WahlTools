@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RETAILERS, RETAILER_COLORS, orderRetailers } from "@/lib/config/retailers"
-import { BRANDS, productMatchesBrand } from "@/lib/config/brands"
+import { BRANDS, BRAND_HEX, productMatchesBrand } from "@/lib/config/brands"
 import { buildPriceMatrix } from "@/lib/export/price-matrix"
 import { exportWorkbook } from "@/lib/export/excel"
 import { Product, Price } from "@/types/database"
@@ -53,13 +53,7 @@ const DEFAULT_COLUMNS: ColumnKey[] = [
   "notes",
 ]
 
-// Brand colors matching the Excel header palette (hex for UI swatches)
-const BRAND_HEX: Record<string, string> = {
-  "Wahlburgers": "#44B549",
-  "Catelli": "#2563EB",
-  "Grillo's": "#F59E0B",
-  "Schweid & Sons": "#E11D48",
-}
+const MS_PER_DAY = 86_400_000
 
 type FilterSection = "retailers" | "brands" | "categories" | "columns"
 type DatePreset = "4w" | "q" | "all" | "custom"
@@ -157,19 +151,22 @@ export function ExportModal({ products, categories }: ExportModalProps) {
   const range = useMemo(() => {
     const end = new Date()
     let start: Date | null = null
-    if (preset === "4w") start = new Date(Date.now() - 28 * 864e5)
-    else if (preset === "q") start = new Date(Date.now() - 90 * 864e5)
+    if (preset === "4w") start = new Date(Date.now() - 28 * MS_PER_DAY)
+    else if (preset === "q") start = new Date(Date.now() - 90 * MS_PER_DAY)
     else if (preset === "all") start = null
     else { start = startDate ? new Date(startDate + "T00:00:00") : null }
     const e = preset === "custom" && endDate ? new Date(endDate + "T23:59:59") : end
     return { start, end: e }
   }, [preset, startDate, endDate])
 
-  const inRange = (ts: string) => {
-    const t = new Date(ts)
-    if (range.start && t < range.start) return false
-    return t <= range.end
-  }
+  const inRange = useCallback(
+    (ts: string) => {
+      const t = new Date(ts)
+      if (range.start && t < range.start) return false
+      return t <= range.end
+    },
+    [range]
+  )
 
   // Products filtered by brand + category
   const filteredProducts = useMemo(
@@ -231,13 +228,12 @@ export function ExportModal({ products, categories }: ExportModalProps) {
     })
 
     return { rows, filteredCount: rows.length }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     filteredProducts,
     selectedRetailers,
     selectedColumns,
     categoryMap,
-    range,
+    inRange,
   ])
 
   // Excel matrix stats (for scope summary)
@@ -251,8 +247,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
         ([...selectedBrands].find((b) => productMatchesBrand(p, b)) ?? p.brand_name ?? null),
       inRange,
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fmt, filteredProducts, selectedRetailers, selectedBrands, range])
+  }, [fmt, filteredProducts, selectedRetailers, selectedBrands, inRange])
 
   const xlsxWeeksCount = useMemo(() => {
     const all = new Set<string>()
@@ -471,7 +466,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
             <div className="flex flex-wrap gap-1.5">
               {(BRANDS as readonly string[]).map((brand) => {
                 const on = selectedBrands.has(brand)
-                const hex = BRAND_HEX[brand] ?? "#9CA3AF"
+                const hex = BRAND_HEX[brand as keyof typeof BRAND_HEX] ?? "#9CA3AF"
                 return (
                   <button
                     key={brand}

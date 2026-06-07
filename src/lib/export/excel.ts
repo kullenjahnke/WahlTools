@@ -1,15 +1,15 @@
 import type { RetailerMatrix } from "./price-matrix"
+import { BRAND_HEX } from "@/lib/config/brands"
 
-const BRAND_ARGB: Record<string, string> = {
-  "Wahlburgers": "FF44B549",
-  "Catelli": "FF2563EB",
-  "Grillo's": "FFF59E0B",
-  "Schweid & Sons": "FFE11D48",
-}
+// ExcelJS fills want AARRGGBB. Derive from the shared brand hex (#RRGGBB).
+const toArgb = (hex: string) => "FF" + hex.replace("#", "").toUpperCase()
 const DEFAULT_ARGB = "FF9CA3AF"
+const brandArgb = (brand: string | null) =>
+  (brand && brand in BRAND_HEX ? toArgb(BRAND_HEX[brand as keyof typeof BRAND_HEX]) : DEFAULT_ARGB)
 
 export async function exportWorkbook(matrices: RetailerMatrix[], filename: string) {
-  const ExcelJS = (await import("exceljs")).default
+  const mod = await import("exceljs")
+  const ExcelJS = mod.default ?? mod
   const wb = new ExcelJS.Workbook()
 
   for (const m of matrices) {
@@ -19,8 +19,8 @@ export async function exportWorkbook(matrices: RetailerMatrix[], filename: strin
     header.font = { bold: true }
     header.eachCell((cell, col) => {
       if (col === 1) return
-      const brand = m.products[col - 2]?.brandName
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: (brand && BRAND_ARGB[brand]) || DEFAULT_ARGB } }
+      const brand = m.products[col - 2]?.brandName ?? null
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: brandArgb(brand) } }
       cell.font = { bold: true, color: { argb: "FFFFFFFF" } }
       cell.alignment = { horizontal: "center" }
     })
