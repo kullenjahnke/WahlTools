@@ -8,10 +8,27 @@ export const metadata = { title: "WahlTools | Price History" }
 export default async function PriceHistoryPage() {
   const supabase = await createSupabaseServerClient()
 
-  const { data: products } = await supabase
-    .from("products")
-    .select(`*, prices (*)`)
-    .order("name")
+  const [productsResult, categoriesResult] = await Promise.all([
+    supabase
+      .from("products")
+      .select(`*, prices (*), product_images (*)`)
+      .order("name"),
+    supabase.from("product_categories").select("id, name"),
+  ])
+
+  const categoryMap = new Map(
+    (categoriesResult.data || []).map((c) => [c.id, c.name])
+  )
+
+  const products = (productsResult.data || []).map((product) => {
+    const images = (product.product_images || []) as { url: string; main: boolean }[]
+    const imageUrl = (images.find((im) => im.main) || images[0])?.url ?? null
+    return {
+      ...product,
+      imageUrl,
+      categoryName: categoryMap.get(product.category_id) ?? null,
+    }
+  })
 
   return (
     <PageContainer>
@@ -22,7 +39,7 @@ export default async function PriceHistoryPage() {
           { label: "History" },
         ]}
       />
-      <ProductHistoryView products={products || []} />
+      <ProductHistoryView products={products} />
     </PageContainer>
   )
 }

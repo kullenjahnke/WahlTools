@@ -26,8 +26,13 @@ import {
 } from "@/components/ui/table"
 import type { Product, Price } from "@/types/database"
 import { ChevronDown, PackageSearch } from "lucide-react"
+import Image from "next/image"
 
-type ProductWithPrices = Product & { prices?: Price[] }
+type ProductWithPrices = Product & {
+  prices?: Price[]
+  imageUrl?: string | null
+  categoryName?: string | null
+}
 
 type Range = "4w" | "3m" | "1y" | "all"
 
@@ -209,8 +214,19 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
           className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left shadow-sm transition-colors hover:bg-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {/* Thumbnail */}
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-xl overflow-hidden">
-            {product?.name ? "🍔" : <PackageSearch className="h-5 w-5 text-muted-foreground" />}
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted overflow-hidden">
+            {product?.imageUrl ? (
+              <Image
+                src={product.imageUrl}
+                alt={product.name}
+                width={44}
+                height={44}
+                sizes="44px"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <PackageSearch className="h-5 w-5 text-muted-foreground" />
+            )}
           </span>
 
           {/* Name + chips */}
@@ -226,6 +242,14 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
                       label={product.brand_name}
                       tone={product.brand_type === "wahlburgers" ? "brand" : "auto"}
                       colorKey={product.brand_name}
+                      size="sm"
+                    />
+                  )}
+                  {product.categoryName && (
+                    <Chip
+                      label={product.categoryName}
+                      tone="auto"
+                      colorKey={product.categoryName}
                       size="sm"
                     />
                   )}
@@ -276,22 +300,42 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
                       p.id === selectedId && "bg-accent"
                     )}
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-sm">
-                      🍔
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted overflow-hidden">
+                      {p.imageUrl ? (
+                        <Image
+                          src={p.imageUrl}
+                          alt={p.name}
+                          width={32}
+                          height={32}
+                          sizes="32px"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <PackageSearch className="h-4 w-4 text-muted-foreground" />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-foreground">
                         {p.name}
                       </span>
-                      {p.brand_name && (
-                        <Chip
-                          label={p.brand_name}
-                          tone={p.brand_type === "wahlburgers" ? "brand" : "auto"}
-                          colorKey={p.brand_name}
-                          size="sm"
-                          className="mt-0.5"
-                        />
-                      )}
+                      <span className="mt-0.5 flex flex-wrap gap-1.5">
+                        {p.brand_name && (
+                          <Chip
+                            label={p.brand_name}
+                            tone={p.brand_type === "wahlburgers" ? "brand" : "auto"}
+                            colorKey={p.brand_name}
+                            size="sm"
+                          />
+                        )}
+                        {p.categoryName && (
+                          <Chip
+                            label={p.categoryName}
+                            tone="auto"
+                            colorKey={p.categoryName}
+                            size="sm"
+                          />
+                        )}
+                      </span>
                     </span>
                   </button>
                 ))
