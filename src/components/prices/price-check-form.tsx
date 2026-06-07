@@ -11,6 +11,7 @@ import {
   Tag,
   Check,
   TrendingDown,
+  TrendingUp,
   RotateCcw,
   PackageX,
   XCircle,
@@ -442,7 +443,7 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
                         {/* Sub-row: outlier chip or carry-over — both span under the input */}
                         {outlier && (
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-300/70 dark:border-amber-600/40 rounded-md px-1.5 py-0.5">
-                            <TrendingDown className="h-3 w-3" />
+                            {outlier.pct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                             {Math.round(Math.abs(outlier.pct))}% was ${outlier.reference.toFixed(2)}
                           </span>
                         )}
