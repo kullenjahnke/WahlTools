@@ -137,6 +137,7 @@ export interface Database {
           updated_by?: string | null
           is_sold_out?: boolean | null
           original_price?: number | null
+          discount_percentage?: number | null
           promotion_start_date?: string | null
           promotion_end_date?: string | null
         }
@@ -153,6 +154,7 @@ export interface Database {
           updated_by?: string | null
           is_sold_out?: boolean | null
           original_price?: number | null
+          discount_percentage?: number | null
           promotion_start_date?: string | null
           promotion_end_date?: string | null
         }

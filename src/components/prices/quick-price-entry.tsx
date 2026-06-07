@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ExternalLink, Save, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { createClientClient } from "@/lib/supabase/client"
+import { recordRetailerPrices, type PriceEntryInput } from "@/app/actions/prices"
 
 interface RetailerUrl {
   retailer: string
@@ -40,7 +40,6 @@ export function QuickPriceEntry({
   const [isLoading, setIsLoading] = useState(false)
   
   const { toast } = useToast()
-  const supabase = createClientClient()
 
   // Open all retailer URLs in new tabs
   const openAllUrls = async () => {
@@ -87,55 +86,38 @@ export function QuickPriceEntry({
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      // Validate and prepare price entries
-      const priceEntries = Object.entries(prices)
+      // Validate and prepare per-retailer entries for this single product.
+      const retailerEntries = Object.entries(prices)
         .filter(([retailer, price]) => price.trim() !== '' || isSoldOut[retailer])
-        .map(([retailer, price]) => ({
-          product_id: productId,
-          retailer,
-          price: isSoldOut[retailer] ? 0 : parseFloat(price),
-          is_promotion: isPromotion[retailer] || false,
-          is_sold_out: isSoldOut[retailer] || false,
-          promotion_notes: isPromotion[retailer] ? promotionNotes[retailer] || null : null,
-          timestamp: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          status: 'active'
-          // updated_by will be NULL by default as per schema
-        }))
+        .map(([retailer, price]) => {
+          const soldOut = isSoldOut[retailer] || false
+          const item: PriceEntryInput = {
+            product_id: productId,
+            price: soldOut ? 0 : parseFloat(price),
+            status: soldOut ? 'out_of_stock' : 'active',
+            is_promotion: !soldOut && (isPromotion[retailer] || false),
+            is_sold_out: soldOut,
+            promotion_notes:
+              !soldOut && isPromotion[retailer] ? promotionNotes[retailer] || null : null,
+          }
+          return { retailer, item }
+        })
 
-      if (priceEntries.length === 0) {
+      if (retailerEntries.length === 0) {
         throw new Error('Please enter at least one valid price')
       }
 
-      // Update existing prices to historical
-      const retailersWithNewPrices = priceEntries.map(entry => entry.retailer)
-      const { error: updateError } = await supabase
-        .from('prices')
-        .update({ 
-          status: 'historical',
-          updated_at: new Date().toISOString()
-        })
-        .eq('product_id', productId)
-        .eq('status', 'active')
-        .in('retailer', retailersWithNewPrices)
-
-      if (updateError) {
-        throw new Error(`Failed to update existing prices: ${updateError.message}`)
-      }
-
-      // Insert new prices
-      const { error: insertError } = await supabase
-        .from('prices')
-        .insert(priceEntries)
-        .select()
-
-      if (insertError) {
-        throw new Error(`Failed to save new prices: ${insertError.message}`)
-      }
+      // Each retailer is its own atomic record_price_check transaction (the RPC
+      // operates per-retailer); this product is the single item for each.
+      await Promise.all(
+        retailerEntries.map(({ retailer, item }) =>
+          recordRetailerPrices(retailer, [item])
+        )
+      )
 
       toast({
         title: "Success",
-        description: `Updated prices for ${priceEntries.length} retailers`,
+        description: `Updated prices for ${retailerEntries.length} retailers`,
       })
 
       // Reset form state
