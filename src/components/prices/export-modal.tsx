@@ -11,11 +11,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { RETAILERS } from "@/lib/config/retailers"
+import { RETAILERS, RETAILER_COLORS, orderRetailers } from "@/lib/config/retailers"
+import { BRANDS, productMatchesBrand } from "@/lib/config/brands"
+import { buildPriceMatrix } from "@/lib/export/price-matrix"
+import { exportWorkbook } from "@/lib/export/excel"
 import { Product, Price } from "@/types/database"
-import { Download } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Download, FileSpreadsheet, FileText, RotateCcw } from "lucide-react"
 import { format } from "date-fns"
 import Papa from "papaparse"
 
@@ -51,12 +53,34 @@ const DEFAULT_COLUMNS: ColumnKey[] = [
   "notes",
 ]
 
+// Brand colors matching the Excel header palette (hex for UI swatches)
+const BRAND_HEX: Record<string, string> = {
+  "Wahlburgers": "#44B549",
+  "Catelli": "#2563EB",
+  "Grillo's": "#F59E0B",
+  "Schweid & Sons": "#E11D48",
+}
+
+type FilterSection = "retailers" | "brands" | "categories" | "columns"
+type DatePreset = "4w" | "q" | "all" | "custom"
+
 export function ExportModal({ products, categories }: ExportModalProps) {
   const [open, setOpen] = useState(false)
+
+  // Format
+  const [fmt, setFmt] = useState<"xlsx" | "csv">("xlsx")
+
+  // Date range
+  const [preset, setPreset] = useState<DatePreset>("4w")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+
+  // Filters
   const [selectedRetailers, setSelectedRetailers] = useState<Set<string>>(
     new Set(RETAILERS as readonly string[])
+  )
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(
+    new Set(BRANDS as readonly string[])
   )
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     new Set(categories.map((c) => c.id))
@@ -64,7 +88,27 @@ export function ExportModal({ products, categories }: ExportModalProps) {
   const [selectedColumns, setSelectedColumns] =
     useState<Set<ColumnKey>>(new Set(DEFAULT_COLUMNS))
 
+  // Track which filter sections have been changed (for contextual Reset)
+  const [touched, setTouched] = useState<Set<FilterSection>>(new Set())
+
+  const markTouched = (section: FilterSection) =>
+    setTouched((prev) => new Set([...prev, section]))
+
+  const resetSection = (section: FilterSection) => {
+    if (section === "retailers") setSelectedRetailers(new Set(RETAILERS as readonly string[]))
+    if (section === "brands") setSelectedBrands(new Set(BRANDS as readonly string[]))
+    if (section === "categories") setSelectedCategories(new Set(categories.map((c) => c.id)))
+    if (section === "columns") setSelectedColumns(new Set(DEFAULT_COLUMNS))
+    setTouched((prev) => {
+      const next = new Set(prev)
+      next.delete(section)
+      return next
+    })
+  }
+
+  // Toggle helpers
   const toggleRetailer = (retailer: string) => {
+    markTouched("retailers")
     setSelectedRetailers((prev) => {
       const next = new Set(prev)
       if (next.has(retailer)) next.delete(retailer)
@@ -73,7 +117,18 @@ export function ExportModal({ products, categories }: ExportModalProps) {
     })
   }
 
+  const toggleBrand = (brand: string) => {
+    markTouched("brands")
+    setSelectedBrands((prev) => {
+      const next = new Set(prev)
+      if (next.has(brand)) next.delete(brand)
+      else next.add(brand)
+      return next
+    })
+  }
+
   const toggleCategory = (catId: string) => {
+    markTouched("categories")
     setSelectedCategories((prev) => {
       const next = new Set(prev)
       if (next.has(catId)) next.delete(catId)
@@ -83,6 +138,7 @@ export function ExportModal({ products, categories }: ExportModalProps) {
   }
 
   const toggleColumn = (col: ColumnKey) => {
+    markTouched("columns")
     setSelectedColumns((prev) => {
       const next = new Set(prev)
       if (next.has(col)) next.delete(col)
@@ -91,32 +147,54 @@ export function ExportModal({ products, categories }: ExportModalProps) {
     })
   }
 
-  // Build the category name map
+  // Category name map
   const categoryMap = useMemo(
     () => new Map(categories.map((c) => [c.id, c.name])),
     [categories]
   )
 
-  // Filter and prepare export data
-  const { rows, filteredCount } = useMemo(() => {
-    const start = startDate ? new Date(startDate + "T00:00:00") : null
-    const end = endDate ? new Date(endDate + "T23:59:59") : null
+  // Date range derived from preset
+  const range = useMemo(() => {
+    const end = new Date()
+    let start: Date | null = null
+    if (preset === "4w") start = new Date(Date.now() - 28 * 864e5)
+    else if (preset === "q") start = new Date(Date.now() - 90 * 864e5)
+    else if (preset === "all") start = null
+    else { start = startDate ? new Date(startDate + "T00:00:00") : null }
+    const e = preset === "custom" && endDate ? new Date(endDate + "T23:59:59") : end
+    return { start, end: e }
+  }, [preset, startDate, endDate])
 
+  const inRange = (ts: string) => {
+    const t = new Date(ts)
+    if (range.start && t < range.start) return false
+    return t <= range.end
+  }
+
+  // Products filtered by brand + category
+  const filteredProducts = useMemo(
+    () =>
+      products.filter(
+        (p) =>
+          selectedCategories.has(p.category_id) &&
+          [...selectedBrands].some((b) => productMatchesBrand(p, b))
+      ),
+    [products, selectedBrands, selectedCategories]
+  )
+
+  // CSV rows (existing logic, preserved exactly)
+  const { rows, filteredCount } = useMemo(() => {
     const rows: Record<string, string | number>[] = []
 
-    for (const product of products) {
-      // Category filter
-      if (!selectedCategories.has(product.category_id)) continue
-
+    for (const product of filteredProducts) {
       for (const price of product.prices || []) {
         // Retailer filter
         if (!selectedRetailers.has(price.retailer)) continue
 
         // Date filter
-        const ts = new Date(price.timestamp)
-        if (start && ts < start) continue
-        if (end && ts > end) continue
+        if (!inRange(price.timestamp)) continue
 
+        const ts = new Date(price.timestamp)
         const row: Record<string, string | number> = {}
 
         if (selectedColumns.has("timestamp")) {
@@ -153,200 +231,407 @@ export function ExportModal({ products, categories }: ExportModalProps) {
     })
 
     return { rows, filteredCount: rows.length }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    products,
-    startDate,
-    endDate,
+    filteredProducts,
     selectedRetailers,
-    selectedCategories,
     selectedColumns,
     categoryMap,
+    range,
   ])
 
-  const handleExport = () => {
-    if (rows.length === 0) return
-
-    const csv = Papa.unparse(rows)
-    const blob = new Blob(["\uFEFF" + csv], {
-      type: "text/csv;charset=utf-8;",
+  // Excel matrix stats (for scope summary)
+  const xlsxMatrices = useMemo(() => {
+    if (fmt !== "xlsx") return []
+    const retailers = orderRetailers([...selectedRetailers])
+    return buildPriceMatrix({
+      retailers,
+      products: filteredProducts,
+      productBrand: (p) =>
+        ([...selectedBrands].find((b) => productMatchesBrand(p, b)) ?? p.brand_name ?? null),
+      inRange,
     })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `price-export-${format(new Date(), "yyyy-MM-dd")}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fmt, filteredProducts, selectedRetailers, selectedBrands, range])
 
+  const xlsxWeeksCount = useMemo(() => {
+    const all = new Set<string>()
+    for (const m of xlsxMatrices) m.weeks.forEach((w) => all.add(w))
+    return all.size
+  }, [xlsxMatrices])
+
+  const xlsxProductCount = useMemo(() => {
+    const all = new Set<string>()
+    for (const m of xlsxMatrices) m.products.forEach((p) => all.add(p.id))
+    return all.size
+  }, [xlsxMatrices])
+
+  const handleExport = async () => {
+    if (fmt === "csv") {
+      // Existing CSV path — unchanged
+      if (rows.length === 0 || selectedColumns.size === 0) return
+      const csv = Papa.unparse(rows)
+      const blob = new Blob(["﻿" + csv], {
+        type: "text/csv;charset=utf-8;",
+      })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `price-export-${format(new Date(), "yyyy-MM-dd")}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      setOpen(false)
+      return
+    }
+
+    // Excel export
+    if (xlsxMatrices.length === 0) return
+    await exportWorkbook(xlsxMatrices, `price-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`)
     setOpen(false)
   }
 
-  const selectAllRetailers = () =>
-    setSelectedRetailers(new Set(RETAILERS as readonly string[]))
-  const clearAllRetailers = () => setSelectedRetailers(new Set())
-
-  const selectAllCategories = () =>
-    setSelectedCategories(new Set(categories.map((c) => c.id)))
-  const clearAllCategories = () => setSelectedCategories(new Set())
+  const isExportDisabled =
+    fmt === "csv"
+      ? rows.length === 0 || selectedColumns.size === 0
+      : xlsxMatrices.length === 0
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Download className="h-4 w-4 mr-2" />
-          Export CSV
+          Export
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Export Price Data</DialogTitle>
+          <DialogTitle>Export prices</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 pt-2">
+          {/* Format toggle */}
+          <div className="space-y-2">
+            <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Format
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFmt("xlsx")}
+                className={cn(
+                  "rounded-xl border px-4 py-3 text-left transition-colors",
+                  fmt === "xlsx"
+                    ? "border-[--brand] bg-[--brand]/5"
+                    : "border-border hover:bg-muted/50"
+                )}
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                  Excel (.xlsx)
+                </div>
+                <div
+                  className={cn(
+                    "mt-1 text-[11px]",
+                    fmt === "xlsx" ? "text-[--brand]" : "text-muted-foreground"
+                  )}
+                >
+                  Per-retailer matrix, brand-colored
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFmt("csv")}
+                className={cn(
+                  "rounded-xl border px-4 py-3 text-left transition-colors",
+                  fmt === "csv"
+                    ? "border-[--brand] bg-[--brand]/5"
+                    : "border-border hover:bg-muted/50"
+                )}
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <FileText className="h-4 w-4 shrink-0" />
+                  CSV
+                </div>
+                <div
+                  className={cn(
+                    "mt-1 text-[11px]",
+                    fmt === "csv" ? "text-[--brand]" : "text-muted-foreground"
+                  )}
+                >
+                  Flat price log
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Date range */}
           <div className="space-y-2">
-            <Label className="font-medium">Date Range</Label>
+            <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Date range
+            </Label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {(
+                [
+                  { id: "4w", label: "Last 4 weeks" },
+                  { id: "q", label: "This quarter" },
+                  { id: "all", label: "All time" },
+                  { id: "custom", label: "Custom" },
+                ] as const
+              ).map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPreset(id)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    preset === id
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs text-muted-foreground">From</Label>
+                <Label className="text-xs text-muted-foreground mb-1 block">From</Label>
                 <Input
                   type="date"
-                  value={startDate}
+                  value={
+                    preset !== "custom"
+                      ? preset === "all"
+                        ? ""
+                        : format(range.start!, "yyyy-MM-dd")
+                      : startDate
+                  }
+                  disabled={preset !== "custom"}
                   onChange={(e) => setStartDate(e.target.value)}
+                  className="text-sm"
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">To</Label>
+                <Label className="text-xs text-muted-foreground mb-1 block">To</Label>
                 <Input
                   type="date"
-                  value={endDate}
+                  value={
+                    preset !== "custom"
+                      ? format(range.end, "yyyy-MM-dd")
+                      : endDate
+                  }
+                  disabled={preset !== "custom"}
                   onChange={(e) => setEndDate(e.target.value)}
+                  className="text-sm"
                 />
               </div>
             </div>
           </div>
 
-          {/* Retailer filter */}
+          {/* Retailers */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="font-medium">Retailers</Label>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={selectAllRetailers}
-                >
-                  All
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={clearAllRetailers}
-                >
-                  None
-                </Button>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(RETAILERS as readonly string[]).map((retailer) => (
-                <div key={retailer} className="flex items-center gap-1.5">
-                  <Checkbox
-                    id={`exp-ret-${retailer}`}
-                    checked={selectedRetailers.has(retailer)}
-                    onCheckedChange={() => toggleRetailer(retailer)}
-                  />
-                  <Label
-                    htmlFor={`exp-ret-${retailer}`}
-                    className="text-sm cursor-pointer"
+            <SectionHeader
+              label="Retailers"
+              touched={touched.has("retailers")}
+              onReset={() => resetSection("retailers")}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {(RETAILERS as readonly string[]).map((retailer) => {
+                const on = selectedRetailers.has(retailer)
+                const color = RETAILER_COLORS[retailer] ?? "#9CA3AF"
+                return (
+                  <button
+                    key={retailer}
+                    type="button"
+                    onClick={() => toggleRetailer(retailer)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      on
+                        ? "border-[--brand]/40 bg-[--brand]/5 text-[--brand]"
+                        : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                    )}
                   >
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: color }}
+                    />
                     {retailer}
-                  </Label>
-                </div>
-              ))}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          {/* Category filter */}
+          {/* Brands */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="font-medium">Categories</Label>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={selectAllCategories}
-                >
-                  All
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={clearAllCategories}
-                >
-                  None
-                </Button>
-              </div>
+            <SectionHeader
+              label="Brands"
+              touched={touched.has("brands")}
+              onReset={() => resetSection("brands")}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {(BRANDS as readonly string[]).map((brand) => {
+                const on = selectedBrands.has(brand)
+                const hex = BRAND_HEX[brand] ?? "#9CA3AF"
+                return (
+                  <button
+                    key={brand}
+                    type="button"
+                    onClick={() => toggleBrand(brand)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      on
+                        ? "border-[--brand]/40 bg-[--brand]/5 text-[--brand]"
+                        : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                    )}
+                  >
+                    {/* Square swatch (vs. round for retailers) */}
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-[3px]"
+                      style={{ background: hex }}
+                    />
+                    {brand}
+                  </button>
+                )
+              })}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((cat) => (
-                <div key={cat.id} className="flex items-center gap-1.5">
-                  <Checkbox
-                    id={`exp-cat-${cat.id}`}
-                    checked={selectedCategories.has(cat.id)}
-                    onCheckedChange={() => toggleCategory(cat.id)}
-                  />
-                  <Label
-                    htmlFor={`exp-cat-${cat.id}`}
-                    className="text-sm cursor-pointer"
+          </div>
+
+          {/* Categories */}
+          <div className="space-y-2">
+            <SectionHeader
+              label="Categories"
+              touched={touched.has("categories")}
+              onReset={() => resetSection("categories")}
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {categories.map((cat) => {
+                const on = selectedCategories.has(cat.id)
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => toggleCategory(cat.id)}
+                    className={cn(
+                      "inline-flex items-center rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      on
+                        ? "border-[--brand]/40 bg-[--brand]/5 text-[--brand]"
+                        : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                    )}
                   >
                     {cat.name}
-                  </Label>
-                </div>
-              ))}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          {/* Column selector */}
-          <div className="space-y-2">
-            <Label className="font-medium">Columns</Label>
-            <div className="flex flex-wrap gap-2">
-              {ALL_COLUMNS.map((col) => (
-                <div key={col.key} className="flex items-center gap-1.5">
-                  <Checkbox
-                    id={`exp-col-${col.key}`}
-                    checked={selectedColumns.has(col.key)}
-                    onCheckedChange={() => toggleColumn(col.key)}
-                  />
-                  <Label
-                    htmlFor={`exp-col-${col.key}`}
-                    className="text-sm cursor-pointer"
-                  >
-                    {col.label}
-                  </Label>
-                </div>
-              ))}
+          {/* Columns — CSV only */}
+          {fmt === "csv" && (
+            <div className="space-y-2">
+              <SectionHeader
+                label="Columns"
+                touched={touched.has("columns")}
+                onReset={() => resetSection("columns")}
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_COLUMNS.map((col) => {
+                  const on = selectedColumns.has(col.key)
+                  return (
+                    <button
+                      key={col.key}
+                      type="button"
+                      onClick={() => toggleColumn(col.key)}
+                      className={cn(
+                        "inline-flex items-center rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                        on
+                          ? "border-[--brand]/40 bg-[--brand]/5 text-[--brand]"
+                          : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                      )}
+                    >
+                      {col.label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Preview count + export */}
-          <div className="flex items-center justify-between pt-2 border-t">
-            <Badge variant="secondary">
-              {filteredCount.toLocaleString()} rows
-            </Badge>
+          {/* Footer: scope summary + export button */}
+          <div className="flex items-center justify-between pt-3 border-t">
+            <span className="text-xs text-muted-foreground">
+              {fmt === "xlsx" ? (
+                <>
+                  <span className="font-bold tabular-nums text-foreground">
+                    {xlsxMatrices.length}
+                  </span>{" "}
+                  sheets ·{" "}
+                  <span className="font-bold tabular-nums text-foreground">
+                    {xlsxWeeksCount}
+                  </span>{" "}
+                  weeks ·{" "}
+                  <span className="font-bold tabular-nums text-foreground">
+                    {xlsxProductCount}
+                  </span>{" "}
+                  products
+                </>
+              ) : (
+                <>
+                  <span className="font-bold tabular-nums text-foreground">
+                    {filteredCount.toLocaleString()}
+                  </span>{" "}
+                  rows
+                </>
+              )}
+            </span>
             <Button
               variant="brand"
               onClick={handleExport}
-              disabled={filteredCount === 0 || selectedColumns.size === 0}
+              disabled={isExportDisabled}
             >
-              <Download className="h-4 w-4 mr-2" />
-              Download CSV
+              {fmt === "xlsx" ? (
+                <>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export Excel
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download CSV
+                </>
+              )}
             </Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// Small sub-component for consistent section header + contextual Reset button
+function SectionHeader({
+  label,
+  touched,
+  onReset,
+}: {
+  label: string
+  touched: boolean
+  onReset: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between min-h-[18px]">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      {touched && (
+        <button
+          type="button"
+          onClick={onReset}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[--brand] hover:opacity-80 transition-opacity"
+        >
+          <RotateCcw className="h-3 w-3" />
+          Reset
+        </button>
+      )}
+    </div>
   )
 }
