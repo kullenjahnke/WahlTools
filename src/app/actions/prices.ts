@@ -192,3 +192,76 @@ export async function recordPriceCheck(
     throw error
   }
 }
+
+export type PriceStatus = "active" | "out_of_stock" | "not_carried"
+
+export interface PriceEntryInput {
+  product_id: string
+  price: number
+  status: PriceStatus
+  is_promotion?: boolean
+  is_sold_out?: boolean
+  original_price?: number | null
+  discount_percentage?: number | null
+}
+
+/**
+ * Atomic, full-status price save for one retailer. Routes through the extended
+ * record_price_check RPC (migration 15). Replaces direct prices writes.
+ */
+export async function recordRetailerPrices(retailer: string, items: PriceEntryInput[]) {
+  try {
+    const supabase = await createSupabaseServerClient()
+    const p_prices = items.map((i) => ({
+      product_id: i.product_id,
+      price: i.price,
+      status: i.status,
+      is_promotion: i.is_promotion ?? false,
+      is_sold_out: i.is_sold_out ?? false,
+      original_price: i.original_price ?? null,
+      discount_percentage: i.discount_percentage ?? null,
+    }))
+
+    const { error } = await supabase.rpc("record_price_check", {
+      p_retailer: retailer,
+      p_prices,
+      p_notes: null,
+    })
+    if (error) throw error
+
+    revalidatePath("/dashboard/prices")
+    revalidatePath("/dashboard/prices/history")
+    revalidatePath("/dashboard")
+    return { success: true }
+  } catch (error) {
+    console.error("Error recording retailer prices:", error)
+    throw error
+  }
+}
+
+/**
+ * Returns the latest completed-check timestamp per retailer within the rolling
+ * last 7 days. Used to show a "done this cycle" indicator.
+ */
+export async function getRetailerCheckStatus(): Promise<Record<string, string>> {
+  try {
+    const supabase = await createSupabaseServerClient()
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const { data } = await supabase
+      .from("price_check_logs")
+      .select("retailer, completed_at, check_date, completed")
+      .eq("completed", true)
+      .gte("check_date", since)
+
+    const map: Record<string, string> = {}
+    for (const row of data || []) {
+      const at = (row.completed_at as string | null) || (row.check_date as string)
+      if (!at) continue
+      if (!map[row.retailer] || at > map[row.retailer]) map[row.retailer] = at
+    }
+    return map
+  } catch (error) {
+    console.error("Error fetching retailer check status:", error)
+    return {}
+  }
+}
