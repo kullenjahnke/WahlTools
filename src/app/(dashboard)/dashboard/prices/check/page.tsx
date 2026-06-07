@@ -2,7 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { PriceCheckForm } from "@/components/prices/price-check-form"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { RETAILERS, orderRetailers } from "@/lib/config/retailers"
+import { RETAILERS, RETAILER_COLORS, orderRetailers } from "@/lib/config/retailers"
 import { Card, CardContent } from "@/components/ui/card"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
@@ -10,7 +10,9 @@ import { getRetailerCheckStatus } from "@/app/actions/prices"
 import type { PriceHistoryPoint } from "@/lib/outlier"
 import type { ProductUrl } from "@/types/database"
 import { Check } from "lucide-react"
-import { RETAILER_COLORS } from "@/lib/config/retailers"
+
+// How far back to load prices for carry-over + outlier context
+const HISTORY_LOOKBACK_DAYS = 120
 
 interface PageProps {
   searchParams: Promise<{ retailer?: string }>
@@ -23,12 +25,12 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
   const supabase = await createSupabaseServerClient()
 
   try {
-    const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString()
+    const since = new Date(Date.now() - HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
     const [productsResult, categoriesResult, pricesResult, checkStatus] = await Promise.all([
       supabase
         .from('products')
-        .select(`*, product_urls (*), product_images (*)`)
+        .select(`*, product_urls (*)`)
         .order('name'),
       supabase
         .from('product_categories')
@@ -99,11 +101,6 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
             }))
         : []
 
-      // Main image
-      const mainImage = (product.product_images || []).find(
-        (im: { is_main?: boolean }) => im.is_main
-      )?.image_url || (product.product_images || [])[0]?.image_url || null
-
       // History + last price at this retailer
       const history = historyByProduct.get(product.id) || []
       const lastAtRetailer = history
@@ -115,7 +112,6 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
         name: product.name,
         category: categoryMap.get(product.category_id) || 'Uncategorized',
         brandName: (product.brand_name as string | null) || null,
-        imageUrl: mainImage,
         urls: relevantUrls,
         lastPrice: lastAtRetailer,
         history,

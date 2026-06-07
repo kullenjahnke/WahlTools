@@ -34,7 +34,6 @@ interface SimpleProduct {
   name: string
   category: string
   brandName: string | null
-  imageUrl: string | null
   urls: SimpleProductUrl[]
   lastPrice: number | null
   history: PriceHistoryPoint[]
@@ -75,13 +74,15 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
 
   // Deduplicated count (a product marked soldOut AND having a price shouldn't double-count)
   const enteredIds = new Set([
-    ...Object.keys(prices).filter(id => prices[id]?.trim()),
+    ...Object.keys(prices).filter(id => Number.isFinite(parseFloat(prices[id]))),
     ...Object.keys(soldOut).filter(id => soldOut[id]),
     ...Object.keys(notAvailable).filter(id => notAvailable[id]),
   ])
   const enteredUnique = enteredIds.size
   const total = products.length
   const progressPct = total > 0 ? Math.round((enteredUnique / total) * 100) : 0
+  // Flat list of all products for cross-category keyboard nav (Enter → next field)
+  const allProductIds = products.map(p => p.id)
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -219,7 +220,6 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
       } else {
         router.push("/dashboard/prices")
       }
-      router.refresh()
     } catch (error) {
       toast({
         title: "Error",
@@ -264,9 +264,9 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
             Pop-ups blocked — open these manually:
           </p>
           <div className="flex flex-col gap-1">
-            {blockedUrls.map((u, i) => (
+            {blockedUrls.map((u) => (
               <a
-                key={i}
+                key={u}
                 href={u}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -317,9 +317,6 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
           const categoryUrls = categoryProducts
             .map(p => getProductUrl(p))
             .filter(Boolean) as string[]
-
-          // Flat list of all products for cross-category keyboard nav
-          const allProductIds = products.map(p => p.id)
 
           return (
             <div key={cat}>
