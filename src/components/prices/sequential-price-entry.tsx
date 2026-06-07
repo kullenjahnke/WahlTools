@@ -115,15 +115,44 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
     if (index > 0) setIndex(index - 1)
   }, [index, resetCard])
 
+  // Sold Out / N/A are toggles: turning one on clears the others + the price.
+  const toggleSoldOut = useCallback(() => {
+    setIsSoldOut((v) => {
+      const next = !v
+      if (next) {
+        setIsNotAvailable(false)
+        setIsPromo(false)
+        setPrice("")
+      }
+      return next
+    })
+  }, [])
+
+  const toggleNotAvailable = useCallback(() => {
+    setIsNotAvailable((v) => {
+      const next = !v
+      if (next) {
+        setIsSoldOut(false)
+        setIsPromo(false)
+        setPrice("")
+      }
+      return next
+    })
+  }, [])
+
   const openBeside = useCallback(() => {
     if (!url) return
-    const w = Math.min(640, Math.floor(window.screen.availWidth / 2))
+    const width = Math.min(700, Math.floor(window.screen.availWidth / 2))
+    const height = window.screen.availHeight
+    const left = window.screen.availWidth - width
+    // `popup=yes` forces a real positioned window (Chrome opens a tab without it).
     const popup = window.open(
       url,
       "wahltools_beside",
-      `width=${w},height=${window.screen.availHeight},left=${window.screen.availWidth - w},top=0`
+      `popup=yes,width=${width},height=${height},left=${left},top=0`
     )
-    if (!popup) window.open(url, "_blank", "noopener,noreferrer")
+    if (popup) popup.focus()
+    else window.open(url, "_blank", "noopener,noreferrer")
   }, [url])
 
   const save = useCallback(async () => {
@@ -216,14 +245,10 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
         setIsPromo((v) => !v)
       } else if (k === "o") {
         e.preventDefault()
-        setIsSoldOut(true)
-        setIsNotAvailable(false)
-        setPrice("")
+        toggleSoldOut()
       } else if (k === "n") {
         e.preventDefault()
-        setIsNotAvailable(true)
-        setIsSoldOut(false)
-        setPrice("")
+        toggleNotAvailable()
       } else if (k === "v") {
         e.preventDefault()
         openBeside()
@@ -231,7 +256,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [current, lastWeek, save, openBeside])
+  }, [current, lastWeek, save, openBeside, toggleSoldOut, toggleNotAvailable])
 
   // ── Retailer picker ───────────────────────────────────────────────────────
 
@@ -490,11 +515,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
 
             {/* Sold Out */}
             <button
-              onClick={() => {
-                setIsSoldOut(true)
-                setIsNotAvailable(false)
-                setPrice("")
-              }}
+              onClick={toggleSoldOut}
               className={[
                 "flex items-center justify-center gap-1.5 rounded-[10px] border px-3 py-2.5 text-[13px] font-semibold transition-colors",
                 isSoldOut
@@ -508,11 +529,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
 
             {/* N/A */}
             <button
-              onClick={() => {
-                setIsNotAvailable(true)
-                setIsSoldOut(false)
-                setPrice("")
-              }}
+              onClick={toggleNotAvailable}
               className={[
                 "flex items-center justify-center gap-1.5 rounded-[10px] border px-3 py-2.5 text-[13px] font-semibold transition-colors",
                 isNotAvailable
