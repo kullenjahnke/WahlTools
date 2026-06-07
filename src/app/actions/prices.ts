@@ -203,6 +203,7 @@ export interface PriceEntryInput {
   is_sold_out?: boolean
   original_price?: number | null
   discount_percentage?: number | null
+  promotion_notes?: string | null
 }
 
 /**
@@ -220,6 +221,7 @@ export async function recordRetailerPrices(retailer: string, items: PriceEntryIn
       is_sold_out: i.is_sold_out ?? false,
       original_price: i.original_price ?? null,
       discount_percentage: i.discount_percentage ?? null,
+      promotion_notes: i.promotion_notes ?? null,
     }))
 
     const { error } = await supabase.rpc("record_price_check", {
