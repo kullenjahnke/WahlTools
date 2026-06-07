@@ -1,395 +1,561 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { createClientClient } from "@/lib/supabase/client"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
-import {
-  ExternalLink,
-  Tag,
-  Check,
-  ChevronRight,
-  ChevronLeft,
-  SkipForward,
-  X,
-  AlertCircle,
-  XCircle,
-  Save,
-  TrendingDown,
-} from "lucide-react"
+import { Check, X } from "lucide-react"
+import { Chip } from "@/components/ui/chip"
+import { useToast } from "@/hooks/use-toast"
+import { recordRetailerPrices } from "@/app/actions/prices"
+import type { PriceStatus } from "@/app/actions/prices"
+import type { PriceHistoryPoint } from "@/lib/outlier"
+import { RETAILER_COLORS } from "@/lib/config/retailers"
 
-interface ProductUrl {
-  retailer: string
-  url: string
-}
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-interface SequentialProduct {
+export interface SeqProduct {
   id: string
   name: string
   category: string
-  urls: ProductUrl[]
+  brandName: string | null
+  imageUrl: string | null
+  urls: { retailer: string; url: string }[]
+  history: PriceHistoryPoint[]
+  lastPriceByRetailer: Record<string, number>
 }
 
-interface SequentialPriceEntryProps {
-  products: SequentialProduct[]
+interface Props {
+  products: SeqProduct[]
+  retailers: string[]
+  checkStatus: Record<string, string>
 }
 
-export function SequentialPriceEntry({ products }: SequentialPriceEntryProps) {
-  const [productIndex, setProductIndex] = useState(0)
-  const [retailerIndex, setRetailerIndex] = useState(0)
+// ─── Category glyph fallback ─────────────────────────────────────────────────
+
+function categoryGlyph(category: string): string {
+  const cat = category.toLowerCase()
+  if (cat.includes("burger")) return "🍔"
+  if (cat.includes("hot dog") || cat.includes("hotdog") || cat.includes("frank")) return "🌭"
+  if (cat.includes("chicken")) return "🍗"
+  if (cat.includes("bacon") || cat.includes("pork")) return "🥓"
+  if (cat.includes("pasta") || cat.includes("noodle")) return "🍝"
+  if (cat.includes("pickle")) return "🥒"
+  if (cat.includes("sauce") || cat.includes("condiment")) return "🫙"
+  return "🛒"
+}
+
+// ─── Hotkey kbd pill ─────────────────────────────────────────────────────────
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="font-mono text-[10px] bg-muted border border-border rounded px-[5px] py-px text-muted-foreground leading-none">
+      {children}
+    </kbd>
+  )
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
+
+export function SequentialPriceEntry({ products, retailers, checkStatus }: Props) {
+  const [retailer, setRetailer] = useState<string | null>(null)
+  const [index, setIndex] = useState(0)
   const [price, setPrice] = useState("")
   const [originalPrice, setOriginalPrice] = useState("")
   const [isPromo, setIsPromo] = useState(false)
   const [isSoldOut, setIsSoldOut] = useState(false)
   const [isNotAvailable, setIsNotAvailable] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
-  const priceInputRef = useRef<HTMLInputElement>(null)
+  const [loading, setLoading] = useState(false)
 
   const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClientClient()
+  const priceInputRef = useRef<HTMLInputElement>(null)
 
-  const retailers = RETAILERS as readonly string[]
-  const totalSteps = products.length * retailers.length
-  const currentStep = productIndex * retailers.length + retailerIndex + 1
+  // Products carrying the chosen retailer's URL
+  const deck = useMemo(
+    () => products.filter((p) => p.urls.some((u) => u.retailer === retailer)),
+    [products, retailer]
+  )
 
-  const currentProduct = products[productIndex]
-  const currentRetailer = retailers[retailerIndex]
+  const current = deck[index] ?? null
+  const lastWeek = current ? (current.lastPriceByRetailer[retailer!] ?? null) : null
+  const url = current?.urls.find((u) => u.retailer === retailer)?.url ?? null
 
-  // Get URL for current product + retailer
-  const currentUrl = currentProduct?.urls?.find(
-    (u) => u.retailer === currentRetailer
-  )?.url
-
-  // Focus price input on advance
+  // Auto-focus the price input whenever the card advances
   useEffect(() => {
-    priceInputRef.current?.focus()
-  }, [productIndex, retailerIndex])
+    if (current) priceInputRef.current?.focus()
+  }, [current, index, retailer])
 
-  const resetForm = () => {
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  const resetCard = useCallback(() => {
     setPrice("")
     setOriginalPrice("")
     setIsPromo(false)
     setIsSoldOut(false)
     setIsNotAvailable(false)
-  }
+  }, [])
 
-  const advance = () => {
-    resetForm()
-    if (retailerIndex < retailers.length - 1) {
-      // Next retailer, same product
-      setRetailerIndex(retailerIndex + 1)
-    } else if (productIndex < products.length - 1) {
-      // Next product, first retailer
-      setProductIndex(productIndex + 1)
-      setRetailerIndex(0)
+  const advance = useCallback(() => {
+    resetCard()
+    if (index < deck.length - 1) {
+      setIndex(index + 1)
     } else {
-      // All done
       toast({
-        title: "All Complete!",
-        description: `Saved ${savedCount} prices across all products and retailers.`,
+        title: "All complete!",
+        description: `Saved ${savedCount + 1} price${savedCount + 1 === 1 ? "" : "s"} for ${retailer}.`,
       })
       router.push("/dashboard/prices")
     }
-  }
+  }, [index, deck.length, resetCard, savedCount, retailer, router, toast])
 
-  const goBack = () => {
-    resetForm()
-    if (retailerIndex > 0) {
-      setRetailerIndex(retailerIndex - 1)
-    } else if (productIndex > 0) {
-      setProductIndex(productIndex - 1)
-      setRetailerIndex(retailers.length - 1)
-    }
-  }
+  const goBack = useCallback(() => {
+    resetCard()
+    if (index > 0) setIndex(index - 1)
+  }, [index, resetCard])
 
-  const handleSave = async () => {
+  const openBeside = useCallback(() => {
+    if (!url) return
+    const w = Math.min(640, Math.floor(window.screen.availWidth / 2))
+    const popup = window.open(
+      url,
+      "wahltools_beside",
+      `width=${w},height=${window.screen.availHeight},left=${window.screen.availWidth - w},top=0`
+    )
+    if (!popup) window.open(url, "_blank", "noopener,noreferrer")
+  }, [url])
+
+  const save = useCallback(async () => {
     if (!price && !isSoldOut && !isNotAvailable) {
       toast({
-        title: "No data entered",
-        description: "Enter a price, mark as sold out, or mark as N/A.",
+        title: "Enter a price, Sold Out, or N/A",
         variant: "destructive",
       })
       return
     }
-
     setLoading(true)
     try {
-      const priceValue = isSoldOut || isNotAvailable ? 0 : parseFloat(price)
-      const origPrice = isPromo && originalPrice ? parseFloat(originalPrice) : null
+      const status: PriceStatus = isNotAvailable
+        ? "not_carried"
+        : isSoldOut
+        ? "out_of_stock"
+        : "active"
+      const orig = isPromo && originalPrice ? parseFloat(originalPrice) : null
+      const value = status === "active" ? parseFloat(price) : 0
+      const disc =
+        isPromo && orig && value > 0
+          ? Math.round(((orig - value) / orig) * 100)
+          : null
 
-      // Update existing active prices to historical
-      const { error: updateError } = await supabase
-        .from("prices")
-        .update({ status: "historical" })
-        .eq("product_id", currentProduct.id)
-        .eq("retailer", currentRetailer)
-        .eq("status", "active")
-
-      if (updateError) throw updateError
-
-      // Insert new price
-      const { error: insertError } = await supabase.from("prices").insert({
-        product_id: currentProduct.id,
-        retailer: currentRetailer,
-        price: priceValue,
-        original_price: origPrice,
-        is_promotion: isPromo,
-        is_sold_out: isSoldOut,
-        status: isNotAvailable ? "not_carried" : isSoldOut ? "out_of_stock" : "active",
-        timestamp: new Date().toISOString(),
-      })
-
-      if (insertError) throw insertError
-
+      await recordRetailerPrices(retailer!, [
+        {
+          product_id: current!.id,
+          price: value,
+          status,
+          is_promotion: isPromo,
+          is_sold_out: status === "out_of_stock",
+          original_price: orig,
+          discount_percentage: disc,
+        },
+      ])
       setSavedCount((c) => c + 1)
-      toast({
-        title: "Saved",
-        description: `${currentProduct.name} @ ${currentRetailer}`,
-      })
-
-      // Auto-advance
       advance()
-    } catch (error) {
-      console.error("Error saving price:", error)
+    } catch (e) {
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to save price",
+        description: e instanceof Error ? e.message : "Failed to save",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
-  }
+  }, [
+    price,
+    isSoldOut,
+    isNotAvailable,
+    isPromo,
+    originalPrice,
+    retailer,
+    current,
+    advance,
+    toast,
+  ])
 
-  if (!currentProduct) {
+  // ── Hotkeys ───────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!current) return
+    const onKey = (e: KeyboardEvent) => {
+      // Don't hijack when typing in an input other than our price field
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA") {
+        if (e.key === "Enter") {
+          e.preventDefault()
+          save()
+        }
+        return
+      }
+      if (e.key === "Enter") {
+        e.preventDefault()
+        save()
+        return
+      }
+      const k = e.key.toLowerCase()
+      if (k === "l" && lastWeek != null) {
+        e.preventDefault()
+        setIsSoldOut(false)
+        setIsNotAvailable(false)
+        setPrice(lastWeek.toFixed(2))
+      } else if (k === "s") {
+        e.preventDefault()
+        setIsPromo((v) => !v)
+      } else if (k === "o") {
+        e.preventDefault()
+        setIsSoldOut(true)
+        setIsNotAvailable(false)
+        setPrice("")
+      } else if (k === "n") {
+        e.preventDefault()
+        setIsNotAvailable(true)
+        setIsSoldOut(false)
+        setPrice("")
+      } else if (k === "v") {
+        e.preventDefault()
+        openBeside()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [current, lastWeek, save, openBeside])
+
+  // ── Retailer picker ───────────────────────────────────────────────────────
+
+  if (!retailer) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <p>No products available for sequential entry.</p>
-        </CardContent>
-      </Card>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <p className="text-sm text-muted-foreground">
+          Choose a retailer to start entering prices sequentially.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {retailers.map((r) => {
+            const isDone = !!checkStatus[r]
+            const color = RETAILER_COLORS[r] || "#64748b"
+            return (
+              <button
+                key={r}
+                onClick={() => {
+                  setRetailer(r)
+                  setIndex(0)
+                  resetCard()
+                }}
+                className={[
+                  "inline-flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-medium transition-colors",
+                  isDone
+                    ? "border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] text-brand hover:bg-[hsl(var(--brand)/0.12)]"
+                    : "border-border bg-card text-foreground hover:bg-accent/60",
+                ].join(" ")}
+              >
+                {isDone ? (
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand shrink-0">
+                    <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+                  </span>
+                ) : (
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                )}
+                {r}
+              </button>
+            )
+          })}
+        </div>
+      </div>
     )
   }
 
-  const progressPercent = Math.round(((currentStep - 1) / totalSteps) * 100)
+  // ── Empty deck ────────────────────────────────────────────────────────────
+
+  if (deck.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <div className="rounded-xl border border-border bg-card p-8 text-center">
+          <p className="text-muted-foreground">
+            No products with a {retailer} URL found.
+          </p>
+          <button
+            onClick={() => setRetailer(null)}
+            className="mt-4 text-sm text-brand underline underline-offset-2"
+          >
+            ← Back to retailer picker
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Card flow ─────────────────────────────────────────────────────────────
+
+  const progressWidth = `${Math.round((index / deck.length) * 100)}%`
+  const retailerColor = RETAILER_COLORS[retailer] || "#6b7280"
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
-      {/* Progress header */}
-      <Card>
-        <CardContent className="pt-4 pb-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Badge variant="outline">
-                Product {productIndex + 1} / {products.length}
-              </Badge>
-              <Badge variant="outline">
-                Retailer {retailerIndex + 1} / {retailers.length}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Save className="h-3.5 w-3.5" />
-              {savedCount} saved
-            </div>
-          </div>
-          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-brand transition-all duration-500 rounded-full"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-            <span>Step {currentStep} of {totalSteps}</span>
-            <span>{progressPercent}%</span>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="max-w-2xl mx-auto space-y-4">
+      {/* ── Progress row ─────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        {/* Exit × */}
+        <button
+          aria-label="Back to retailer picker"
+          onClick={() => setRetailer(null)}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-accent/60 transition-colors"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
 
-      {/* Entry card */}
-      <Card className="shadow-md">
-        <CardHeader className="border-b">
-          <CardTitle className="text-lg flex items-center justify-between">
-            <span>{currentProduct.name}</span>
-            <Badge
-              className="text-white text-xs"
-              style={{ backgroundColor: RETAILER_COLORS[currentRetailer] || "#6b7280" }}
-            >
-              {currentRetailer}
-            </Badge>
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">{currentProduct.category}</p>
-        </CardHeader>
+        {/* Retailer pill */}
+        <span
+          className="inline-flex items-center rounded-full px-3 py-1 text-[12px] font-semibold text-white shrink-0"
+          style={{ backgroundColor: retailerColor }}
+        >
+          {retailer}
+        </span>
 
-        <CardContent className="pt-5 space-y-5">
-          {/* URL link */}
-          {currentUrl && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => window.open(currentUrl, "_blank")}
+        {/* Brand-green progress bar */}
+        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-brand rounded-full transition-all duration-300"
+            style={{ width: progressWidth }}
+          />
+        </div>
+
+        {/* N / M count pill */}
+        <span className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-[12px] font-bold tabular-nums">
+          {index + 1} / {deck.length}
+        </span>
+      </div>
+
+      {/* ── Card stack ───────────────────────────────────────────── */}
+      <div className="relative mx-1.5">
+        {/* Ghost card 2 (furthest back) */}
+        {index + 2 < deck.length && (
+          <div className="absolute inset-x-6 -top-[18px] h-14 rounded-2xl border border-border bg-card opacity-40" />
+        )}
+        {/* Ghost card 1 */}
+        {index + 1 < deck.length && (
+          <div className="absolute inset-x-3 -top-[10px] h-14 rounded-2xl border border-border bg-card opacity-70" />
+        )}
+
+        {/* Main card */}
+        <div className="relative rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] p-5 space-y-4">
+          {/* Product header */}
+          <div className="flex gap-3.5 items-center">
+            {/* Thumbnail */}
+            <div className="h-14 w-14 shrink-0 rounded-xl border border-border overflow-hidden bg-muted flex items-center justify-center text-2xl">
+              {current.imageUrl ? (
+                <Image
+                  src={current.imageUrl}
+                  alt={current.name}
+                  width={56}
+                  height={56}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span role="img" aria-label={current.category}>
+                  {categoryGlyph(current.category)}
+                </span>
+              )}
+            </div>
+
+            {/* Name + chips */}
+            <div className="min-w-0">
+              <h3 className="text-[17px] font-semibold tracking-tight leading-snug mb-1.5 truncate">
+                {current.name}
+              </h3>
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {current.brandName && (
+                  <Chip label={current.brandName} tone="brand" size="sm" />
+                )}
+                <Chip
+                  label={current.category}
+                  tone="auto"
+                  colorKey={current.category}
+                  size="sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Open beside */}
+          <button
+            onClick={openBeside}
+            disabled={!url}
+            className="w-full flex items-center justify-center gap-2 rounded-[10px] border border-border bg-card px-4 py-2.5 text-[13px] font-semibold hover:bg-accent/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <span className="text-base leading-none">⧉</span>
+            <span>Open at {retailer} beside this</span>
+            <Kbd>V</Kbd>
+          </button>
+
+          {/* Last week chip */}
+          {lastWeek != null && (
+            <button
+              onClick={() => {
+                setIsSoldOut(false)
+                setIsNotAvailable(false)
+                setPrice(lastWeek.toFixed(2))
+                priceInputRef.current?.focus()
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] px-2.5 py-1.5 text-[12px] font-semibold text-brand hover:bg-[hsl(var(--brand)/0.12)] transition-colors"
             >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open product page
-            </Button>
+              <span>↺ Last week</span>
+              <span className="tabular-nums">${lastWeek.toFixed(2)}</span>
+              <kbd className="font-mono text-[10px] bg-white dark:bg-background border border-[hsl(var(--brand)/0.4)] rounded px-[5px] py-px text-brand leading-none">
+                L
+              </kbd>
+            </button>
           )}
 
-          {/* Price input */}
-          <div className="space-y-2">
-            <Label>Price</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                ref={priceInputRef}
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                className="pl-7 text-lg font-mono"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                disabled={isSoldOut || isNotAvailable}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && price) handleSave()
-                }}
-              />
-            </div>
+          {/* Big price input */}
+          <div
+            className={[
+              "flex items-center gap-1 rounded-xl border-2 px-4 py-3",
+              isSoldOut || isNotAvailable
+                ? "border-muted opacity-50"
+                : "border-brand shadow-[0_0_0_4px_hsl(var(--brand)/0.12)]",
+            ].join(" ")}
+          >
+            <span className="text-[22px] text-muted-foreground leading-none mr-1">$</span>
+            <input
+              ref={priceInputRef}
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              disabled={isSoldOut || isNotAvailable || loading}
+              className="flex-1 bg-transparent text-[26px] font-bold tabular-nums outline-none placeholder:text-muted-foreground/40 disabled:cursor-not-allowed"
+            />
           </div>
 
-          {/* Promo original price */}
+          {/* Promo original price (revealed when Sale is on) */}
           {isPromo && (
-            <div className="space-y-2">
-              <Label>Original Price (before sale)</Label>
-              <div className="relative">
-                <TrendingDown className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-1 rounded-lg border border-border px-3 py-2">
+                <span className="text-sm text-muted-foreground">Original $</span>
+                <input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
-                  className="pl-9 font-mono"
                   value={originalPrice}
                   onChange={(e) => setOriginalPrice(e.target.value)}
-                  disabled={isSoldOut || isNotAvailable}
+                  className="flex-1 bg-transparent text-sm font-semibold tabular-nums outline-none placeholder:text-muted-foreground/40"
                 />
               </div>
-              {price && originalPrice && (
-                <Badge variant="brand">
-                  {Math.round(
-                    ((parseFloat(originalPrice) - parseFloat(price)) /
-                      parseFloat(originalPrice)) *
-                      100
-                  )}
-                  % off
-                </Badge>
+              {price && originalPrice && parseFloat(originalPrice) > 0 && parseFloat(price) > 0 && (
+                <Chip
+                  label={`${Math.round(((parseFloat(originalPrice) - parseFloat(price)) / parseFloat(originalPrice)) * 100)}% off`}
+                  tone="brand"
+                  size="sm"
+                />
               )}
             </div>
           )}
 
-          {/* Toggles */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex flex-col items-center gap-1.5 p-2 rounded-lg border">
-              <Switch
-                id="promo"
-                checked={isPromo}
-                onCheckedChange={setIsPromo}
-                disabled={isSoldOut || isNotAvailable}
-              />
-              <Label htmlFor="promo" className="text-xs cursor-pointer flex items-center gap-1">
-                <Tag className="h-3 w-3 text-muted-foreground" />
-                Sale
-              </Label>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 p-2 rounded-lg border">
-              <Switch
-                id="soldout"
-                checked={isSoldOut}
-                onCheckedChange={(checked) => {
-                  setIsSoldOut(checked)
-                  if (checked) {
-                    setPrice("")
-                    setIsPromo(false)
-                    setIsNotAvailable(false)
-                  }
-                }}
-              />
-              <Label htmlFor="soldout" className="text-xs cursor-pointer flex items-center gap-1">
-                <AlertCircle className="h-3 w-3 text-muted-foreground" />
-                Sold Out
-              </Label>
-            </div>
-            <div className="flex flex-col items-center gap-1.5 p-2 rounded-lg border">
-              <Switch
-                id="notavailable"
-                checked={isNotAvailable}
-                onCheckedChange={(checked) => {
-                  setIsNotAvailable(checked)
-                  if (checked) {
-                    setPrice("")
-                    setIsPromo(false)
-                    setIsSoldOut(false)
-                  }
-                }}
-              />
-              <Label htmlFor="notavailable" className="text-xs cursor-pointer flex items-center gap-1">
-                <XCircle className="h-3 w-3 text-muted-foreground" />
-                N/A
-              </Label>
-            </div>
+          {/* Sale / Sold Out / N/A chips */}
+          <div className="grid grid-cols-3 gap-2.5">
+            {/* Sale */}
+            <button
+              onClick={() => setIsPromo((v) => !v)}
+              disabled={isSoldOut || isNotAvailable}
+              className={[
+                "flex items-center justify-center gap-1.5 rounded-[10px] border px-3 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                isPromo
+                  ? "border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] text-brand"
+                  : "border-border bg-card text-muted-foreground hover:bg-accent/60",
+              ].join(" ")}
+            >
+              <span>◷ Sale</span>
+              <Kbd>S</Kbd>
+            </button>
+
+            {/* Sold Out */}
+            <button
+              onClick={() => {
+                setIsSoldOut(true)
+                setIsNotAvailable(false)
+                setPrice("")
+              }}
+              className={[
+                "flex items-center justify-center gap-1.5 rounded-[10px] border px-3 py-2.5 text-[13px] font-semibold transition-colors",
+                isSoldOut
+                  ? "border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] text-brand"
+                  : "border-border bg-card text-muted-foreground hover:bg-accent/60",
+              ].join(" ")}
+            >
+              <span>⊘ Sold Out</span>
+              <Kbd>O</Kbd>
+            </button>
+
+            {/* N/A */}
+            <button
+              onClick={() => {
+                setIsNotAvailable(true)
+                setIsSoldOut(false)
+                setPrice("")
+              }}
+              className={[
+                "flex items-center justify-center gap-1.5 rounded-[10px] border px-3 py-2.5 text-[13px] font-semibold transition-colors",
+                isNotAvailable
+                  ? "border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] text-brand"
+                  : "border-border bg-card text-muted-foreground hover:bg-accent/60",
+              ].join(" ")}
+            >
+              <span>✕ N/A</span>
+              <Kbd>N</Kbd>
+            </button>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
+          {/* Footer: ← Back + Save & Next ↵ */}
+          <div className="flex items-center gap-2.5 pt-1">
+            <button
               onClick={goBack}
-              disabled={productIndex === 0 && retailerIndex === 0}
+              disabled={index === 0 || loading}
+              className="inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-card px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={advance}
-              className="text-muted-foreground"
-            >
-              <SkipForward className="h-4 w-4 mr-1" />
-              Skip
-            </Button>
+              ← Back
+            </button>
             <div className="flex-1" />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/dashboard/prices")}
+            <button
+              onClick={save}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-[10px] bg-brand px-5 py-2.5 text-[15px] font-semibold text-white hover:bg-brand/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <X className="h-4 w-4 mr-1" />
-              Exit
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={loading || (!price && !isSoldOut && !isNotAvailable)}
-            >
-              <Check className="h-4 w-4 mr-1" />
-              {loading ? "Saving..." : "Save"}
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+              {loading ? "Saving…" : "Save & Next"}
+              {!loading && (
+                <kbd className="font-mono text-[10px] bg-white/20 rounded px-[5px] py-px text-white leading-none border-0">
+                  ↵
+                </kbd>
+              )}
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* ── Hotkey hint bar ───────────────────────────────────────── */}
+      <p className="text-center text-[12px] text-muted-foreground leading-loose">
+        <Kbd>↵</Kbd> save &amp; next{" "}
+        {lastWeek != null && (
+          <>
+            &nbsp; <Kbd>L</Kbd> last week{" "}
+          </>
+        )}
+        &nbsp; <Kbd>S</Kbd> sale &nbsp; <Kbd>O</Kbd> sold out &nbsp;{" "}
+        <Kbd>N</Kbd> n/a &nbsp; <Kbd>V</Kbd> view beside
+      </p>
     </div>
   )
 }
