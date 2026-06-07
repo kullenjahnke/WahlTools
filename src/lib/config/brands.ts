@@ -4,6 +4,15 @@ export const BRANDS = ["Wahlburgers", "Catelli", "Grillo's", "Schweid & Sons"] a
 
 export type Brand = (typeof BRANDS)[number]
 
+// Canonical brand colors (hex). Used for brand chips/swatches and, with an
+// alpha prefix, for the styled Excel export headers.
+export const BRAND_HEX: Record<Brand, string> = {
+  "Wahlburgers": "#44B549",
+  "Catelli": "#2563EB",
+  "Grillo's": "#F59E0B",
+  "Schweid & Sons": "#E11D48",
+}
+
 const normalizeBrand = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "")
 
 // Matches a product to a brand, tolerant of punctuation/spacing differences

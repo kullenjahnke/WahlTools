@@ -25,3 +25,15 @@ export const RETAILERS = [
     'Publix': '#3d8c2f',            // brand — green
     'Safeway': '#e11d48'            // reassigned — red (now the only red)
   };
+
+/**
+ * Sort an arbitrary set of retailer names into the canonical config order.
+ * Unknown retailers sort to the end (stable). De-duplicates.
+ */
+export function orderRetailers(available: readonly string[]): string[] {
+  const indexOf = (r: string) => {
+    const i = (RETAILERS as readonly string[]).indexOf(r)
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i
+  }
+  return Array.from(new Set(available)).sort((a, b) => indexOf(a) - indexOf(b))
+}
