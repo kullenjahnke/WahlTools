@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import {
   LineChart,
   Line,
@@ -119,13 +119,17 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
     const lowest = Math.min(...allPriceValues)
     const highest = Math.max(...allPriceValues)
 
-    // 12-week change: latest avg vs avg 12 weeks ago
+    // 12-week change: current avg vs the avg of each retailer's latest price
+    // recorded at or before the 12-week cutoff (allValidPrices is ascending, so
+    // the last assignment per retailer is its most recent pre-cutoff price).
     const cutoff12w = subDays(new Date(), 84)
-    const old12wPrices = allValidPrices
-      .filter((p) => new Date(p.timestamp) <= cutoff12w)
-      .map((p) => p.price)
-    const oldAvg12w = old12wPrices.length
-      ? old12wPrices.reduce((s, v) => s + v, 0) / old12wPrices.length
+    const old12wPerRetailer: Record<string, number> = {}
+    for (const p of allValidPrices) {
+      if (new Date(p.timestamp) <= cutoff12w) old12wPerRetailer[p.retailer] = p.price
+    }
+    const oldValues = Object.values(old12wPerRetailer)
+    const oldAvg12w = oldValues.length
+      ? oldValues.reduce((s, v) => s + v, 0) / oldValues.length
       : null
 
     const change12w =
@@ -152,7 +156,7 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
       date: string
     }[] = []
     for (const [retailer, prices] of Object.entries(byRetailer)) {
-      const sorted = prices.sort(
+      const sorted = [...prices].sort(
         (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       )
       for (let i = 1; i < sorted.length; i++) {
@@ -200,14 +204,35 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
   ]
 
   // Which retailers actually have data in the filtered window
-  const activeRetailers = RETAILERS.filter((r) =>
-    chartData.some((d) => r in d)
+  const activeRetailers = useMemo(
+    () => RETAILERS.filter((r) => chartData.some((d) => r in d)),
+    [chartData]
   )
+
+  // Close the product picker on outside-click or Escape
+  const pickerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!pickerOpen) return
+    const onPointer = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPickerOpen(false)
+    }
+    document.addEventListener("mousedown", onPointer)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onPointer)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [pickerOpen])
 
   return (
     <div className="space-y-4">
       {/* Product Picker */}
-      <div className="relative">
+      <div className="relative" ref={pickerRef}>
         <button
           type="button"
           onClick={() => setPickerOpen((o) => !o)}
@@ -390,7 +415,7 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                   {s.label}
                 </p>
-                <p className="mt-1 font-bold tabular-nums text-foreground" style={{ fontSize: "19px" }}>
+                <p className="mt-1 text-[19px] font-bold tabular-nums text-foreground">
                   {s.value}
                   {s.sub && (
                     <small
@@ -557,11 +582,11 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  changeLog.map((entry, i) => {
+                  changeLog.map((entry) => {
                     const isDown = entry.pct < 0
                     const isUp = entry.pct > 0
                     return (
-                      <TableRow key={i}>
+                      <TableRow key={`${entry.retailer}-${entry.date}`}>
                         <TableCell className="font-medium">
                           {entry.retailer}
                         </TableCell>

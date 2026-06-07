@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -229,6 +230,9 @@ const themeOptions: ThemeOption[] = [
 
 function AppearanceCard() {
   const { theme, setTheme } = useTheme()
+  // Avoid a hydration flash: only reflect the active theme after mount.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   return (
     <Card className="shadow-none">
@@ -247,7 +251,7 @@ function AppearanceCard() {
               onClick={() => setTheme(opt.value)}
               className={cn(
                 "flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
-                theme === opt.value
+                mounted && theme === opt.value
                   ? "border-foreground bg-foreground text-background"
                   : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"
               )}

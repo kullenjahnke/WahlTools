@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { LogOut, Monitor, Moon, Settings, Sun, User } from "lucide-react"
 import { useTheme } from "next-themes"
 import { createClientClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ interface UserMenuProps {
 export function UserMenu({ email }: UserMenuProps) {
   const router = useRouter()
   const { setTheme } = useTheme()
+  const { toast } = useToast()
   const supabase = createClientClient()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -41,10 +43,16 @@ export function UserMenu({ email }: UserMenuProps) {
   async function handleSignOut() {
     try {
       setIsSigningOut(true)
-      await supabase.auth.signOut()
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
       router.push("/login")
     } catch (error) {
       console.error("Error signing out:", error)
+      toast({
+        title: "Sign out failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsSigningOut(false)
       setConfirmOpen(false)
