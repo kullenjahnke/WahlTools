@@ -1,21 +1,28 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { ExternalLink, Tag, Check, Info, AlertCircle, TrendingDown, ChevronRight, XCircle } from "lucide-react"
-import { RETAILER_COLOR_MAP, BRAND_COLORS } from "@/lib/config/colors"
-import { RETAILERS } from "@/lib/config/retailers"
+import {
+  ExternalLink,
+  Tag,
+  Check,
+  TrendingDown,
+  RotateCcw,
+  PackageX,
+  XCircle,
+} from "lucide-react"
+import { detectPriceOutlier, type PriceHistoryPoint } from "@/lib/outlier"
+import { recordRetailerPrices, type PriceStatus } from "@/app/actions/prices"
+import { Chip } from "@/components/ui/chip"
 
-// Define the simplified interfaces for the form component
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 interface SimpleProductUrl {
   retailer: string
   url: string
@@ -25,614 +32,506 @@ interface SimpleProduct {
   id: string
   name: string
   category: string
+  brandName: string | null
+  imageUrl: string | null
   urls: SimpleProductUrl[]
+  lastPrice: number | null
+  history: PriceHistoryPoint[]
 }
 
 interface PriceCheckFormProps {
   products: SimpleProduct[]
   retailer: string
+  orderedRetailers: string[]
 }
 
-export function PriceCheckForm({ products, retailer }: PriceCheckFormProps) {
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCheckFormProps) {
   const [prices, setPrices] = useState<Record<string, string>>({})
   const [originalPrices, setOriginalPrices] = useState<Record<string, string>>({})
   const [promos, setPromos] = useState<Record<string, boolean>>({})
-  const [notes, setNotes] = useState("")
-  const [category, setCategory] = useState("all")
-  const [loading, setLoading] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [soldOut, setSoldOut] = useState<Record<string, boolean>>({})
   const [notAvailable, setNotAvailable] = useState<Record<string, boolean>>({})
-  const [openingUrls, setOpeningUrls] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [autoAdvance, setAutoAdvance] = useState(true)
+  const [blockedUrls, setBlockedUrls] = useState<string[]>([])
+
   const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClientClient()
-  
-  // Get unique categories from products
-  const categories = Array.from(new Set(products.map(p => p.category)))
-  
-  // Filter products by category
-  const filteredProducts = category === "all" 
-    ? products 
-    : products.filter(p => p.category === category)
-  
+
   // Reference for inputs to enable keyboard navigation
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
-  
+
+  // Get unique categories from products
+  const categories = Array.from(new Set(products.map(p => p.category)))
+
+  // ---------------------------------------------------------------------------
+  // Progress
+  // ---------------------------------------------------------------------------
+
+  // Deduplicated count (a product marked soldOut AND having a price shouldn't double-count)
+  const enteredIds = new Set([
+    ...Object.keys(prices).filter(id => prices[id]?.trim()),
+    ...Object.keys(soldOut).filter(id => soldOut[id]),
+    ...Object.keys(notAvailable).filter(id => notAvailable[id]),
+  ])
+  const enteredUnique = enteredIds.size
+  const total = products.length
+  const progressPct = total > 0 ? Math.round((enteredUnique / total) * 100) : 0
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
   const handlePriceChange = (productId: string, value: string) => {
-    setPrices(prev => ({
-      ...prev,
-      [productId]: value
-    }))
-    
-    // Update progress
-    updateProgress()
+    setPrices(prev => ({ ...prev, [productId]: value }))
   }
-  
-  const handlePromoToggle = (productId: string, checked: boolean) => {
-    setPromos(prev => ({
-      ...prev,
-      [productId]: checked
-    }))
-    
-    // Clear original price if promo is unchecked
-    if (!checked) {
-      setOriginalPrices(prev => ({
-        ...prev,
-        [productId]: ''
-      }))
-    }
-  }
-  
+
   const handleOriginalPriceChange = (productId: string, value: string) => {
-    setOriginalPrices(prev => ({
-      ...prev,
-      [productId]: value
-    }))
-    
-    // Auto-detect promotion if original price is higher than regular price
+    setOriginalPrices(prev => ({ ...prev, [productId]: value }))
     if (value && prices[productId]) {
       const original = parseFloat(value)
       const regular = parseFloat(prices[productId])
       if (!isNaN(original) && !isNaN(regular) && original > regular) {
-        setPromos(prev => ({
-          ...prev,
-          [productId]: true
-        }))
+        setPromos(prev => ({ ...prev, [productId]: true }))
       }
     }
   }
-  
-  // Add a handler for the sold out toggle
+
+  const handlePromoToggle = (productId: string, checked: boolean) => {
+    setPromos(prev => ({ ...prev, [productId]: checked }))
+    if (!checked) {
+      setOriginalPrices(prev => ({ ...prev, [productId]: '' }))
+    }
+  }
+
   const handleSoldOutToggle = (productId: string, checked: boolean) => {
-    // Update soldOut state
-    setSoldOut(prev => {
-      const newSoldOut = {
-        ...prev,
-        [productId]: checked
-      };
-      
-      // If marking as sold out, clear price, disable promo, and clear not available
-      if (checked) {
-        setPrices(prev => ({
-          ...prev,
-          [productId]: ''
-        }));
-        setPromos(prev => ({
-          ...prev,
-          [productId]: false
-        }));
-        setNotAvailable(prev => ({
-          ...prev,
-          [productId]: false
-        }));
-      }
-      
-      // Calculate progress with the updated soldOut state
-      setTimeout(() => {
-        const filledCount = Object.keys(prices).filter(id => prices[id] && prices[id] !== "").length;
-        const soldOutCount = Object.keys(newSoldOut).filter(id => newSoldOut[id]).length;
-        const notAvailableCount = Object.keys(notAvailable).filter(id => notAvailable[id]).length;
-        setProgress(Math.round(((filledCount + soldOutCount + notAvailableCount) / (filteredProducts.length || 1)) * 100));
-      }, 0);
-      
-      return newSoldOut;
-    });
+    setSoldOut(prev => ({ ...prev, [productId]: checked }))
+    if (checked) {
+      setPrices(prev => ({ ...prev, [productId]: '' }))
+      setPromos(prev => ({ ...prev, [productId]: false }))
+      setNotAvailable(prev => ({ ...prev, [productId]: false }))
+    }
   }
-  
-  // Add a handler for the not available toggle
+
   const handleNotAvailableToggle = (productId: string, checked: boolean) => {
-    // Update notAvailable state
-    setNotAvailable(prev => {
-      const newNotAvailable = {
-        ...prev,
-        [productId]: checked
-      };
-      
-      // If marking as not available, clear everything else
-      if (checked) {
-        setPrices(prev => ({
-          ...prev,
-          [productId]: ''
-        }));
-        setPromos(prev => ({
-          ...prev,
-          [productId]: false
-        }));
-        setSoldOut(prev => ({
-          ...prev,
-          [productId]: false
-        }));
-      }
-      
-      // Calculate progress
-      setTimeout(() => {
-        const filledCount = Object.keys(prices).filter(id => prices[id] && prices[id] !== "").length;
-        const soldOutCount = Object.keys(soldOut).filter(id => soldOut[id]).length;
-        const notAvailableCount = Object.keys(newNotAvailable).filter(id => newNotAvailable[id]).length;
-        setProgress(Math.round(((filledCount + soldOutCount + notAvailableCount) / (filteredProducts.length || 1)) * 100));
-      }, 0);
-      
-      return newNotAvailable;
-    });
+    setNotAvailable(prev => ({ ...prev, [productId]: checked }))
+    if (checked) {
+      setPrices(prev => ({ ...prev, [productId]: '' }))
+      setPromos(prev => ({ ...prev, [productId]: false }))
+      setSoldOut(prev => ({ ...prev, [productId]: false }))
+    }
   }
-  
-  const updateProgress = () => {
-    const filledCount = Object.keys(prices).filter(id => prices[id] && prices[id] !== "").length
-    const soldOutCount = Object.keys(soldOut).filter(id => soldOut[id]).length
-    const notAvailableCount = Object.keys(notAvailable).filter(id => notAvailable[id]).length
-    setProgress(Math.round(((filledCount + soldOutCount + notAvailableCount) / (filteredProducts.length || 1)) * 100))
+
+  // ---------------------------------------------------------------------------
+  // Open all URLs — synchronous with blocked-popup fallback
+  // ---------------------------------------------------------------------------
+
+  const openAllUrls = (urls: string[]) => {
+    setBlockedUrls([])
+    const blocked: string[] = []
+    for (const u of urls) {
+      const w = window.open(u, "_blank", "noopener,noreferrer")
+      if (!w) blocked.push(u)
+    }
+    setBlockedUrls(blocked)
+    if (blocked.length) {
+      toast({
+        title: "Some pop-ups were blocked",
+        description: "Use the list below to open the rest.",
+        variant: "destructive",
+      })
+    }
   }
-  
+
+  // ---------------------------------------------------------------------------
+  // Outlier detection per product
+  // ---------------------------------------------------------------------------
+
+  const outlierFor = (p: SimpleProduct): { pct: number; reference: number } | null => {
+    const raw = prices[p.id]
+    if (!raw?.trim() || soldOut[p.id] || notAvailable[p.id]) return null
+    const r = detectPriceOutlier({ retailer, newPrice: parseFloat(raw), history: p.history })
+    return r ? { pct: r.pct, reference: r.reference } : null
+  }
+
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
+
   const handleSubmit = async () => {
     setLoading(true)
     try {
-      // Get all product IDs that have either a price or are marked as sold out or not available
-      const productIdsWithData = Array.from(new Set([
-        ...Object.keys(prices).filter(id => prices[id] && prices[id] !== ""),
+      const ids = Array.from(new Set([
+        ...Object.keys(prices).filter(id => prices[id]?.trim()),
         ...Object.keys(soldOut).filter(id => soldOut[id]),
-        ...Object.keys(notAvailable).filter(id => notAvailable[id])
-      ]));
-      
-      // Transform data for submission
-      const priceUpdates = productIdsWithData
-        .map(productId => {
-          const hasPromo = promos[productId] || false
-          const originalPrice = hasPromo && originalPrices[productId] ? parseFloat(originalPrices[productId]) : null
-          // For sold out or not available items, use 0 as the price
-          // For available items, parse the price or skip if no price entered
-          let regularPrice: number | null = null
+        ...Object.keys(notAvailable).filter(id => notAvailable[id]),
+      ]))
 
-          if (soldOut[productId] || notAvailable[productId]) {
-            regularPrice = 0 // Use 0 for sold out or not available items
-          } else if (prices[productId]) {
-            regularPrice = parseFloat(prices[productId])
-          }
+      const items = ids.map(id => {
+        const status: PriceStatus = notAvailable[id]
+          ? "not_carried"
+          : soldOut[id]
+            ? "out_of_stock"
+            : "active"
+        const onSale = !!promos[id]
+        const orig = onSale && originalPrices[id] ? parseFloat(originalPrices[id]) : null
+        const price = status === "active" ? parseFloat(prices[id]) : 0
+        const disc =
+          onSale && orig && price > 0
+            ? Math.round(((orig - price) / orig) * 100)
+            : null
+        return {
+          product_id: id,
+          price,
+          status,
+          is_promotion: onSale,
+          is_sold_out: status === "out_of_stock",
+          original_price: orig,
+          discount_percentage: disc,
+        }
+      }).filter(i => i.status !== "active" || Number.isFinite(i.price))
 
-          // Skip items that don't have a price and aren't marked as sold out or not available
-          if (regularPrice === null) {
-            return null
-          }
-
-          return {
-            product_id: productId,
-            retailer,
-            price: regularPrice,
-            original_price: originalPrice,
-            on_sale: hasPromo,
-            discount_percentage: hasPromo && originalPrice && regularPrice > 0
-              ? Math.round(((originalPrice - regularPrice) / originalPrice) * 100)
-              : null,
-            status: notAvailable[productId] ? 'not_carried' : (soldOut[productId] ? 'out_of_stock' : 'active'),
-            timestamp: new Date().toISOString()
-          }
-        })
-        .filter(update => update !== null) // Remove any null entries
-      
-      if (priceUpdates.length === 0) {
-        toast({
-          title: "No prices entered",
-          description: "Please enter at least one price or mark a product as sold out before submitting",
-          variant: "destructive"
-        })
+      if (items.length === 0) {
+        toast({ title: "No prices entered", variant: "destructive" })
         setLoading(false)
         return
       }
-      
-      // Add price check log
-      const { error: logError } = await supabase
-        .from('price_check_logs')
-        .insert({
-          retailer,
-          completed: true,
-          completed_at: new Date().toISOString(),
-          notes: notes || null
-        })
-      
-      if (logError) throw new Error(`Failed to create price check log: ${logError.message}`)
-      
-      // First update status of existing prices to historical
-      const { error: updateError } = await supabase
-        .from('prices')
-        .update({ status: 'historical' })
-        .eq('retailer', retailer)
-        .in('product_id', priceUpdates.map(p => p.product_id))
-        .in('status', ['active', 'available'])
 
-      if (updateError) throw new Error(`Failed to update existing prices: ${updateError.message}`)
-      
-      // Then insert new prices
-      const { error: insertError } = await supabase
-        .from('prices')
-        .insert(priceUpdates)
-      
-      if (insertError) throw new Error(`Failed to insert new prices: ${insertError.message}`)
-      
+      await recordRetailerPrices(retailer, items)
       toast({
         title: "Success",
-        description: `Price check for ${retailer} completed successfully`,
+        description: `Price check for ${retailer} completed`,
       })
-      
-      // Auto-advance to next retailer if enabled
+
       if (autoAdvance) {
-        const currentIndex = (RETAILERS as readonly string[]).indexOf(retailer)
-        if (currentIndex < RETAILERS.length - 1) {
-          const nextRetailer = RETAILERS[currentIndex + 1]
-          router.push(`/dashboard/prices/check?retailer=${encodeURIComponent(nextRetailer)}`)
+        const i = orderedRetailers.indexOf(retailer)
+        if (i > -1 && i < orderedRetailers.length - 1) {
+          router.push(`/dashboard/prices/check?retailer=${encodeURIComponent(orderedRetailers[i + 1])}`)
         } else {
-          // All retailers complete
-          toast({
-            title: "All Retailers Complete!",
-            description: "You've completed price checks for all retailers.",
-          })
-          router.push('/dashboard/prices')
+          toast({ title: "All retailers complete!" })
+          router.push("/dashboard/prices")
         }
       } else {
-        router.push('/dashboard/prices')
+        router.push("/dashboard/prices")
       }
       router.refresh()
     } catch (error) {
-      console.error("Error saving prices:", error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save price check data",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to save",
+        variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
   }
-  
-  // Get product URL for this retailer
-  const getProductUrl = (product: SimpleProduct) => {
-    if (!product.urls || product.urls.length === 0) return null;
-    const urlData = product.urls.find(u => u.retailer === retailer);
-    return urlData?.url;
+
+  // ---------------------------------------------------------------------------
+  // Helper: get product URL for this retailer
+  // ---------------------------------------------------------------------------
+
+  const getProductUrl = (product: SimpleProduct): string | null => {
+    if (!product.urls || product.urls.length === 0) return null
+    return product.urls.find(u => u.retailer === retailer)?.url ?? null
   }
-  
-  // Function to open URLs with a delay to avoid popup blockers
-  const openUrlsSequentially = (urls: string[]) => {
-    if (urls.length === 0) return;
-    
-    setOpeningUrls(true);
-    
-    // Show toast notification with instructions
-    toast({
-      title: `Opening ${urls.length} URLs`,
-      description: "You may need to allow popups in your browser. Check for popup notifications.",
-      duration: 5000,
-    });
-    
-    // Create a temporary button element for each URL
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px'; // Hide off-screen
-    document.body.appendChild(container);
-    
-    // Create and click links with a small delay between each
-    let index = 0;
-    
-    const openNext = () => {
-      if (index >= urls.length) {
-        // Clean up when done
-        document.body.removeChild(container);
-        setOpeningUrls(false);
-        return;
-      }
-      
-      const link = document.createElement('a');
-      link.href = urls[index];
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = `Open ${index + 1}`;
-      link.style.display = 'block';
-      link.style.margin = '10px';
-      container.appendChild(link);
-      
-      // Simulate a user click
-      link.click();
-      
-      // Move to next URL after delay
-      index++;
-      setTimeout(openNext, 300);
-    };
-    
-    // Start the process
-    openNext();
-  };
-  
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  if (products.length === 0) {
+    return (
+      <div className="rounded-xl border bg-card p-8 text-center">
+        <h3 className="text-lg font-medium mb-2">No products available</h3>
+        <p className="text-muted-foreground text-sm">
+          Add products with retailer URLs to start recording prices.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      {filteredProducts.length === 0 ? (
-        <Card className="shadow-md">
-          <CardContent className="p-8 text-center">
-            <Info className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-80" />
-            <h3 className="text-lg font-medium mb-2">
-              {category === "all" 
-                ? "No products available for price checking" 
-                : `No products in the "${category}" category`}
-            </h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              {category === "all"
-                ? "Try adding products or setting up retailer URLs in the product management section."
-                : "Try selecting a different category or add products to this category."}
-            </p>
-            {category !== "all" && (
-              <Button onClick={() => setCategory("all")}>
-                Show All Products
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader className="border-b border-border">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <CardTitle className="flex items-center">
-                <div 
-                  className="w-4 h-4 rounded-full mr-2"
-                  style={{ backgroundColor: RETAILER_COLOR_MAP[retailer] || BRAND_COLORS.primary }}
-                ></div>
-                Price Check: {retailer}
-              </CardTitle>
-              
-              {categories.length > 1 && (
-                <div className="flex items-center gap-2 self-end">
-                  <Label>Category:</Label>
-                  <select
-                    className="rounded-md border border-input bg-background px-3 py-1 text-sm"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  >
-                    <option value="all">All Categories</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          
-          <CardContent className="pt-4">
-            <div className="mb-4">
-              <div className="flex justify-between mb-2">
-                <Label>Notes about this price check:</Label>
-                <span className="text-xs text-muted-foreground">Optional</span>
-              </div>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any notes about this price check..."
-                className="h-20"
-              />
-            </div>
-            
-            <div className="relative pt-4 mb-6">
-              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand transition-all duration-500"
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                <span>Progress</span>
-                <span>{progress}% Complete</span>
-              </div>
-            </div>
-            
-            {/* Auto-advance toggle */}
-            <div className="flex items-center justify-between mb-4 p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <ChevronRight className="h-4 w-4" />
-                <Label htmlFor="auto-advance" className="cursor-pointer">
-                  Auto-advance to next retailer after saving
-                </Label>
-              </div>
-              <Switch
-                id="auto-advance"
-                checked={autoAdvance}
-                onCheckedChange={setAutoAdvance}
-              />
-            </div>
-            
-            <div className="space-y-6">
-              {categories.map(cat => {
-                // Only show this category section if we're showing all categories or this specific one
-                if (category !== "all" && category !== cat) return null;
-                
-                const categoryProducts = products.filter(p => p.category === cat);
-                if (categoryProducts.length === 0) return null;
-                
-                return (
-                  <div key={cat} className="space-y-3">
-                    <div className="flex justify-between items-center border-b pb-2">
-                      <h3 className="font-medium text-sm uppercase tracking-wide text-muted-foreground">
-                        {cat} <Badge variant="outline">{categoryProducts.length}</Badge>
-                      </h3>
-                      
-                      {/* Open All URLs button */}
-                      {(() => {
-                        // Get all valid URLs for this category and retailer
-                        const categoryUrls = categoryProducts
-                          .map(product => getProductUrl(product))
-                          .filter(Boolean) as string[];
-                          
-                        if (categoryUrls.length > 0) {
-                          return (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-xs h-7 px-2 flex items-center gap-1"
-                              onClick={() => openUrlsSequentially(categoryUrls)}
-                              disabled={openingUrls}
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              {openingUrls ? "Opening..." : `Open All URLs (${categoryUrls.length})`}
-                            </Button>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                    
-                    <div className="grid gap-4">
-                      {categoryProducts.map((product, index) => {
-                        const productUrl = getProductUrl(product);
-                        
-                        return (
-                          <div 
-                            key={product.id} 
-                            className="grid grid-cols-1 lg:grid-cols-[minmax(200px,1.5fr),minmax(280px,auto),auto,auto,auto] gap-2 lg:gap-4 items-center p-3 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
-                          >
-                            {/* Product name with URL */}
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium text-sm lg:text-base truncate">{product.name}</div>
-                              {productUrl && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => window.open(productUrl, '_blank')}
-                                  className="text-muted-foreground h-7 w-7 shrink-0"
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                            
-                            {/* Price inputs */}
-                            <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap">
-                              <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  placeholder="0.00"
-                                  className="pl-7 w-24 h-9 font-medium text-right text-sm"
-                                  value={prices[product.id] || ''}
-                                  onChange={(e) => handlePriceChange(product.id, e.target.value)}
-                                  ref={(el) => { if (el) inputRefs.current[product.id] = el }}
-                                  disabled={soldOut[product.id] || notAvailable[product.id]}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      const nextIndex = index + 1;
-                                      if (nextIndex < categoryProducts.length) {
-                                        const nextProductId = categoryProducts[nextIndex].id;
-                                        inputRefs.current[nextProductId]?.focus();
-                                      }
-                                    }
-                                  }}
-                                />
-                              </div>
-                              {promos[product.id] && (
-                                <div className="relative">
-                                  <TrendingDown className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground h-3 w-3" />
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="Orig"
-                                    className="pl-7 w-24 h-9 font-medium text-right text-sm tabular-nums"
-                                    value={originalPrices[product.id] || ''}
-                                    onChange={(e) => handleOriginalPriceChange(product.id, e.target.value)}
-                                    disabled={soldOut[product.id]}
-                                  />
-                                </div>
-                              )}
-                              {promos[product.id] && prices[product.id] && originalPrices[product.id] && (
-                                <Badge variant="brand" className="text-xs px-1.5 py-0.5">
-                                  {Math.round(((parseFloat(originalPrices[product.id]) - parseFloat(prices[product.id])) / parseFloat(originalPrices[product.id])) * 100)}%
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {/* Promo toggle */}
-                            <div className="flex items-center gap-1.5">
-                              <Switch
-                                id={`promo-${product.id}`}
-                                checked={promos[product.id] || false}
-                                onCheckedChange={(checked) => handlePromoToggle(product.id, checked)}
-                                disabled={soldOut[product.id] || notAvailable[product.id]}
-                                className="scale-90"
-                              />
-                              <Label htmlFor={`promo-${product.id}`} className="cursor-pointer text-xs lg:text-sm whitespace-nowrap">
-                                <Tag className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground inline mr-0.5" />
-                                Sale
-                              </Label>
-                            </div>
-                            
-                            {/* Sold Out toggle */}
-                            <div className="flex items-center gap-1.5">
-                              <Switch
-                                id={`soldout-${product.id}`}
-                                checked={soldOut[product.id] || false}
-                                onCheckedChange={(checked) => handleSoldOutToggle(product.id, checked)}
-                                disabled={notAvailable[product.id]}
-                                className="scale-90"
-                              />
-                              <Label htmlFor={`soldout-${product.id}`} className="cursor-pointer text-xs lg:text-sm whitespace-nowrap">
-                                <AlertCircle className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground inline mr-0.5" />
-                                Out
-                              </Label>
-                            </div>
-                            
-                            {/* Not Available toggle */}
-                            <div className="flex items-center gap-1.5">
-                              <Switch
-                                id={`notavailable-${product.id}`}
-                                checked={notAvailable[product.id] || false}
-                                onCheckedChange={(checked) => handleNotAvailableToggle(product.id, checked)}
-                                className="scale-90"
-                              />
-                              <Label htmlFor={`notavailable-${product.id}`} className="cursor-pointer text-xs lg:text-sm whitespace-nowrap">
-                                <XCircle className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground inline mr-0.5" />
-                                N/A
-                              </Label>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            
-            <div className="flex justify-end mt-8">
-              <Button
-                className="w-full sm:w-auto"
-                onClick={handleSubmit}
-                disabled={loading || (Object.keys(prices).filter(id => prices[id] && prices[id] !== "").length === 0 && Object.keys(soldOut).filter(id => soldOut[id]).length === 0 && Object.keys(notAvailable).filter(id => notAvailable[id]).length === 0)}
+    <div className="space-y-4">
+      {/* Blocked URLs fallback panel */}
+      {blockedUrls.length > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/50 p-3">
+          <p className="text-xs font-medium mb-2 text-amber-800 dark:text-amber-300">
+            Pop-ups blocked — open these manually:
+          </p>
+          <div className="flex flex-col gap-1">
+            {blockedUrls.map((u, i) => (
+              <a
+                key={i}
+                href={u}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-brand underline truncate"
               >
-                <Check className="mr-2 h-4 w-4" />
-                {loading ? "Saving..." : "Complete Price Check"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                {u}
+              </a>
+            ))}
+          </div>
+        </div>
       )}
+
+      {/* Meta row: progress bar + Entered pill */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-brand rounded-full transition-all duration-500"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--brand)/0.35)] bg-[hsl(var(--brand)/0.08)] px-2.5 py-0.5 text-xs font-medium text-brand whitespace-nowrap">
+          Entered{" "}
+          <span className="rounded-full border border-[hsl(var(--brand)/0.35)] bg-background px-2 py-px text-xs font-bold tabular-nums text-brand">
+            {enteredUnique}/{total}
+          </span>
+        </span>
+      </div>
+
+      {/* Auto-advance toggle */}
+      <div className="flex items-center gap-2.5 w-fit rounded-[10px] bg-muted px-3 py-[9px] text-[13px] font-medium">
+        <Switch
+          id="auto-advance"
+          checked={autoAdvance}
+          onCheckedChange={setAutoAdvance}
+          className="scale-90"
+        />
+        <Label htmlFor="auto-advance" className="cursor-pointer text-[13px] font-medium">
+          Auto-advance
+        </Label>
+      </div>
+
+      {/* Categories */}
+      <div className="space-y-4">
+        {categories.map(cat => {
+          const categoryProducts = products.filter(p => p.category === cat)
+          if (categoryProducts.length === 0) return null
+
+          const categoryUrls = categoryProducts
+            .map(p => getProductUrl(p))
+            .filter(Boolean) as string[]
+
+          // Flat list of all products for cross-category keyboard nav
+          const allProductIds = products.map(p => p.id)
+
+          return (
+            <div key={cat}>
+              {/* Category header */}
+              <div className="flex items-center justify-between mb-2.5">
+                <h4 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground flex items-center gap-2">
+                  {cat}
+                  <span className="rounded-[6px] bg-muted px-[7px] py-px text-[11px] font-normal text-muted-foreground">
+                    {categoryProducts.length}
+                  </span>
+                </h4>
+                {categoryUrls.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => openAllUrls(categoryUrls)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-[10px] py-[5px] text-xs font-medium hover:bg-accent/60 transition-colors"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open all {categoryUrls.length} URL{categoryUrls.length !== 1 ? 's' : ''}
+                  </button>
+                )}
+              </div>
+
+              {/* Product rows */}
+              <div className="space-y-2">
+                {categoryProducts.map(product => {
+                  const productUrl = getProductUrl(product)
+                  const outlier = outlierFor(product)
+                  const showCarryOver =
+                    !prices[product.id]?.trim() &&
+                    !soldOut[product.id] &&
+                    !notAvailable[product.id] &&
+                    product.lastPrice != null
+
+                  // Global index for Enter-key nav
+                  const globalIdx = allProductIds.indexOf(product.id)
+                  const nextProductId = allProductIds[globalIdx + 1] ?? null
+
+                  return (
+                    <div
+                      key={product.id}
+                      className={[
+                        "grid items-center gap-3 rounded-[10px] border bg-card px-[10px] py-[9px] transition-colors",
+                        "grid-cols-[1.6fr_150px_auto_auto_auto]",
+                        outlier ? "border-l-[3px] border-l-amber-400/70" : "",
+                      ].join(' ')}
+                    >
+                      {/* Col 1: Product name + brand chip + external link */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-medium text-sm truncate">{product.name}</span>
+                        {product.brandName && (
+                          <Chip
+                            label={product.brandName}
+                            tone={product.brandName === "Wahlburgers" ? "brand" : "auto"}
+                            colorKey={product.brandName}
+                            size="sm"
+                            className="shrink-0"
+                          />
+                        )}
+                        {productUrl && (
+                          <a
+                            href={productUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Col 2: Price input (+ original price if on sale) */}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={[
+                              "flex items-center border rounded-lg px-[9px] py-[6px] gap-[2px] bg-card text-sm w-full",
+                              !soldOut[product.id] && !notAvailable[product.id]
+                                ? "border-border focus-within:border-brand focus-within:ring-[3px] focus-within:ring-[hsl(var(--brand)/0.12)]"
+                                : "border-border opacity-50",
+                            ].join(' ')}
+                          >
+                            <span className="text-muted-foreground text-sm">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="0.00"
+                              className="border-0 outline-0 w-full text-right tabular-nums bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={prices[product.id] || ''}
+                              onChange={e => handlePriceChange(product.id, e.target.value)}
+                              ref={el => { inputRefs.current[product.id] = el }}
+                              disabled={soldOut[product.id] || notAvailable[product.id]}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && nextProductId) {
+                                  e.preventDefault()
+                                  inputRefs.current[nextProductId]?.focus()
+                                }
+                              }}
+                            />
+                          </div>
+
+                          {/* Original price input shown when on sale */}
+                          {promos[product.id] && (
+                            <div className="flex items-center border border-border rounded-lg px-[9px] py-[6px] gap-[2px] bg-card text-sm w-full focus-within:border-brand focus-within:ring-[3px] focus-within:ring-[hsl(var(--brand)/0.12)]">
+                              <span className="text-muted-foreground text-[11px] whitespace-nowrap">Orig $</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                className="border-0 outline-0 w-full text-right tabular-nums bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                value={originalPrices[product.id] || ''}
+                                onChange={e => handleOriginalPriceChange(product.id, e.target.value)}
+                                disabled={soldOut[product.id]}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Sub-row: outlier chip or carry-over — both span under the input */}
+                        {outlier && (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-300/70 dark:border-amber-600/40 rounded-md px-1.5 py-0.5">
+                            <TrendingDown className="h-3 w-3" />
+                            {Math.round(Math.abs(outlier.pct))}% was ${outlier.reference.toFixed(2)}
+                          </span>
+                        )}
+                        {showCarryOver && (
+                          <button
+                            type="button"
+                            onClick={() => handlePriceChange(product.id, product.lastPrice!.toFixed(2))}
+                            className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground border border-dashed border-border rounded-md px-1.5 py-0.5 hover:text-foreground hover:border-muted-foreground transition-colors w-fit"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Same as last week ${product.lastPrice!.toFixed(2)}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Col 3: Sale chip toggle */}
+                      <button
+                        type="button"
+                        onClick={() => handlePromoToggle(product.id, !promos[product.id])}
+                        disabled={soldOut[product.id] || notAvailable[product.id]}
+                        className={[
+                          "inline-flex items-center gap-1.5 rounded-lg border px-[9px] py-[5px] text-xs font-medium whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                          promos[product.id]
+                            ? "border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] text-brand"
+                            : "border-border bg-card text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                        ].join(' ')}
+                      >
+                        <Tag className="h-3 w-3" />
+                        Sale
+                      </button>
+
+                      {/* Col 4: Out chip toggle */}
+                      <button
+                        type="button"
+                        onClick={() => handleSoldOutToggle(product.id, !soldOut[product.id])}
+                        disabled={notAvailable[product.id]}
+                        className={[
+                          "inline-flex items-center gap-1.5 rounded-lg border px-[9px] py-[5px] text-xs font-medium whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                          soldOut[product.id]
+                            ? "border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] text-brand"
+                            : "border-border bg-card text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                        ].join(' ')}
+                      >
+                        <PackageX className="h-3 w-3" />
+                        Out
+                      </button>
+
+                      {/* Col 5: N/A chip toggle */}
+                      <button
+                        type="button"
+                        onClick={() => handleNotAvailableToggle(product.id, !notAvailable[product.id])}
+                        className={[
+                          "inline-flex items-center gap-1.5 rounded-lg border px-[9px] py-[5px] text-xs font-medium whitespace-nowrap transition-colors",
+                          notAvailable[product.id]
+                            ? "border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] text-brand"
+                            : "border-border bg-card text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                        ].join(' ')}
+                      >
+                        <XCircle className="h-3 w-3" />
+                        N/A
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Sticky footer */}
+      <div className="sticky bottom-0 pt-4 pb-2 bg-background/95 backdrop-blur-sm flex items-center justify-between gap-4">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Press{" "}
+          <kbd className="font-mono bg-[hsl(var(--brand)/0.08)] text-brand border border-[hsl(var(--brand)/0.35)] rounded-[5px] px-[6px] py-px text-[11px] font-semibold">
+            ↵
+          </kbd>{" "}
+          to jump to the next field
+        </span>
+
+        <Button
+          onClick={handleSubmit}
+          disabled={loading || enteredUnique === 0}
+          className="bg-brand hover:bg-brand/90 text-white font-semibold gap-2"
+        >
+          <Check className="h-4 w-4" />
+          {loading ? "Saving…" : "Complete Price Check"}
+        </Button>
+      </div>
     </div>
   )
 }
