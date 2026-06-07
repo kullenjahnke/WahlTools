@@ -2,11 +2,15 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { PriceCheckForm } from "@/components/prices/price-check-form"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { RETAILERS } from "@/lib/config/retailers"
+import { RETAILERS, orderRetailers } from "@/lib/config/retailers"
 import { Card, CardContent } from "@/components/ui/card"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
+import { getRetailerCheckStatus } from "@/app/actions/prices"
+import type { PriceHistoryPoint } from "@/lib/outlier"
 import type { ProductUrl } from "@/types/database"
+import { Check } from "lucide-react"
+import { RETAILER_COLORS } from "@/lib/config/retailers"
 
 interface PageProps {
   searchParams: Promise<{ retailer?: string }>
@@ -19,18 +23,22 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
   const supabase = await createSupabaseServerClient()
 
   try {
-    // Fetch products and categories in parallel
-    const [productsResult, categoriesResult] = await Promise.all([
+    const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString()
+
+    const [productsResult, categoriesResult, pricesResult, checkStatus] = await Promise.all([
       supabase
         .from('products')
-        .select(`
-          *,
-          product_urls (*)
-        `)
+        .select(`*, product_urls (*), product_images (*)`)
         .order('name'),
       supabase
         .from('product_categories')
-        .select('id, name')
+        .select('id, name'),
+      supabase
+        .from('prices')
+        .select('product_id, retailer, price, timestamp')
+        .gte('timestamp', since)
+        .order('timestamp', { ascending: false }),
+      getRetailerCheckStatus(),
     ])
 
     if (productsResult.error) {
@@ -47,29 +55,38 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
     const categoryMap = new Map(
       categoriesResult.data?.map(cat => [cat.id, cat.name]) || []
     )
-    
-    // Get unique retailers from product URLs
+
+    // Get unique retailers from product URLs, ordered canonically
     const availableRetailers = Array.from(new Set(
-      productsResult.data?.flatMap(product => 
+      productsResult.data?.flatMap(product =>
         product.product_urls?.map((url: ProductUrl) => url.retailer) || []
       ) || []
-    )).filter(Boolean);
-    
-    // If no available retailers are found, use the default list
-    const retailersToShow = availableRetailers.length > 0 ? 
-      availableRetailers : 
-      RETAILERS;
-    
+    )).filter(Boolean)
+
+    // Only retailers that have >=1 product URL, in canonical config order
+    const retailersToShow = availableRetailers.length > 0
+      ? orderRetailers(availableRetailers)
+      : (RETAILERS as readonly string[]).slice()
+
     // Decode the retailer parameter if it exists
-    const selectedRetailer = typeof params.retailer === 'string' ? 
-      decodeURIComponent(params.retailer) : 
-      retailersToShow[0] || RETAILERS[0];
-    
-    const selectedRetailerExists = retailersToShow.includes(selectedRetailer);
-    const effectiveRetailer = selectedRetailerExists ? 
-      selectedRetailer : 
-      (retailersToShow[0] || RETAILERS[0]);
-    
+    const selectedRetailer = typeof params.retailer === 'string'
+      ? decodeURIComponent(params.retailer)
+      : retailersToShow[0] || RETAILERS[0]
+
+    const selectedRetailerExists = retailersToShow.includes(selectedRetailer)
+    const effectiveRetailer = selectedRetailerExists
+      ? selectedRetailer
+      : (retailersToShow[0] || RETAILERS[0])
+
+    // Build per-product history map
+    const historyByProduct = new Map<string, PriceHistoryPoint[]>()
+    for (const row of pricesResult.data || []) {
+      if (!row.price || row.price <= 0) continue
+      const arr = historyByProduct.get(row.product_id) || []
+      arr.push({ retailer: row.retailer, price: row.price, timestamp: row.timestamp })
+      historyByProduct.set(row.product_id, arr)
+    }
+
     // Format the products data correctly with proper typing and add category names
     const formattedProducts = productsResult.data?.map(product => {
       // Filter URLs for the selected retailer
@@ -80,20 +97,35 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
               retailer: url.retailer,
               url: url.url
             }))
-        : [];
-        
+        : []
+
+      // Main image
+      const mainImage = (product.product_images || []).find(
+        (im: { is_main?: boolean }) => im.is_main
+      )?.image_url || (product.product_images || [])[0]?.image_url || null
+
+      // History + last price at this retailer
+      const history = historyByProduct.get(product.id) || []
+      const lastAtRetailer = history
+        .filter(h => h.retailer === effectiveRetailer)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]?.price ?? null
+
       return {
         id: product.id,
         name: product.name,
         category: categoryMap.get(product.category_id) || 'Uncategorized',
-        urls: relevantUrls
-      };
-    }) || [];
-    
+        brandName: (product.brand_name as string | null) || null,
+        imageUrl: mainImage,
+        urls: relevantUrls,
+        lastPrice: lastAtRetailer,
+        history,
+      }
+    }) || []
+
     // Get products with URLs
-    const productsWithUrls = formattedProducts.filter(product => 
+    const productsWithUrls = formattedProducts.filter(product =>
       product.urls && product.urls.length > 0
-    );
+    )
 
     return (
       <PageContainer>
@@ -106,19 +138,40 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
         />
 
         <div className="grid gap-6">
+          {/* Done-state retailer tab bar */}
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {retailersToShow.map(retailer => (
-              <Button
-                key={retailer}
-                variant={retailer === effectiveRetailer ? "default" : "outline"}
-                asChild
-                className="whitespace-nowrap"
-              >
-                <Link href={`/dashboard/prices/check?retailer=${encodeURIComponent(retailer)}`}>
+            {retailersToShow.map(retailer => {
+              const isDone = !!checkStatus[retailer]
+              const isActive = retailer === effectiveRetailer
+              const color = RETAILER_COLORS[retailer] || '#64748b'
+
+              return (
+                <Link
+                  key={retailer}
+                  href={`/dashboard/prices/check?retailer=${encodeURIComponent(retailer)}`}
+                  className={[
+                    "inline-flex items-center gap-1.5 whitespace-nowrap rounded-[9px] border px-3 py-[7px] text-[13px] font-medium transition-colors",
+                    isActive
+                      ? "border-foreground bg-foreground text-background"
+                      : isDone
+                        ? "border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] text-brand"
+                        : "border-border bg-card text-foreground hover:bg-accent/60",
+                  ].join(' ')}
+                >
+                  {isDone ? (
+                    <span className="flex h-[15px] w-[15px] items-center justify-center rounded-full bg-brand">
+                      <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+                    </span>
+                  ) : (
+                    <span
+                      className="h-[7px] w-[7px] rounded-full shrink-0"
+                      style={{ backgroundColor: isActive ? 'currentColor' : color }}
+                    />
+                  )}
                   {retailer}
                 </Link>
-              </Button>
-            ))}
+              )
+            })}
           </div>
 
           {productsWithUrls.length > 0 ? (
@@ -126,6 +179,7 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
               key={effectiveRetailer}
               products={productsWithUrls}
               retailer={effectiveRetailer}
+              orderedRetailers={retailersToShow}
             />
           ) : (
             <Card>
