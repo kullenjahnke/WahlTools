@@ -1,6 +1,5 @@
-import { ThemeToggle } from "@/components/theme/theme-toggle"
-import { SignOutButton } from "@/components/auth/sign-out-button"
 import { MobileNav } from "@/components/layout/mobile-nav"
+import { UserMenu } from "@/components/layout/user-menu"
 
 export function AppTopbar({ email }: { email?: string }) {
   return (
@@ -11,11 +10,7 @@ export function AppTopbar({ email }: { email?: string }) {
         </div>
       </div>
       <div className="flex items-center gap-1.5">
-        {email && (
-          <span className="hidden text-sm text-muted-foreground sm:inline">{email}</span>
-        )}
-        <ThemeToggle />
-        <SignOutButton />
+        <UserMenu email={email} />
       </div>
     </header>
   )
