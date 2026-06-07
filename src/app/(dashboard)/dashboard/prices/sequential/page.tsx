@@ -37,6 +37,12 @@ export default async function SequentialEntryPage() {
     if (productsResult.error) {
       throw new Error(`Failed to fetch products: ${productsResult.error.message}`)
     }
+    if (categoriesResult.error) {
+      throw new Error(`Failed to fetch categories: ${categoriesResult.error.message}`)
+    }
+    if (pricesResult.error) {
+      throw new Error(`Failed to fetch prices: ${pricesResult.error.message}`)
+    }
 
     const categoryMap = new Map(
       categoriesResult.data?.map((cat) => [cat.id, cat.name]) || []

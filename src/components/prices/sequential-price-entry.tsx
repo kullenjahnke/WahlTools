@@ -70,6 +70,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
   const router = useRouter()
   const { toast } = useToast()
   const priceInputRef = useRef<HTMLInputElement>(null)
+  const savingRef = useRef(false) // re-entrancy guard against double-submit (e.g. Enter spam)
 
   // Products carrying the chosen retailer's URL
   const deck = useMemo(
@@ -126,13 +127,16 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
   }, [url])
 
   const save = useCallback(async () => {
-    if (!price && !isSoldOut && !isNotAvailable) {
+    if (savingRef.current) return // guard against double-submit
+    const parsed = parseFloat(price)
+    if (!isSoldOut && !isNotAvailable && (price.trim() === "" || !Number.isFinite(parsed) || parsed <= 0)) {
       toast({
-        title: "Enter a price, Sold Out, or N/A",
+        title: "Enter a price greater than $0, Sold Out, or N/A",
         variant: "destructive",
       })
       return
     }
+    savingRef.current = true
     setLoading(true)
     try {
       const status: PriceStatus = isNotAvailable
@@ -168,6 +172,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
       })
     } finally {
       setLoading(false)
+      savingRef.current = false
     }
   }, [
     price,
@@ -357,6 +362,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
                   alt={current.name}
                   width={56}
                   height={56}
+                  sizes="56px"
                   className="h-full w-full object-cover"
                 />
               ) : (
