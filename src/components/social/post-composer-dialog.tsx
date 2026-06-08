@@ -43,6 +43,7 @@ export function PostComposerDialog({
   const [caption, setCaption] = useState('')
   const [title, setTitle] = useState('')
   const [format, setFormat] = useState<string>('image')
+  const [aspectRatio, setAspectRatio] = useState<string>('auto')
   const [status, setStatus] = useState<string>('idea')
   const [platforms, setPlatforms] = useState<string[]>(['instagram', 'facebook'])
   const [when, setWhen] = useState<string>('')
@@ -58,6 +59,7 @@ export function PostComposerDialog({
       setTitle(post.title ?? '')
       setCaption(post.caption ?? '')
       setFormat(post.format)
+      setAspectRatio(post.aspect_ratio ?? 'auto')
       setStatus(post.status)
       setPlatforms(post.platforms.length ? post.platforms : ['instagram', 'facebook'])
       setWhen(toLocalInput(post.scheduled_at))
@@ -68,6 +70,7 @@ export function PostComposerDialog({
       setTitle('')
       setCaption('')
       setFormat('image')
+      setAspectRatio('auto')
       setStatus('idea')
       setPlatforms(['instagram', 'facebook'])
       setWhen(initialDate ? `${initialDate}T12:00` : '')
@@ -89,6 +92,7 @@ export function PostComposerDialog({
       title,
       caption,
       format,
+      aspect_ratio: aspectRatio,
       status,
       scheduled_at: when ? new Date(when).toISOString() : null,
       platforms,

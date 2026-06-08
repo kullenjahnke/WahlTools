@@ -49,3 +49,19 @@ export const SOCIAL_ACCOUNT = {
   handle: 'wahlburgersathome',
   avatarUrl: '/social-avatar.png',
 } as const
+
+export const SOCIAL_ASPECT_RATIOS = [
+  { value: 'auto',   label: 'Auto (match image)', ratio: null },
+  { value: '1:1',    label: 'Square (1:1)',       ratio: 1 },
+  { value: '4:5',    label: 'Portrait (4:5)',     ratio: 0.8 },
+  { value: '3:4',    label: 'Portrait (3:4)',     ratio: 0.75 },
+  { value: '1.91:1', label: 'Landscape (1.91:1)', ratio: 1.91 },
+] as const
+
+export type SocialAspectRatio = (typeof SOCIAL_ASPECT_RATIOS)[number]['value']
+export const SOCIAL_ASPECT_RATIO_VALUES = SOCIAL_ASPECT_RATIOS.map((a) => a.value) as SocialAspectRatio[]
+
+/** Numeric width/height ratio for a value, or null for 'auto'. */
+export function aspectRatioNumber(value: string): number | null {
+  return SOCIAL_ASPECT_RATIOS.find((a) => a.value === value)?.ratio ?? null
+}

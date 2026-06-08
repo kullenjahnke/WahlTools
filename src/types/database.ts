@@ -60,6 +60,7 @@ export interface Database {
           title: string | null
           caption: string | null
           format: 'image' | 'carousel' | 'reel' | 'story'
+          aspect_ratio: string
           status: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
           scheduled_at: string | null
           posted_at: string | null
@@ -75,6 +76,7 @@ export interface Database {
           title?: string | null
           caption?: string | null
           format?: 'image' | 'carousel' | 'reel' | 'story'
+          aspect_ratio?: string
           status?: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
           scheduled_at?: string | null
           posted_at?: string | null
@@ -90,6 +92,7 @@ export interface Database {
           title?: string | null
           caption?: string | null
           format?: 'image' | 'carousel' | 'reel' | 'story'
+          aspect_ratio?: string
           status?: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
           scheduled_at?: string | null
           posted_at?: string | null

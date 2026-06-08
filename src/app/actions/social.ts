@@ -3,7 +3,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { RETAILERS } from '@/lib/config/retailers'
-import { SOCIAL_STATUS_VALUES, SOCIAL_FORMAT_VALUES, isValidPlatform } from '@/lib/config/social'
+import { SOCIAL_STATUS_VALUES, SOCIAL_FORMAT_VALUES, SOCIAL_ASPECT_RATIO_VALUES, isValidPlatform } from '@/lib/config/social'
 
 const BUCKET = 'social-media'
 
@@ -12,6 +12,7 @@ export interface SocialPostInput {
   title?: string | null
   caption?: string | null
   format: string
+  aspect_ratio: string
   status: string
   scheduled_at?: string | null
   platforms: string[]
@@ -23,6 +24,7 @@ export interface SocialPostInput {
 
 function validate(input: SocialPostInput): string | null {
   if (!SOCIAL_FORMAT_VALUES.includes(input.format as never)) return 'Invalid format'
+  if (!SOCIAL_ASPECT_RATIO_VALUES.includes(input.aspect_ratio as never)) return 'Invalid aspect ratio'
   if (!SOCIAL_STATUS_VALUES.includes(input.status as never)) return 'Invalid status'
   if (!input.platforms.every(isValidPlatform)) return 'Invalid platform'
   if (!input.retailers.every((r) => (RETAILERS as readonly string[]).includes(r))) return 'Invalid retailer'
@@ -41,6 +43,7 @@ async function persist(input: SocialPostInput) {
       title: input.title ?? null,
       caption: input.caption ?? null,
       format: input.format,
+      aspect_ratio: input.aspect_ratio,
       status: input.status,
       scheduled_at: input.scheduled_at ?? null,
       platforms: input.platforms,

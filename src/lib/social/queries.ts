@@ -14,6 +14,7 @@ export interface SocialPostRecord {
   title: string | null
   caption: string | null
   format: 'image' | 'carousel' | 'reel' | 'story'
+  aspect_ratio: string
   status: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
   scheduled_at: string | null
   posted_at: string | null
@@ -28,7 +29,7 @@ export interface SocialPostRecord {
 }
 
 const SELECT = `
-  id, title, caption, format, status, scheduled_at, posted_at, platforms, notes, created_at, updated_at,
+  id, title, caption, format, aspect_ratio, status, scheduled_at, posted_at, platforms, notes, created_at, updated_at,
   social_post_media ( id, url, storage_path, media_type, position ),
   social_post_products ( product_id, products ( name ) ),
   social_post_retailers ( retailer )
@@ -39,6 +40,7 @@ type RawRow = {
   title: string | null
   caption: string | null
   format: SocialPostRecord['format']
+  aspect_ratio: string
   status: SocialPostRecord['status']
   scheduled_at: string | null
   posted_at: string | null
@@ -58,6 +60,7 @@ function shape(row: RawRow): SocialPostRecord {
     title: row.title,
     caption: row.caption,
     format: row.format,
+    aspect_ratio: row.aspect_ratio,
     status: row.status,
     scheduled_at: row.scheduled_at,
     posted_at: row.posted_at,
