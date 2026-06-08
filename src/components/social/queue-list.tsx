@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { CheckCircle2, Trash2, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, Trash2, AlertTriangle, Send } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Chip } from '@/components/ui/chip'
 import { StatusChip } from './status-chip'
@@ -11,6 +11,7 @@ import { RowActions } from '@/components/ui/row-actions'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PostComposerDialog } from './post-composer-dialog'
 import { deleteSocialPost, updatePostStatus } from '@/app/actions/social'
+import { publishPost } from '@/app/actions/publish'
 import { SOCIAL_STATUSES, formatLabel, postLabel, statusMeta } from '@/lib/config/social'
 import { detroitTime, detroitYmd } from '@/lib/social/dates'
 import type { SocialPostRecord } from '@/lib/social/queries'
@@ -24,11 +25,26 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
   const [open, setOpen] = useState(false)
   const [confirmPost, setConfirmPost] = useState<SocialPostRecord | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
+  const [publishRec, setPublishRec] = useState<SocialPostRecord | null>(null)
+  const [publishLoading, setPublishLoading] = useState(false)
 
   const filtered = useMemo(
     () => (statusFilter === 'all' ? posts : posts.filter((p) => p.status === statusFilter)),
     [posts, statusFilter]
   )
+
+  async function performPublishNow() {
+    if (!publishRec) return
+    const post = publishRec
+    setPublishLoading(true)
+    const res = await publishPost(post.id, { now: true })
+    setPublishLoading(false)
+    setPublishRec(null)
+    toast(res.success
+      ? { icon: <Send className="size-5 text-brand" />, title: 'Publishing now', description: `"${postLabel(post)}"` }
+      : { variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Publish failed', description: res.error ?? 'Please try again.' })
+    router.refresh()
+  }
 
   return (
     <div>
@@ -65,6 +81,7 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
             </button>
             <RowActions
               actions={[
+                { label: 'Publish now', onSelect: () => setPublishRec(p) },
                 { label: 'Edit', onSelect: () => { setEditing(p); setOpen(true) } },
                 ...(p.status !== 'posted'
                   ? [{ label: 'Mark as posted', separatorBefore: true, onSelect: async () => {
@@ -125,6 +142,16 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
           }
           router.refresh()
         }}
+      />
+
+      <ConfirmDialog
+        open={!!publishRec}
+        onOpenChange={(v) => { if (!v) setPublishRec(null) }}
+        title="Publish now?"
+        description={publishRec ? `"${postLabel(publishRec)}" will post to Instagram/Facebook immediately.` : ''}
+        confirmLabel="Publish now"
+        loading={publishLoading}
+        onConfirm={performPublishNow}
       />
     </div>
   )
