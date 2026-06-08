@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Download, Upload, Save, FileText } from "lucide-react"
+import { Download, Upload, Save, FileText, CheckCircle2, AlertTriangle } from "lucide-react"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import Papa from 'papaparse'
@@ -97,6 +97,7 @@ export function BulkProductImport() {
       }
 
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: `Imported ${validProducts.length} products successfully.`
       })
@@ -105,6 +106,7 @@ export function BulkProductImport() {
     } catch (error) {
       console.error('Error importing products:', error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to import products. Please try again.",
         variant: "destructive"

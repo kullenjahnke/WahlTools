@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { Send } from "lucide-react"
+import { Send, CheckCircle2, AlertTriangle } from "lucide-react"
 import { sendTestPriceReminder } from "@/app/actions/reminders"
 
 export function SendTestReminderButton() {
@@ -14,6 +14,7 @@ export function SendTestReminderButton() {
     setLoading(true)
     const res = await sendTestPriceReminder()
     toast({
+      icon: res.ok ? <CheckCircle2 className="size-5 text-brand" /> : <AlertTriangle className="size-5" />,
       title: res.ok ? "Sent" : "Error",
       description: res.message,
       variant: res.ok ? undefined : "destructive",

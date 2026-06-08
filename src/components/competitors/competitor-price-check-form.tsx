@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { ExternalLink, Save, Tag, AlertCircle } from "lucide-react"
+import { AlertCircle, AlertTriangle, CheckCircle2, ExternalLink, Save, Tag } from "lucide-react"
 
 interface ProductUrl {
   retailer: string
@@ -118,6 +118,7 @@ export function CompetitorPriceCheckForm({ products, retailer }: CompetitorPrice
       
       if (priceUpdates.length === 0) {
         toast({
+          icon: <AlertTriangle className="size-5" />,
           title: "No prices entered",
           description: "Please enter at least one price or mark products as sold out before submitting",
           variant: "destructive"
@@ -144,6 +145,7 @@ export function CompetitorPriceCheckForm({ products, retailer }: CompetitorPrice
       if (insertError) throw new Error(`Failed to insert new prices: ${insertError.message}`)
       
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: `Competitor price check for ${retailer} completed successfully`,
       })
@@ -153,6 +155,7 @@ export function CompetitorPriceCheckForm({ products, retailer }: CompetitorPrice
     } catch (error) {
       console.error("Error saving prices:", error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to save price check data",
         variant: "destructive"

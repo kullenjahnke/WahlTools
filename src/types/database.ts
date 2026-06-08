@@ -54,6 +54,95 @@ export interface Database {
           updated_at?: string
         }
       }
+      social_posts: {
+        Row: {
+          id: string
+          title: string | null
+          caption: string | null
+          format: 'image' | 'carousel' | 'reel' | 'story'
+          aspect_ratio: string
+          status: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
+          scheduled_at: string | null
+          posted_at: string | null
+          platforms: string[]
+          notes: string | null
+          external_ref: Json | null
+          failure_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title?: string | null
+          caption?: string | null
+          format?: 'image' | 'carousel' | 'reel' | 'story'
+          aspect_ratio?: string
+          status?: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
+          scheduled_at?: string | null
+          posted_at?: string | null
+          platforms?: string[]
+          notes?: string | null
+          external_ref?: Json | null
+          failure_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string | null
+          caption?: string | null
+          format?: 'image' | 'carousel' | 'reel' | 'story'
+          aspect_ratio?: string
+          status?: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
+          scheduled_at?: string | null
+          posted_at?: string | null
+          platforms?: string[]
+          notes?: string | null
+          external_ref?: Json | null
+          failure_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      social_post_media: {
+        Row: {
+          id: string
+          post_id: string
+          url: string
+          storage_path: string
+          media_type: 'image' | 'video'
+          position: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          url: string
+          storage_path: string
+          media_type?: 'image' | 'video'
+          position?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          url?: string
+          storage_path?: string
+          media_type?: 'image' | 'video'
+          position?: number
+          created_at?: string
+        }
+      }
+      social_post_products: {
+        Row: { post_id: string; product_id: string }
+        Insert: { post_id: string; product_id: string }
+        Update: { post_id?: string; product_id?: string }
+      }
+      social_post_retailers: {
+        Row: { post_id: string; retailer: string }
+        Insert: { post_id: string; retailer: string }
+        Update: { post_id?: string; retailer?: string }
+      }
       brands: {
         Row: {
           id: string

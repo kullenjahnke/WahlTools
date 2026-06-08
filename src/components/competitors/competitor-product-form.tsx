@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { AlertTriangle, CheckCircle2 } from "lucide-react"
 import { CompetitorProduct } from "@/types/database"
 import { Switch } from "../ui/switch"
 
@@ -129,6 +130,7 @@ export function CompetitorProductForm({
         if (error) throw error
 
         toast({
+          icon: <CheckCircle2 className="size-5 text-brand" />,
           title: "Success",
           description: "Competitor product updated successfully",
         })
@@ -148,6 +150,7 @@ export function CompetitorProductForm({
         if (error) throw error
 
         toast({
+            icon: <CheckCircle2 className="size-5 text-brand" />,
             title: "Success",
             description: "Competitor product created successfully",
           })
@@ -158,6 +161,7 @@ export function CompetitorProductForm({
       } catch (error) {
         console.error('Error saving competitor product:', error)
         toast({
+          icon: <AlertTriangle className="size-5" />,
           title: "Error",
           description: "Failed to save competitor product. Please try again.",
           variant: "destructive",

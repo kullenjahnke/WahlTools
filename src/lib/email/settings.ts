@@ -16,6 +16,8 @@ export interface ReminderSettings {
   na_digest_enabled: boolean
   /** Recipients for the N/A (unavailable products) digest. */
   na_recipients: string[]
+  social_reminder_enabled: boolean
+  social_recipients: string[]
 }
 
 export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
@@ -27,6 +29,8 @@ export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
   stale_threshold_days: 11,
   na_digest_enabled: true,
   na_recipients: ["rjahnke@arkkfood.com"],
+  social_reminder_enabled: true,
+  social_recipients: ["info@kullenjahnke.com", "rjahnke@arkkfood.com"],
 }
 
 export const WEEKDAY_NAMES = [
@@ -56,5 +60,7 @@ export function normalizeSettings(row: Partial<ReminderSettings> | null | undefi
     stale_threshold_days: row.stale_threshold_days ?? DEFAULT_REMINDER_SETTINGS.stale_threshold_days,
     na_digest_enabled: row.na_digest_enabled ?? DEFAULT_REMINDER_SETTINGS.na_digest_enabled,
     na_recipients: row.na_recipients?.length ? row.na_recipients : DEFAULT_REMINDER_SETTINGS.na_recipients,
+    social_reminder_enabled: row.social_reminder_enabled ?? DEFAULT_REMINDER_SETTINGS.social_reminder_enabled,
+    social_recipients: row.social_recipients?.length ? row.social_recipients : DEFAULT_REMINDER_SETTINGS.social_recipients,
   }
 }

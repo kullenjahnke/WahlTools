@@ -85,6 +85,8 @@ export async function saveReminderSettings(
       stale_threshold_days: Math.max(1, settings.stale_threshold_days),
       na_digest_enabled: settings.na_digest_enabled,
       na_recipients: settings.na_recipients,
+      social_reminder_enabled: settings.social_reminder_enabled,
+      social_recipients: settings.social_recipients,
       updated_at: new Date().toISOString(),
     })
     if (error) throw error

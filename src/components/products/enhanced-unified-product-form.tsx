@@ -17,19 +17,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { 
-  Plus, 
-  Package, 
-  Tag, 
-  AlignLeft, 
-  FileText, 
-  Save, 
-  Building2, 
-  Upload, 
-  X, 
+import {
+  Plus,
+  Package,
+  Tag,
+  AlignLeft,
+  FileText,
+  Save,
+  Building2,
+  Upload,
+  X,
   Image as ImageIcon,
   Link2,
-  Trash2
+  Trash2,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react"
 import Image from "next/image"
 import type { Product, ProductCategory, Brand } from "@/types/database"
@@ -171,6 +173,7 @@ export function EnhancedUnifiedProductForm({ product, onSuccess }: UnifiedProduc
     } catch (error) {
       console.error('Error handling image upload:', error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to process image",
         variant: "destructive",
@@ -234,6 +237,7 @@ export function EnhancedUnifiedProductForm({ product, onSuccess }: UnifiedProduc
     
     if (!name || !categoryId || !brandId) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Please fill in all required fields",
         variant: "destructive",
@@ -337,6 +341,7 @@ export function EnhancedUnifiedProductForm({ product, onSuccess }: UnifiedProduc
       }
       
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: product ? "Product updated successfully" : "Product created successfully",
       })
@@ -350,6 +355,7 @@ export function EnhancedUnifiedProductForm({ product, onSuccess }: UnifiedProduc
     } catch (error) {
       console.error('Error saving product:', error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to save product",
         variant: "destructive",

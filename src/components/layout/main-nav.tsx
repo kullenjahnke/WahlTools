@@ -9,6 +9,7 @@ import {
   Tags,
   GitCompareArrows,
   LineChart,
+  CalendarDays,
   Settings,
 } from "lucide-react"
 
@@ -23,6 +24,7 @@ const NAV = [
   { title: "Prices", href: "/dashboard/prices", icon: Tags, match: ["/dashboard/prices"] },
   { title: "Comparison", href: "/dashboard/comparison", icon: GitCompareArrows, match: ["/dashboard/comparison"] },
   { title: "Analytics", href: "/dashboard/analytics", icon: LineChart, match: ["/dashboard/analytics"] },
+  { title: "Social", href: "/dashboard/social", icon: CalendarDays, match: ["/dashboard/social"] },
   { title: "Settings", href: "/dashboard/settings", icon: Settings, match: ["/dashboard/settings"] },
 ] as const
 

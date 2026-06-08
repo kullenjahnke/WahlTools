@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Check, X } from "lucide-react"
+import { Check, X, CheckCircle2, AlertTriangle } from "lucide-react"
 import { Chip } from "@/components/ui/chip"
 import { useToast } from "@/hooks/use-toast"
 import { recordRetailerPrices } from "@/app/actions/prices"
@@ -103,6 +103,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
       setIndex(index + 1)
     } else {
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "All complete!",
         description: `Saved ${savedCount + 1} price${savedCount + 1 === 1 ? "" : "s"} for ${retailer}.`,
       })
@@ -160,6 +161,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
     const parsed = parseFloat(price)
     if (!isSoldOut && !isNotAvailable && (price.trim() === "" || !Number.isFinite(parsed) || parsed <= 0)) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Enter a price greater than $0, Sold Out, or N/A",
         variant: "destructive",
       })
@@ -195,6 +197,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
       advance()
     } catch (e) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: e instanceof Error ? e.message : "Failed to save",
         variant: "destructive",

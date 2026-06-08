@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Download, Upload, Save, ExternalLink } from "lucide-react"
+import { Download, Upload, Save, ExternalLink, CheckCircle2, AlertTriangle } from "lucide-react"
 import { RETAILERS } from "@/lib/config/retailers"
 import Papa from 'papaparse'
 import type { Product } from "@/types/database"
@@ -65,6 +65,7 @@ export function ProductUrlManager({ products }: ProductUrlManagerProps) {
 
     if (error) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to load product URLs",
         variant: "destructive"
@@ -121,12 +122,14 @@ export function ProductUrlManager({ products }: ProductUrlManagerProps) {
       }
 
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: "Product URLs saved successfully"
       })
     } catch (error) {
       console.error('Error saving URLs:', error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to save URLs",
         variant: "destructive"
@@ -144,6 +147,7 @@ export function ProductUrlManager({ products }: ProductUrlManagerProps) {
 
     if (error) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to export URLs",
         variant: "destructive"
@@ -197,6 +201,7 @@ export function ProductUrlManager({ products }: ProductUrlManagerProps) {
             if (error) throw error
 
             toast({
+              icon: <CheckCircle2 className="size-5 text-brand" />,
               title: "Success",
               description: `Imported ${urlsToInsert.length} URLs successfully`
             })
@@ -204,6 +209,7 @@ export function ProductUrlManager({ products }: ProductUrlManagerProps) {
         } catch (error) {
           console.error('Error importing URLs:', error)
           toast({
+            icon: <AlertTriangle className="size-5" />,
             title: "Error",
             description: "Failed to import URLs",
             variant: "destructive"

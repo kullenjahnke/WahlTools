@@ -5,7 +5,8 @@ import { normalizeSettings, type ReminderSettings } from "@/lib/email/settings"
 import { sendPriceReminder } from "@/lib/email/send-price-reminder"
 import { sendFollowupReminder } from "@/lib/email/send-followup"
 import { sendNADigest } from "@/lib/email/send-na-digest"
-import { getStaleRetailers, getRecentNAProducts } from "@/lib/email/reminder-data"
+import { getStaleRetailers, getRecentNAProducts, getUpcomingAndOverduePosts } from "@/lib/email/reminder-data"
+import { sendSocialReminder } from "@/lib/email/send-social-reminder"
 
 export const dynamic = "force-dynamic"
 
@@ -36,6 +37,20 @@ export async function GET(request: NextRequest) {
   // Daily cron → gate on the weekday only (a single run per day).
   const { weekday } = getDetroitParts(new Date())
   const actions: Record<string, unknown> = {}
+
+  // Social digest — independent of the weekday gating; runs daily (morning-of).
+  try {
+    if (settings.social_reminder_enabled) {
+      const socialPosts = await getUpcomingAndOverduePosts(admin)
+      if (socialPosts.length > 0) {
+        const r = await sendSocialReminder(settings.social_recipients, socialPosts)
+        actions.social = { id: r.id, count: socialPosts.length }
+      }
+    }
+  } catch (error) {
+    console.error("social reminder send failed:", error)
+    actions.socialError = true
+  }
 
   try {
     // Weekly reminder
