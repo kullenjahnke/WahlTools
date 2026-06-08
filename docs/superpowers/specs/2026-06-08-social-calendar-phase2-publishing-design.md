@@ -76,6 +76,19 @@ also remove `croppedPaths`). Videos are sent by their original public URL (no pr
   sent (has `external_ref.vendorId`), **cancel + re-create** at the vendor (simplest correct path for
   edited content/time). If a previously-scheduled post is moved off `scheduled`, deleted, or rescheduled,
   **cancel** the vendor post first.
+- **Strict cancel-before-recreate (no duplicate publishing).** Re-creating an edited scheduled post MUST
+  fully cancel the old vendor schedule **first**, and only proceed once cancellation is confirmed:
+  1. Read the existing `external_ref.vendorId`.
+  2. Call `adapter.cancel(vendorId)` and require a success/`already-gone` response. If cancel **fails**
+     (network/vendor error) — **abort the re-send**, leave the original `external_ref` intact, set the
+     post to `failed` with a "couldn't update scheduled post — cancel old one manually" reason, and fire
+     the failure alert. Never create a second vendor post while the first may still be live.
+  3. Only after confirmed cancellation, clear `external_ref.vendorId` (and remove the old
+     `croppedPaths`), then run the crop + `adapter.schedule` path and write the **new** `vendorId` +
+     `croppedPaths`. The write of the new `external_ref` is the commit point.
+  - This ordering also applies to "Publish now" on an already-scheduled post (cancel the future schedule,
+    then publish immediately). Cancellation is **idempotent**: a vendor "not found"/"already published"
+    response is treated as success so retries can't loop.
 - **`reschedulePost`** and **`updatePostStatus`** updated to cancel/re-send at the vendor as needed.
 - "Publish now" surfaces in the composer, the calendar right-click menu, and the queue kebab.
 
