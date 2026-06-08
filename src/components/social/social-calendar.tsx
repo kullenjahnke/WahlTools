@@ -17,7 +17,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PostTile } from './post-tile'
 import { reschedulePost } from '@/app/actions/social'
-import { detroitYmd, localYmd } from '@/lib/social/dates'
+import { localYmd } from '@/lib/social/dates'
 import type { SocialPostRecord } from '@/lib/social/queries'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -44,7 +44,9 @@ export function SocialCalendar({
   const byDay = new Map<string, SocialPostRecord[]>()
   for (const p of posts) {
     if (!p.scheduled_at) continue
-    const key = detroitYmd(p.scheduled_at)
+    // Group by the same local day-basis used to key grid cells below (consistent
+    // for the Detroit-based team; avoids cross-timezone cell mismatch).
+    const key = localYmd(new Date(p.scheduled_at))
     const arr = byDay.get(key) ?? []
     arr.push(p)
     byDay.set(key, arr)

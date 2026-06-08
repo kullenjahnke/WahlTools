@@ -50,6 +50,7 @@ export function MediaDropzone({
     }
     onChange(next.map((m, i) => ({ ...m, position: i })))
     setBusy(false)
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   function remove(idx: number) {

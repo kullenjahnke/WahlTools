@@ -36,6 +36,7 @@ export function PostTile({
       onClick={(e) => { e.stopPropagation(); onClick() }}
       className="group mb-1 flex w-full items-center gap-1.5 rounded-md border border-border bg-card p-1 text-left transition-colors hover:bg-accent"
       data-status={post.status}
+      style={{ borderLeft: `3px solid ${meta.accent}` }}
     >
       <span className={`flex size-7 shrink-0 items-center justify-center overflow-hidden rounded ${meta.tone}`}>
         {thumb && thumb.media_type === 'image' ? (

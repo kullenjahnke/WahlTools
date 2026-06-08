@@ -105,8 +105,13 @@ export function PostComposerDialog({
   async function handleDelete() {
     if (!post) return
     setSaving(true)
-    await deleteSocialPost(post.id)
+    setError(null)
+    const res = await deleteSocialPost(post.id)
     setSaving(false)
+    if (!res.success) {
+      setError(res.error ?? 'Failed to delete')
+      return
+    }
     onOpenChange(false)
     onSaved()
   }
