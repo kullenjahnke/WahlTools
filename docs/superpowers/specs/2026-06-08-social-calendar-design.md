@@ -178,6 +178,14 @@ Meta Graph API / third-party publishing; sub-daily scheduling; per-format publis
 failure alerts; auto-pulling product images or live price/promo into the composer; performance analytics;
 Week/Day calendar views; multi-account UI. (Most are Phase 2/3 per §1.)
 
+## 8a. Known follow-ups (deferred from v1, non-blocking)
+
+Surfaced by the final code review; acceptable to ship without for an Eastern-timezone two-user team, tracked here so they aren't lost:
+
+- **Detroit-anchored calendar grouping.** v1 groups calendar posts by the viewer's browser-local day (internally consistent: cells and grouping use the same basis). For non-Eastern browsers a post could land in a different cell than the Detroit date shown in tiles/queue. Follow-up: anchor both grid cells and grouping to America/Detroit.
+- **Carousel reorder UI.** Media `position` is persisted by upload order; there is no drag-to-reorder yet. Schema already supports it (`position`), so it's a UI-only follow-up.
+- **Touch reschedule.** Calendar drag-to-reschedule uses native HTML5 DnD (desktop). On touch, reschedule via the composer's **When** field (open the post → edit). A dedicated touch affordance is a follow-up.
+
 ## 9. Verification
 
 `pnpm lint` and `pnpm build` pass. Manual smoke via the preview tools: create an idea, add media + tags,
