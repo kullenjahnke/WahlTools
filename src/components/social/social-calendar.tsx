@@ -14,12 +14,14 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarClock, CheckCircle2, Copy, Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PostTile } from './post-tile'
 import { reschedulePost, updatePostStatus, deleteSocialPost, duplicateSocialPost } from '@/app/actions/social'
 import { PostContextMenu } from './post-context-menu'
 import { localYmd } from '@/lib/social/dates'
+import { postLabel, statusMeta } from '@/lib/config/social'
 import type { SocialPostRecord } from '@/lib/social/queries'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -38,6 +40,8 @@ export function SocialCalendar({
   const router = useRouter()
   const { toast } = useToast()
   const [pending, setPending] = useState(false)
+  const [confirmPost, setConfirmPost] = useState<SocialPostRecord | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
   const monthDate = new Date(year, monthIndex, 1)
 
   const gridStart = startOfWeek(startOfMonth(monthDate), { weekStartsOn: 1 })
@@ -66,7 +70,11 @@ export function SocialCalendar({
     setPending(true)
     const res = await reschedulePost(post.id, base.toISOString())
     setPending(false)
-    toast(res.success ? { title: 'Post rescheduled' } : { title: "Couldn't reschedule", variant: 'destructive' })
+    if (res.success) {
+      toast({ icon: <CalendarClock className="size-5 text-brand" />, title: 'Post rescheduled', description: `"${postLabel(post)}"` })
+    } else {
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
+    }
     router.refresh()
   }
 
@@ -74,7 +82,11 @@ export function SocialCalendar({
     setPending(true)
     const res = await updatePostStatus(post.id, status)
     setPending(false)
-    toast(res.success ? { title: 'Status updated' } : { title: "Couldn't update status", variant: 'destructive' })
+    if (res.success) {
+      toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: 'Status updated', description: `"${postLabel(post)}" is now ${statusMeta(status).label}` })
+    } else {
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
+    }
     router.refresh()
   }
 
@@ -82,16 +94,30 @@ export function SocialCalendar({
     setPending(true)
     const res = await duplicateSocialPost(post.id)
     setPending(false)
-    toast(res.success ? { title: 'Post duplicated (draft)' } : { title: "Couldn't duplicate", variant: 'destructive' })
+    if (res.success) {
+      toast({ icon: <Copy className="size-5 text-brand" />, title: 'Post duplicated', description: `Draft copy of "${postLabel(post)}"` })
+    } else {
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
+    }
     router.refresh()
   }
 
-  async function del(post: SocialPostRecord) {
-    if (!window.confirm('Delete this post? This cannot be undone.')) return
-    setPending(true)
+  function del(post: SocialPostRecord) {
+    setConfirmPost(post)
+  }
+
+  async function performDelete() {
+    if (!confirmPost) return
+    const post = confirmPost
+    setConfirmLoading(true)
     const res = await deleteSocialPost(post.id)
-    setPending(false)
-    toast(res.success ? { title: 'Post deleted' } : { title: "Couldn't delete", variant: 'destructive' })
+    setConfirmLoading(false)
+    setConfirmPost(null)
+    if (res.success) {
+      toast({ icon: <Trash2 className="size-5 text-muted-foreground" />, title: 'Post deleted', description: `"${postLabel(post)}"` })
+    } else {
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
+    }
     router.refresh()
   }
 
@@ -110,9 +136,9 @@ export function SocialCalendar({
     const res = await reschedulePost(postId, next.toISOString())
     setPending(false)
     if (res.success) {
-      toast({ title: 'Post rescheduled' })
+      toast({ icon: <CalendarClock className="size-5 text-brand" />, title: 'Post rescheduled', description: `"${postLabel(post)}"` })
     } else {
-      toast({ title: "Couldn't reschedule", description: res.error ?? undefined, variant: 'destructive' })
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
     }
     router.refresh()
   }
@@ -179,6 +205,17 @@ export function SocialCalendar({
           )
         })}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmPost}
+        onOpenChange={(v) => { if (!v) setConfirmPost(null) }}
+        title="Delete post?"
+        description={confirmPost ? `"${postLabel(confirmPost)}" will be permanently deleted. This can't be undone.` : ''}
+        confirmLabel="Delete"
+        destructive
+        loading={confirmLoading}
+        onConfirm={performDelete}
+      />
     </div>
   )
 }

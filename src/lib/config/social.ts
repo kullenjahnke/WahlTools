@@ -65,3 +65,7 @@ export const SOCIAL_ASPECT_RATIO_VALUES = SOCIAL_ASPECT_RATIOS.map((a) => a.valu
 export function aspectRatioNumber(value: string): number | null {
   return SOCIAL_ASPECT_RATIOS.find((a) => a.value === value)?.ratio ?? null
 }
+
+export function postLabel(p: { title?: string | null; caption?: string | null }): string {
+  return p.title?.trim() || p.caption?.trim() || 'Untitled post'
+}

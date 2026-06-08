@@ -2,14 +2,16 @@
 
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { CheckCircle2, Trash2, AlertTriangle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Chip } from '@/components/ui/chip'
 import { StatusChip } from './status-chip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RowActions } from '@/components/ui/row-actions'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PostComposerDialog } from './post-composer-dialog'
 import { deleteSocialPost, updatePostStatus } from '@/app/actions/social'
-import { SOCIAL_STATUSES, formatLabel } from '@/lib/config/social'
+import { SOCIAL_STATUSES, formatLabel, postLabel, statusMeta } from '@/lib/config/social'
 import { detroitTime, detroitYmd } from '@/lib/social/dates'
 import type { SocialPostRecord } from '@/lib/social/queries'
 import type { ProductOption } from './tag-picker'
@@ -20,6 +22,8 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [editing, setEditing] = useState<SocialPostRecord | null>(null)
   const [open, setOpen] = useState(false)
+  const [confirmPost, setConfirmPost] = useState<SocialPostRecord | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const filtered = useMemo(
     () => (statusFilter === 'all' ? posts : posts.filter((p) => p.status === statusFilter)),
@@ -49,7 +53,7 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
             >
               <div className="flex items-center gap-2">
                 <StatusChip status={p.status} />
-                <span className="truncate text-sm font-medium">{p.title?.trim() || p.caption?.trim() || 'Untitled post'}</span>
+                <span className="truncate text-sm font-medium">{postLabel(p)}</span>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                 <span>{formatLabel(p.format)}</span>
@@ -65,22 +69,26 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
                 ...(p.status !== 'posted'
                   ? [{ label: 'Mark as posted', separatorBefore: true, onSelect: async () => {
                       const res = await updatePostStatus(p.id, 'posted')
-                      if (res.success) { toast({ title: 'Marked as posted' }) } else { toast({ title: "Couldn't update status", description: res.error ?? undefined, variant: 'destructive' }) }
+                      if (res.success) {
+                        toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: 'Status updated', description: `"${postLabel(p)}" is now ${statusMeta('posted').label}` })
+                      } else {
+                        toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
+                      }
                       router.refresh()
                     } }]
                   : []),
                 ...(p.status !== 'failed'
                   ? [{ label: 'Mark as failed', onSelect: async () => {
                       const res = await updatePostStatus(p.id, 'failed')
-                      if (res.success) { toast({ title: 'Marked as failed' }) } else { toast({ title: "Couldn't update status", description: res.error ?? undefined, variant: 'destructive' }) }
+                      if (res.success) {
+                        toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: 'Status updated', description: `"${postLabel(p)}" is now ${statusMeta('failed').label}` })
+                      } else {
+                        toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
+                      }
                       router.refresh()
                     } }]
                   : []),
-                { label: 'Delete', destructive: true, separatorBefore: true, onSelect: async () => {
-                    const res = await deleteSocialPost(p.id)
-                    if (res.success) { toast({ title: 'Post deleted' }) } else { toast({ title: "Couldn't delete post", description: res.error ?? undefined, variant: 'destructive' }) }
-                    router.refresh()
-                  } },
+                { label: 'Delete', destructive: true, separatorBefore: true, onSelect: () => setConfirmPost(p) },
               ]}
             />
           </div>
@@ -93,6 +101,30 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
         products={products}
         post={editing}
         onSaved={() => router.refresh()}
+      />
+
+      <ConfirmDialog
+        open={!!confirmPost}
+        onOpenChange={(v) => { if (!v) setConfirmPost(null) }}
+        title="Delete post?"
+        description={confirmPost ? `"${postLabel(confirmPost)}" will be permanently deleted. This can't be undone.` : ''}
+        confirmLabel="Delete"
+        destructive
+        loading={confirmLoading}
+        onConfirm={async () => {
+          if (!confirmPost) return
+          const post = confirmPost
+          setConfirmLoading(true)
+          const res = await deleteSocialPost(post.id)
+          setConfirmLoading(false)
+          setConfirmPost(null)
+          if (res.success) {
+            toast({ icon: <Trash2 className="size-5 text-muted-foreground" />, title: 'Post deleted', description: `"${postLabel(post)}"` })
+          } else {
+            toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
+          }
+          router.refresh()
+        }}
       />
     </div>
   )

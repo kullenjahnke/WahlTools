@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Trash2 } from 'lucide-react'
-import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS, SOCIAL_ASPECT_RATIOS } from '@/lib/config/social'
+import { Loader2, Trash2, CheckCircle2, CalendarClock, Pencil, AlertTriangle } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS, SOCIAL_ASPECT_RATIOS, postLabel } from '@/lib/config/social'
 import { TagPicker, type ProductOption } from './tag-picker'
 import { MediaDropzone, type MediaItem } from './media-dropzone'
 import { PostPreview } from './post-preview'
@@ -53,6 +54,7 @@ export function PostComposerDialog({
   const [media, setMedia] = useState<MediaItem[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -104,35 +106,48 @@ export function PostComposerDialog({
     }
     const res = post ? await updateSocialPost(post.id, input) : await createSocialPost(input)
     setSaving(false)
+    const label = postLabel({ title, caption })
     if (!res.success) {
       setError(res.error ?? 'Failed to save')
-      toast({ title: "Couldn't save post", description: res.error ?? undefined, variant: 'destructive' })
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
       return
     }
-    toast({ title: post ? 'Post updated' : (status === 'scheduled' ? 'Post scheduled' : 'Post saved') })
+    if (post) {
+      toast({ icon: <Pencil className="size-5 text-brand" />, title: 'Post updated', description: `"${label}"` })
+    } else if (status === 'scheduled') {
+      toast({ icon: <CalendarClock className="size-5 text-brand" />, title: 'Post scheduled', description: `"${label}"` })
+    } else {
+      toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: 'Post saved', description: `"${label}"` })
+    }
     onOpenChange(false)
     onSaved()
   }
 
-  async function handleDelete() {
+  async function performDelete() {
     if (!post) return
     setSaving(true)
     setError(null)
+    const label = postLabel({ title, caption })
     const res = await deleteSocialPost(post.id)
     setSaving(false)
     if (!res.success) {
       setError(res.error ?? 'Failed to delete')
-      toast({ title: "Couldn't delete post", description: res.error ?? undefined, variant: 'destructive' })
+      setConfirmOpen(false)
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: res.error ?? 'Please try again.' })
       return
     }
-    toast({ title: 'Post deleted' })
+    toast({ icon: <Trash2 className="size-5 text-muted-foreground" />, title: 'Post deleted', description: `"${label}"` })
+    setConfirmOpen(false)
     onOpenChange(false)
     onSaved()
   }
 
   const statusOptions = post ? SOCIAL_STATUSES : SOCIAL_STATUSES.filter((s) => ['idea', 'draft', 'scheduled'].includes(s.value))
 
+  const label = postLabel({ title, caption })
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
@@ -232,7 +247,7 @@ export function PostComposerDialog({
         <DialogFooter className="flex items-center justify-between sm:justify-between">
           <div>
             {post && (
-              <Button type="button" variant="ghost" size="sm" onClick={handleDelete} disabled={saving} className="text-destructive">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmOpen(true)} disabled={saving} className="text-destructive">
                 <Trash2 className="mr-1 size-4" /> Delete
               </Button>
             )}
@@ -247,5 +262,16 @@ export function PostComposerDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onOpenChange={setConfirmOpen}
+      title="Delete post?"
+      description={`"${label}" will be permanently deleted. This can't be undone.`}
+      confirmLabel="Delete"
+      destructive
+      loading={saving}
+      onConfirm={performDelete}
+    />
+    </>
   )
 }
