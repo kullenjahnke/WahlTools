@@ -9,6 +9,8 @@ import { createClientClient } from '@/lib/supabase/client'
 export interface MediaItem { url: string; storage_path: string; media_type: 'image' | 'video'; position: number }
 
 const BUCKET = 'social-media'
+const IMAGE_MAX = 5 * 1024 * 1024   // 5 MB
+const VIDEO_MAX = 50 * 1024 * 1024  // 50 MB
 
 export function MediaDropzone({
   media,
@@ -28,6 +30,12 @@ export function MediaDropzone({
     setError(null)
     const next = [...media]
     for (const file of Array.from(files)) {
+      const isVideo = file.type.startsWith('video/')
+      const max = isVideo ? VIDEO_MAX : IMAGE_MAX
+      if (file.size > max) {
+        setError(`${isVideo ? 'Video' : 'Image'} "${file.name}" is too large — max ${isVideo ? '50 MB' : '5 MB'}.`)
+        continue
+      }
       try {
         if (file.type.startsWith('video/')) {
           const signed = await createSocialVideoUploadUrl(file.name)

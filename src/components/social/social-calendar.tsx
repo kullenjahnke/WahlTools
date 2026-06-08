@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useToast } from '@/hooks/use-toast'
 import {
   addMonths,
   eachDayOfInterval,
@@ -34,6 +35,7 @@ export function SocialCalendar({
   onOpen?: (arg: { postId?: string; date?: string }) => void
 }) {
   const router = useRouter()
+  const { toast } = useToast()
   const [pending, setPending] = useState(false)
   const monthDate = new Date(year, monthIndex, 1)
 
@@ -69,8 +71,13 @@ export function SocialCalendar({
     next.setFullYear(y, m - 1, d)
     if (!post.scheduled_at) next.setHours(12, 0, 0, 0)
     setPending(true)
-    await reschedulePost(postId, next.toISOString())
+    const res = await reschedulePost(postId, next.toISOString())
     setPending(false)
+    if (res.success) {
+      toast({ title: 'Post rescheduled' })
+    } else {
+      toast({ title: "Couldn't reschedule", description: res.error ?? undefined, variant: 'destructive' })
+    }
     router.refresh()
   }
 

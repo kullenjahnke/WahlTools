@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { useToast } from '@/hooks/use-toast'
 import { Chip } from '@/components/ui/chip'
 import { StatusChip } from './status-chip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -15,6 +16,7 @@ import type { ProductOption } from './tag-picker'
 
 export function QueueList({ posts, products }: { posts: SocialPostRecord[]; products: ProductOption[] }) {
   const router = useRouter()
+  const { toast } = useToast()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [editing, setEditing] = useState<SocialPostRecord | null>(null)
   const [open, setOpen] = useState(false)
@@ -61,12 +63,24 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
               actions={[
                 { label: 'Edit', onSelect: () => { setEditing(p); setOpen(true) } },
                 ...(p.status !== 'posted'
-                  ? [{ label: 'Mark as posted', separatorBefore: true, onSelect: async () => { await updatePostStatus(p.id, 'posted'); router.refresh() } }]
+                  ? [{ label: 'Mark as posted', separatorBefore: true, onSelect: async () => {
+                      const res = await updatePostStatus(p.id, 'posted')
+                      if (res.success) { toast({ title: 'Marked as posted' }) } else { toast({ title: "Couldn't update status", description: res.error ?? undefined, variant: 'destructive' }) }
+                      router.refresh()
+                    } }]
                   : []),
                 ...(p.status !== 'failed'
-                  ? [{ label: 'Mark as failed', onSelect: async () => { await updatePostStatus(p.id, 'failed'); router.refresh() } }]
+                  ? [{ label: 'Mark as failed', onSelect: async () => {
+                      const res = await updatePostStatus(p.id, 'failed')
+                      if (res.success) { toast({ title: 'Marked as failed' }) } else { toast({ title: "Couldn't update status", description: res.error ?? undefined, variant: 'destructive' }) }
+                      router.refresh()
+                    } }]
                   : []),
-                { label: 'Delete', destructive: true, separatorBefore: true, onSelect: async () => { await deleteSocialPost(p.id); router.refresh() } },
+                { label: 'Delete', destructive: true, separatorBefore: true, onSelect: async () => {
+                    const res = await deleteSocialPost(p.id)
+                    if (res.success) { toast({ title: 'Post deleted' }) } else { toast({ title: "Couldn't delete post", description: res.error ?? undefined, variant: 'destructive' }) }
+                    router.refresh()
+                  } },
               ]}
             />
           </div>

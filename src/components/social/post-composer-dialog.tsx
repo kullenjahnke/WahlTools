@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useToast } from '@/hooks/use-toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -52,6 +53,7 @@ export function PostComposerDialog({
   const [media, setMedia] = useState<MediaItem[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (!open) return
@@ -104,8 +106,10 @@ export function PostComposerDialog({
     setSaving(false)
     if (!res.success) {
       setError(res.error ?? 'Failed to save')
+      toast({ title: "Couldn't save post", description: res.error ?? undefined, variant: 'destructive' })
       return
     }
+    toast({ title: post ? 'Post updated' : (status === 'scheduled' ? 'Post scheduled' : 'Post saved') })
     onOpenChange(false)
     onSaved()
   }
@@ -118,8 +122,10 @@ export function PostComposerDialog({
     setSaving(false)
     if (!res.success) {
       setError(res.error ?? 'Failed to delete')
+      toast({ title: "Couldn't delete post", description: res.error ?? undefined, variant: 'destructive' })
       return
     }
+    toast({ title: 'Post deleted' })
     onOpenChange(false)
     onSaved()
   }
