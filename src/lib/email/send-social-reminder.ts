@@ -9,10 +9,10 @@ export function buildSocialReminderEmail(items: SocialPostReminderEntry[], opts?
   const prefix = opts?.test ? "[Test] " : ""
   const overdue = items.filter((i) => i.overdue).length
   const subject = `${prefix}${items.length} social post${items.length === 1 ? "" : "s"} to handle today${overdue ? ` (${overdue} overdue)` : ""}`
-  const intro = "Here are the social posts scheduled for today, plus any that are past due and still not marked posted."
+  const intro = "Posts scheduled for today, plus any past their time that haven't posted (these may have failed and need a look)."
 
   const html = emailShell({
-    heading: "Social posts for today",
+    heading: "Social posts that need attention",
     intro,
     bodyHtml: emailList(items.map((i) => ({ label: i.caption, sub: i.overdue ? `OVERDUE · ${i.when}` : i.when }))),
     ctaLabel: "Open Social Calendar",
