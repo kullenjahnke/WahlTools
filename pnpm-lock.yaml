@@ -98,6 +98,9 @@ importers:
       resend:
         specifier: ^6.12.4
         version: 6.12.4
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       tailwind-merge:
         specifier: ^3.0.1
         version: 3.0.1
@@ -3746,8 +3749,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.1': {}
 
-  '@img/colour@1.0.0':
-    optional: true
+  '@img/colour@1.0.0': {}
 
   '@img/sharp-darwin-arm64@0.34.5':
     optionalDependencies:
@@ -5484,8 +5486,7 @@ snapshots:
       has-property-descriptors: 1.0.2
       object-keys: 1.1.1
 
-  detect-libc@2.1.2:
-    optional: true
+  detect-libc@2.1.2: {}
 
   detect-node-es@1.1.0: {}
 
@@ -6837,8 +6838,7 @@ snapshots:
 
   semver@7.7.0: {}
 
-  semver@7.7.4:
-    optional: true
+  semver@7.7.4: {}
 
   set-function-length@1.2.2:
     dependencies:
@@ -6894,7 +6894,6 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.5
       '@img/sharp-win32-ia32': 0.34.5
       '@img/sharp-win32-x64': 0.34.5
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

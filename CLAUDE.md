@@ -142,6 +142,8 @@ SUPABASE_SERVICE_ROLE_KEY=<service-role-key>      # required by the reminder cro
 AUTHORIZED_EMAILS=<comma-separated whitelist>     # registration whitelist
 RESEND_API_KEY=<resend-api-key>                   # reminder emails
 CRON_SECRET=<vercel-cron-auth-secret>             # protects /api/cron/*
+ZERNIO_API_KEY=<zernio-publishing-api-key>     # Phase 2 live publishing
+ZERNIO_WEBHOOK_SECRET=<zernio-webhook-hmac-secret>
 ```
 
 ## Important Notes
