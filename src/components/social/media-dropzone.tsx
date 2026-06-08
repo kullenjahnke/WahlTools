@@ -19,6 +19,7 @@ export function MediaDropzone({
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleFiles(files: FileList | null) {
@@ -81,11 +82,23 @@ export function MediaDropzone({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); if (!busy) setDragActive(true) }}
+        onDragEnter={(e) => { e.preventDefault(); if (!busy) setDragActive(true) }}
+        onDragLeave={(e) => { e.preventDefault(); setDragActive(false) }}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragActive(false)
+          if (!busy) handleFiles(e.dataTransfer.files)
+        }}
         disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-4 text-sm text-muted-foreground transition-colors hover:border-brand/60 hover:text-foreground disabled:opacity-60"
+        className={`flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-6 text-sm transition-colors disabled:opacity-60 ${
+          dragActive
+            ? 'border-brand bg-brand-muted text-foreground'
+            : 'border-border bg-muted/40 text-muted-foreground hover:border-brand/60 hover:text-foreground'
+        }`}
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-        {busy ? 'Uploading…' : 'Add images or video'}
+        {busy ? 'Uploading…' : dragActive ? 'Drop to upload' : 'Drag & drop, or click to add images / video'}
       </button>
       <input
         ref={inputRef}
