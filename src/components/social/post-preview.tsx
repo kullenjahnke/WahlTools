@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { Instagram, Facebook } from 'lucide-react'
 import type { MediaItem } from './media-dropzone'
-import { SOCIAL_ACCOUNT } from '@/lib/config/social'
+import { SOCIAL_ACCOUNT, aspectRatioNumber } from '@/lib/config/social'
 
 function Avatar() {
   const [err, setErr] = useState(false)
@@ -25,22 +25,35 @@ function Avatar() {
   )
 }
 
-// Phone-style preview. Shape follows the format (square for image/carousel,
-// 9:16 for reel/story); carousels show all media in a snap strip with dots.
+// Phone-style preview. Reel/story are 9:16; image/carousel use the chosen
+// aspect ratio (or the first image's natural ratio when 'auto'). Carousels show
+// all media in a snap strip with dots. The frame crops with object-cover so the
+// preview reflects how the post will be cropped at that ratio.
 export function PostPreview({
   caption,
   media,
   platforms,
   format,
+  aspectRatio,
 }: {
   caption: string
   media: MediaItem[]
   platforms: string[]
   format: string
+  aspectRatio: string
 }) {
+  const [autoRatio, setAutoRatio] = useState<number | null>(null)
   const isPortrait = format === 'reel' || format === 'story'
-  const aspect = isPortrait ? 'aspect-[9/16]' : 'aspect-square'
   const isCarousel = format === 'carousel' && media.length > 1
+
+  const frameRatio = isPortrait
+    ? 9 / 16
+    : aspectRatioNumber(aspectRatio) ?? autoRatio ?? 1
+
+  function handleFirstLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const t = e.currentTarget
+    if (t.naturalWidth && t.naturalHeight) setAutoRatio(t.naturalWidth / t.naturalHeight)
+  }
 
   return (
     <div className="space-y-2">
@@ -54,15 +67,22 @@ export function PostPreview({
           <Avatar />
           <span className="text-xs font-semibold">{SOCIAL_ACCOUNT.handle}</span>
         </div>
-        <div className={`relative ${aspect} bg-muted`}>
+        <div className="relative bg-muted" style={{ aspectRatio: String(frameRatio) }}>
           {media.length === 0 ? (
             <div className="flex size-full items-center justify-center text-xs text-muted-foreground">No media yet</div>
           ) : isCarousel ? (
             <div className="flex size-full snap-x snap-mandatory overflow-x-auto">
-              {media.map((m) => (
+              {media.map((m, i) => (
                 <div key={m.storage_path} className="relative size-full shrink-0 snap-center">
                   {m.media_type === 'image' ? (
-                    <Image src={m.url} alt="" fill sizes="220px" className="object-cover" />
+                    <Image
+                      src={m.url}
+                      alt=""
+                      fill
+                      sizes="220px"
+                      className="object-cover"
+                      onLoad={i === 0 ? handleFirstLoad : undefined}
+                    />
                   ) : (
                     <video src={m.url} className="size-full object-cover" controls />
                   )}
@@ -70,7 +90,7 @@ export function PostPreview({
               ))}
             </div>
           ) : media[0].media_type === 'image' ? (
-            <Image src={media[0].url} alt="" fill sizes="220px" className="object-cover" />
+            <Image src={media[0].url} alt="" fill sizes="220px" className="object-cover" onLoad={handleFirstLoad} />
           ) : (
             <video src={media[0].url} className="size-full object-cover" controls />
           )}

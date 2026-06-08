@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Loader2, Trash2 } from 'lucide-react'
-import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS } from '@/lib/config/social'
+import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS, SOCIAL_ASPECT_RATIOS } from '@/lib/config/social'
 import { TagPicker, type ProductOption } from './tag-picker'
 import { MediaDropzone, type MediaItem } from './media-dropzone'
 import { PostPreview } from './post-preview'
@@ -166,6 +166,18 @@ export function PostComposerDialog({
               </div>
             </div>
 
+            {(format === 'image' || format === 'carousel') && (
+              <div>
+                <Label>Aspect ratio</Label>
+                <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SOCIAL_ASPECT_RATIOS.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label>Media</Label>
               <MediaDropzone media={media} onChange={setMedia} />
@@ -208,7 +220,7 @@ export function PostComposerDialog({
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
 
-          <PostPreview caption={caption} media={media} platforms={platforms} format={format} />
+          <PostPreview caption={caption} media={media} platforms={platforms} format={format} aspectRatio={aspectRatio} />
         </div>
 
         <DialogFooter className="flex items-center justify-between sm:justify-between">
