@@ -3,6 +3,11 @@
 > **Status:** Decision document. v1 (the calendar + content management) does **not** depend on this
 > outcome and must not touch the Meta API. This decision only governs **Phase 2** (real auto-publishing).
 > **Date:** 2026-06-08
+>
+> **DECISION (2026-06-08):** Phase 2 will publish via a **third-party API** (start with Late/Zernio's
+> free tier, Ayrshare as the paid fallback) + Supabase `pg_cron` for scheduling. v1's schema must
+> therefore carry a **platform/account abstraction** and a vendor-agnostic **external post-reference**
+> field (e.g. `external_post_id` / `external_ref`) so the chosen vendor drops in without a migration.
 
 ## TL;DR
 
