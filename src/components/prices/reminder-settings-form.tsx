@@ -21,7 +21,7 @@ import {
   formatEmails,
   type ReminderSettings,
 } from "@/lib/email/settings"
-import { Bell, CalendarClock, PackageX } from "lucide-react"
+import { Bell, CalendarClock, PackageX, Share2 } from "lucide-react"
 
 function formatHour(h: number): string {
   const period = h < 12 ? "AM" : "PM"
@@ -44,6 +44,9 @@ export function ReminderSettingsForm({ initial }: { initial: ReminderSettings })
   const [naEnabled, setNaEnabled] = useState(initial.na_digest_enabled)
   const [naRecipients, setNaRecipients] = useState(formatEmails(initial.na_recipients))
 
+  const [socialEnabled, setSocialEnabled] = useState(initial.social_reminder_enabled)
+  const [socialRecipients, setSocialRecipients] = useState(formatEmails(initial.social_recipients))
+
   const followupDayName = WEEKDAY_NAMES[(weeklyDay + followupDaysAfter) % 7]
 
   const handleSave = async () => {
@@ -57,6 +60,8 @@ export function ReminderSettingsForm({ initial }: { initial: ReminderSettings })
       stale_threshold_days: staleThreshold,
       na_digest_enabled: naEnabled,
       na_recipients: parseEmails(naRecipients),
+      social_reminder_enabled: socialEnabled,
+      social_recipients: parseEmails(socialRecipients),
     })
     toast({
       title: res.ok ? "Saved" : "Error",
@@ -181,6 +186,35 @@ export function ReminderSettingsForm({ initial }: { initial: ReminderSettings })
             </div>
             <p className="text-xs text-muted-foreground">
               A weekly list of products newly marked N/A, sent alongside the follow-up on {followupDayName}.
+            </p>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Social digest */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-base">
+            <span className="flex items-center gap-2">
+              <Share2 className="size-4 text-muted-foreground" />
+              Social post digest
+            </span>
+            <Switch checked={socialEnabled} onCheckedChange={setSocialEnabled} aria-label="Enable social digest" />
+          </CardTitle>
+        </CardHeader>
+        {socialEnabled && (
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="social-recipients">Email destination</Label>
+              <Input
+                id="social-recipients"
+                value={socialRecipients}
+                onChange={(e) => setSocialRecipients(e.target.value)}
+                placeholder="name@example.com"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A daily digest of social posts scheduled for today plus any overdue posts still marked scheduled.
             </p>
           </CardContent>
         )}

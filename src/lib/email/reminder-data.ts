@@ -79,3 +79,50 @@ export async function getRecentNAProducts(
   }
   return items
 }
+
+export interface SocialPostReminderEntry {
+  caption: string
+  when: string
+  overdue: boolean
+}
+
+// Posts scheduled for "today" (America/Detroit) plus any still-'scheduled'
+// post whose time has already passed (overdue). For the daily social digest.
+export async function getUpcomingAndOverduePosts(
+  admin: SupabaseClient
+): Promise<SocialPostReminderEntry[]> {
+  const nowMs = Date.now()
+  const todayYmd = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Detroit', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+
+  const { data, error } = await admin
+    .from('social_posts')
+    .select('caption, scheduled_at, status')
+    .in('status', ['scheduled'])
+    .not('scheduled_at', 'is', null)
+    .order('scheduled_at', { ascending: true })
+  if (error) throw error
+
+  const fmtDay = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Detroit', year: 'numeric', month: '2-digit', day: '2-digit',
+  })
+  const fmtTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Detroit', hour: 'numeric', minute: '2-digit',
+  })
+
+  const out: SocialPostReminderEntry[] = []
+  for (const row of (data ?? []) as { caption: string | null; scheduled_at: string; status: string }[]) {
+    const t = new Date(row.scheduled_at)
+    const isToday = fmtDay.format(t) === todayYmd
+    const overdue = t.getTime() < nowMs && !isToday
+    if (isToday || overdue) {
+      out.push({
+        caption: row.caption?.trim() || 'Untitled post',
+        when: `${fmtDay.format(t)} ${fmtTime.format(t)}`,
+        overdue,
+      })
+    }
+  }
+  return out
+}
