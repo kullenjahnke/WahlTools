@@ -9,6 +9,7 @@ const BUCKET = 'social-media'
 
 export interface SocialPostInput {
   id?: string
+  title?: string | null
   caption?: string | null
   format: string
   status: string
@@ -37,6 +38,7 @@ async function persist(input: SocialPostInput) {
   const { data, error } = await supabase.rpc('save_social_post', {
     p_post: {
       id: input.id ?? null,
+      title: input.title ?? null,
       caption: input.caption ?? null,
       format: input.format,
       status: input.status,

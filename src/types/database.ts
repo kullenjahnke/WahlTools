@@ -57,6 +57,7 @@ export interface Database {
       social_posts: {
         Row: {
           id: string
+          title: string | null
           caption: string | null
           format: 'image' | 'carousel' | 'reel' | 'story'
           status: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
@@ -71,6 +72,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          title?: string | null
           caption?: string | null
           format?: 'image' | 'carousel' | 'reel' | 'story'
           status?: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
@@ -85,6 +87,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          title?: string | null
           caption?: string | null
           format?: 'image' | 'carousel' | 'reel' | 'story'
           status?: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'

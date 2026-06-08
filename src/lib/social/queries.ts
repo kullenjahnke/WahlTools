@@ -11,6 +11,7 @@ export interface SocialPostMedia {
 
 export interface SocialPostRecord {
   id: string
+  title: string | null
   caption: string | null
   format: 'image' | 'carousel' | 'reel' | 'story'
   status: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
@@ -27,7 +28,7 @@ export interface SocialPostRecord {
 }
 
 const SELECT = `
-  id, caption, format, status, scheduled_at, posted_at, platforms, notes, created_at, updated_at,
+  id, title, caption, format, status, scheduled_at, posted_at, platforms, notes, created_at, updated_at,
   social_post_media ( id, url, storage_path, media_type, position ),
   social_post_products ( product_id, products ( name ) ),
   social_post_retailers ( retailer )
@@ -35,6 +36,7 @@ const SELECT = `
 
 type RawRow = {
   id: string
+  title: string | null
   caption: string | null
   format: SocialPostRecord['format']
   status: SocialPostRecord['status']
@@ -53,6 +55,7 @@ function shape(row: RawRow): SocialPostRecord {
   const products = row.social_post_products ?? []
   return {
     id: row.id,
+    title: row.title,
     caption: row.caption,
     format: row.format,
     status: row.status,
