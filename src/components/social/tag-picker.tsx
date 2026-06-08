@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Chip } from '@/components/ui/chip'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +24,18 @@ export function TagPicker({
 }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleMouseDown(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [open])
   const filtered = products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()))
 
   function toggleProduct(id: string) {
@@ -44,7 +56,7 @@ export function TagPicker({
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? 'Unknown'
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" ref={rootRef}>
       <div className="flex flex-wrap items-center gap-1.5">
         {selectedProductIds.map((id) => (
           <Chip
