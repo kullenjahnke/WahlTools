@@ -17,7 +17,8 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PostTile } from './post-tile'
-import { reschedulePost } from '@/app/actions/social'
+import { reschedulePost, updatePostStatus, deleteSocialPost, duplicateSocialPost } from '@/app/actions/social'
+import { PostContextMenu } from './post-context-menu'
 import { localYmd } from '@/lib/social/dates'
 import type { SocialPostRecord } from '@/lib/social/queries'
 
@@ -57,6 +58,41 @@ export function SocialCalendar({
   function goMonth(delta: number) {
     const d = addMonths(monthDate, delta)
     router.push(`/dashboard/social?month=${format(d, 'yyyy-MM')}`)
+  }
+
+  async function quickReschedule(post: SocialPostRecord, days: number) {
+    const base = post.scheduled_at ? new Date(post.scheduled_at) : new Date()
+    base.setDate(base.getDate() + days)
+    setPending(true)
+    const res = await reschedulePost(post.id, base.toISOString())
+    setPending(false)
+    toast(res.success ? { title: 'Post rescheduled' } : { title: "Couldn't reschedule", variant: 'destructive' })
+    router.refresh()
+  }
+
+  async function setStatus(post: SocialPostRecord, status: string) {
+    setPending(true)
+    const res = await updatePostStatus(post.id, status)
+    setPending(false)
+    toast(res.success ? { title: 'Status updated' } : { title: "Couldn't update status", variant: 'destructive' })
+    router.refresh()
+  }
+
+  async function duplicate(post: SocialPostRecord) {
+    setPending(true)
+    const res = await duplicateSocialPost(post.id)
+    setPending(false)
+    toast(res.success ? { title: 'Post duplicated (draft)' } : { title: "Couldn't duplicate", variant: 'destructive' })
+    router.refresh()
+  }
+
+  async function del(post: SocialPostRecord) {
+    if (!window.confirm('Delete this post? This cannot be undone.')) return
+    setPending(true)
+    const res = await deleteSocialPost(post.id)
+    setPending(false)
+    toast(res.success ? { title: 'Post deleted' } : { title: "Couldn't delete", variant: 'destructive' })
+    router.refresh()
   }
 
   async function handleDrop(e: React.DragEvent, dayKey: string) {
@@ -123,12 +159,21 @@ export function SocialCalendar({
                 {format(day, 'd')}
               </div>
               {dayPosts.map((p) => (
-                <PostTile
+                <PostContextMenu
                   key={p.id}
-                  post={p}
-                  onClick={() => onOpen?.({ postId: p.id })}
-                  onDragStart={(e) => e.dataTransfer.setData('text/plain', p.id)}
-                />
+                  onEdit={() => onOpen?.({ postId: p.id })}
+                  onPickDate={() => onOpen?.({ postId: p.id })}
+                  onQuickReschedule={(days) => quickReschedule(p, days)}
+                  onSetStatus={(s) => setStatus(p, s)}
+                  onDuplicate={() => duplicate(p)}
+                  onDelete={() => del(p)}
+                >
+                  <PostTile
+                    post={p}
+                    onClick={() => onOpen?.({ postId: p.id })}
+                    onDragStart={(e) => e.dataTransfer.setData('text/plain', p.id)}
+                  />
+                </PostContextMenu>
               ))}
             </div>
           )
