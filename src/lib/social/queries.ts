@@ -96,12 +96,3 @@ export async function getAllPosts(supabase: SupabaseClient): Promise<SocialPostR
   return ((data ?? []) as unknown as RawRow[]).map(shape)
 }
 
-/** Single post for the composer (edit mode). */
-export async function getPost(
-  supabase: SupabaseClient,
-  id: string
-): Promise<SocialPostRecord | null> {
-  const { data, error } = await supabase.from('social_posts').select(SELECT).eq('id', id).maybeSingle()
-  if (error) throw error
-  return data ? shape(data as unknown as RawRow) : null
-}

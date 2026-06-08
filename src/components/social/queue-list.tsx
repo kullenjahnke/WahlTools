@@ -7,7 +7,7 @@ import { StatusChip } from './status-chip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RowActions } from '@/components/ui/row-actions'
 import { PostComposerDialog } from './post-composer-dialog'
-import { deleteSocialPost } from '@/app/actions/social'
+import { deleteSocialPost, updatePostStatus } from '@/app/actions/social'
 import { SOCIAL_STATUSES, formatLabel } from '@/lib/config/social'
 import { detroitTime, detroitYmd } from '@/lib/social/dates'
 import type { SocialPostRecord } from '@/lib/social/queries'
@@ -60,7 +60,13 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
             <RowActions
               actions={[
                 { label: 'Edit', onSelect: () => { setEditing(p); setOpen(true) } },
-                { label: 'Delete', destructive: true, onSelect: async () => { await deleteSocialPost(p.id); router.refresh() } },
+                ...(p.status !== 'posted'
+                  ? [{ label: 'Mark as posted', separatorBefore: true, onSelect: async () => { await updatePostStatus(p.id, 'posted'); router.refresh() } }]
+                  : []),
+                ...(p.status !== 'failed'
+                  ? [{ label: 'Mark as failed', onSelect: async () => { await updatePostStatus(p.id, 'failed'); router.refresh() } }]
+                  : []),
+                { label: 'Delete', destructive: true, separatorBefore: true, onSelect: async () => { await deleteSocialPost(p.id); router.refresh() } },
               ]}
             />
           </div>
