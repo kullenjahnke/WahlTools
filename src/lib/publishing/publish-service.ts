@@ -106,7 +106,7 @@ export async function sendPost(id: string, opts: { now?: boolean }): Promise<{ s
     return { success: false, error: e instanceof Error ? e.message : 'Publish failed' }
   }
 
-  await admin
+  const { error: saveErr } = await admin
     .from('social_posts')
     .update({
       external_ref: { vendorId: result.vendorId, croppedPaths },
@@ -115,6 +115,14 @@ export async function sendPost(id: string, opts: { now?: boolean }): Promise<{ s
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
+
+  if (saveErr) {
+    // The vendor accepted the post but we couldn't record it. Compensate by
+    // cancelling the vendor post so we never have an untracked live/scheduled post.
+    try { await zernioAdapter.cancel(result.vendorId) } catch { /* best-effort */ }
+    await removeCropped(admin, croppedPaths)
+    return { success: false, error: 'Published to the vendor but failed to save locally; cancelled to avoid an untracked post. Please retry.' }
+  }
 
   return { success: true }
 }

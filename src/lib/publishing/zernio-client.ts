@@ -52,14 +52,15 @@ function normalizeStatus(zStatus: string): string {
 async function buildBody(req: PublishRequest, publishNow: boolean) {
   const accounts = await resolveAccountIds()
   const psd = contentTypeFor(req.format)
-  const platforms = req.platforms
-    .map((p) => {
-      const accountId = accounts[p]
-      if (!accountId) return null
-      return { platform: p, accountId, ...(psd ? { platformSpecificData: psd } : {}) }
-    })
-    .filter(Boolean)
-  if (platforms.length === 0) throw new Error('No connected account matches the selected platforms')
+  const missing = req.platforms.filter((p) => !accounts[p])
+  if (missing.length > 0) {
+    throw new Error(`Not connected for: ${missing.join(', ')}. Connect the account(s) in Zernio first.`)
+  }
+  const platforms = req.platforms.map((p) => ({
+    platform: p,
+    accountId: accounts[p],
+    ...(psd ? { platformSpecificData: psd } : {}),
+  }))
 
   return {
     content: req.caption,
