@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ExternalLink, Save, AlertCircle } from "lucide-react"
+import { ExternalLink, Save, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { recordRetailerPrices, type PriceEntryInput } from "@/app/actions/prices"
 
@@ -52,6 +52,7 @@ export function QuickPriceEntry({
         } catch (error) {
           console.error(`Failed to open URL for ${retailer}:`, error)
           toast({
+            icon: <AlertTriangle className="size-5" />,
             title: "Error",
             description: `Failed to open URL for ${retailer}`,
             variant: "destructive",
@@ -116,6 +117,7 @@ export function QuickPriceEntry({
       )
 
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: `Updated prices for ${retailerEntries.length} retailers`,
       })
@@ -132,6 +134,7 @@ export function QuickPriceEntry({
     } catch (error: unknown) {
       console.error('Price save error:', error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to save prices. Please try again.",
         variant: "destructive",

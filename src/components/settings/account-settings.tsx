@@ -5,7 +5,7 @@ import { useTheme } from "next-themes"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { BadgeCheck, KeyRound, Mail, Monitor, Moon, Sun } from "lucide-react"
+import { AlertTriangle, BadgeCheck, CheckCircle2, KeyRound, Mail, Monitor, Moon, Sun } from "lucide-react"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
@@ -66,12 +66,14 @@ function EmailCard({ currentEmail }: { currentEmail: string }) {
     const { error } = await supabase.auth.updateUser({ email: values.email })
     if (error) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: error.message,
         variant: "destructive",
       })
     } else {
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Confirmation sent",
         description: `A confirmation email was sent to ${values.email}. Click the link to confirm your new address.`,
       })
@@ -152,12 +154,13 @@ function PasswordCard() {
     })
     if (error) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: error.message,
         variant: "destructive",
       })
     } else {
-      toast({ title: "Password updated" })
+      toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: "Password updated" })
       form.reset()
     }
   }

@@ -21,7 +21,7 @@ import {
   formatEmails,
   type ReminderSettings,
 } from "@/lib/email/settings"
-import { Bell, CalendarClock, PackageX, Share2 } from "lucide-react"
+import { Bell, CalendarClock, PackageX, Share2, CheckCircle2, AlertTriangle } from "lucide-react"
 
 function formatHour(h: number): string {
   const period = h < 12 ? "AM" : "PM"
@@ -64,6 +64,7 @@ export function ReminderSettingsForm({ initial }: { initial: ReminderSettings })
       social_recipients: parseEmails(socialRecipients),
     })
     toast({
+      icon: res.ok ? <CheckCircle2 className="size-5 text-brand" /> : <AlertTriangle className="size-5" />,
       title: res.ok ? "Saved" : "Error",
       description: res.message,
       variant: res.ok ? undefined : "destructive",

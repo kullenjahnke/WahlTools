@@ -15,6 +15,8 @@ import {
   RotateCcw,
   PackageX,
   XCircle,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react"
 import { detectPriceOutlier, type PriceHistoryPoint } from "@/lib/outlier"
 import { recordRetailerPrices, type PriceStatus } from "@/app/actions/prices"
@@ -142,6 +144,7 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
     setBlockedUrls(blocked)
     if (blocked.length) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Some pop-ups were blocked",
         description: "Use the list below to open the rest.",
         variant: "destructive",
@@ -198,13 +201,14 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
       }).filter(i => i.status !== "active" || Number.isFinite(i.price))
 
       if (items.length === 0) {
-        toast({ title: "No prices entered", variant: "destructive" })
+        toast({ icon: <AlertTriangle className="size-5" />, title: "No prices entered", variant: "destructive" })
         setLoading(false)
         return
       }
 
       await recordRetailerPrices(retailer, items)
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: `Price check for ${retailer} completed`,
       })
@@ -214,7 +218,7 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
         if (i > -1 && i < orderedRetailers.length - 1) {
           router.push(`/dashboard/prices/check?retailer=${encodeURIComponent(orderedRetailers[i + 1])}`)
         } else {
-          toast({ title: "All retailers complete!" })
+          toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: "All retailers complete!" })
           router.push("/dashboard/prices")
         }
       } else {
@@ -222,6 +226,7 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
       }
     } catch (error) {
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to save",
         variant: "destructive",

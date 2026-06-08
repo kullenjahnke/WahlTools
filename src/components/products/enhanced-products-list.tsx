@@ -32,7 +32,9 @@ import {
   Package2,
   Edit2,
   Filter,
-  Tag
+  Tag,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react"
 import { format } from "date-fns"
 import Papa from 'papaparse'
@@ -193,6 +195,7 @@ export function EnhancedProductsList({
       if (error) throw error
 
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: `Deleted ${selectedProducts.length} products`
       })
@@ -202,7 +205,8 @@ export function EnhancedProductsList({
     } catch (error) {
       console.error('Error deleting products:', error)
       toast({
-        title: "Error", 
+        icon: <AlertTriangle className="size-5" />,
+        title: "Error",
         description: "Failed to delete products",
         variant: "destructive"
       })
@@ -221,6 +225,7 @@ export function EnhancedProductsList({
       if (error) throw error
 
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: `Updated status for ${selectedProducts.length} products`
       })
@@ -230,6 +235,7 @@ export function EnhancedProductsList({
     } catch (error) {
       console.error('Error updating products:', error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to update products",
         variant: "destructive"
@@ -270,6 +276,7 @@ export function EnhancedProductsList({
       if (error) throw error
 
       toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
         title: "Success",
         description: "Product deleted successfully"
       })
@@ -278,6 +285,7 @@ export function EnhancedProductsList({
     } catch (error) {
       console.error('Error deleting product:', error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to delete product",
         variant: "destructive"

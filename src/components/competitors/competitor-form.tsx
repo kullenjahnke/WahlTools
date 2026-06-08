@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useRouter } from "next/navigation"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { AlertTriangle, CheckCircle2 } from "lucide-react"
 import { Competitor } from "@/types/database"
 
 const competitorSchema = z.object({
@@ -60,6 +61,7 @@ export function CompetitorForm({ initialData }: CompetitorFormProps) {
         if (error) throw error
 
         toast({
+          icon: <CheckCircle2 className="size-5 text-brand" />,
           title: "Success",
           description: "Competitor updated successfully",
         })
@@ -75,6 +77,7 @@ export function CompetitorForm({ initialData }: CompetitorFormProps) {
         if (error) throw error
 
         toast({
+          icon: <CheckCircle2 className="size-5 text-brand" />,
           title: "Success",
           description: "Competitor created successfully",
         })
@@ -85,6 +88,7 @@ export function CompetitorForm({ initialData }: CompetitorFormProps) {
     } catch (error) {
       console.error('Error saving competitor:', error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Error",
         description: "Failed to save competitor. Please try again.",
         variant: "destructive",

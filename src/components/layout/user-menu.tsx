@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LogOut, Monitor, Moon, Settings, Sun, User } from "lucide-react"
+import { AlertTriangle, LogOut, Monitor, Moon, Settings, Sun, User } from "lucide-react"
 import { useTheme } from "next-themes"
 import { createClientClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
@@ -49,6 +49,7 @@ export function UserMenu({ email }: UserMenuProps) {
     } catch (error) {
       console.error("Error signing out:", error)
       toast({
+        icon: <AlertTriangle className="size-5" />,
         title: "Sign out failed",
         description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",

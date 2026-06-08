@@ -173,7 +173,7 @@ export function SocialCalendar({
               key={key}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => handleDrop(e, key)}
-              onClick={() => onOpen?.({ date: key })}
+              onClick={(e) => { if (e.target === e.currentTarget) onOpen?.({ date: key }) }}
               className={[
                 'min-h-[104px] rounded-lg border p-1.5 transition-colors',
                 inMonth ? 'bg-card border-border' : 'bg-muted/40 border-transparent',

@@ -34,7 +34,9 @@ export function PostContextMenu({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div>{children}</div>
+        {/* stop clicks within the post box (incl. context-menu close fall-through)
+            from bubbling to the day cell's create-on-click handler */}
+        <div onClick={(e) => e.stopPropagation()}>{children}</div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
         <ContextMenuItem onSelect={onEdit}>Edit post</ContextMenuItem>
