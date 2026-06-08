@@ -41,6 +41,7 @@ export function PostComposerDialog({
   onSaved: () => void
 }) {
   const [caption, setCaption] = useState('')
+  const [title, setTitle] = useState('')
   const [format, setFormat] = useState<string>('image')
   const [status, setStatus] = useState<string>('idea')
   const [platforms, setPlatforms] = useState<string[]>(['instagram', 'facebook'])
@@ -54,6 +55,7 @@ export function PostComposerDialog({
   useEffect(() => {
     if (!open) return
     if (post) {
+      setTitle(post.title ?? '')
       setCaption(post.caption ?? '')
       setFormat(post.format)
       setStatus(post.status)
@@ -63,6 +65,7 @@ export function PostComposerDialog({
       setRetailers(post.retailers)
       setMedia(post.media.map((m) => ({ url: m.url, storage_path: m.storage_path, media_type: m.media_type, position: m.position })))
     } else {
+      setTitle('')
       setCaption('')
       setFormat('image')
       setStatus('idea')
@@ -83,6 +86,7 @@ export function PostComposerDialog({
     setSaving(true)
     setError(null)
     const input = {
+      title,
       caption,
       format,
       status,
@@ -116,6 +120,8 @@ export function PostComposerDialog({
     onSaved()
   }
 
+  const statusOptions = post ? SOCIAL_STATUSES : SOCIAL_STATUSES.filter((s) => ['idea', 'draft', 'scheduled'].includes(s.value))
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
@@ -125,6 +131,11 @@ export function PostComposerDialog({
 
         <div className="grid gap-5 md:grid-cols-[1fr_220px]">
           <div className="space-y-3">
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Short internal title (optional)" />
+            </div>
+
             <div>
               <Label htmlFor="caption">Caption</Label>
               <Textarea id="caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} placeholder="Write a caption…" />
@@ -145,7 +156,7 @@ export function PostComposerDialog({
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {SOCIAL_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    {statusOptions.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -193,7 +204,7 @@ export function PostComposerDialog({
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
 
-          <PostPreview caption={caption} media={media} platforms={platforms} />
+          <PostPreview caption={caption} media={media} platforms={platforms} format={format} />
         </div>
 
         <DialogFooter className="flex items-center justify-between sm:justify-between">

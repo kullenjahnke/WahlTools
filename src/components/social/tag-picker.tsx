@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Chip } from '@/components/ui/chip'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Plus, X } from 'lucide-react'
 import { RETAILERS } from '@/lib/config/retailers'
 
@@ -23,6 +22,7 @@ export function TagPicker({
   selectedRetailers: string[]
   onRetailersChange: (retailers: string[]) => void
 }) {
+  const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const filtered = products.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()))
 
@@ -71,55 +71,54 @@ export function TagPicker({
             }
           />
         ))}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs">
-              <Plus className="size-3" /> Tag
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 p-2" align="start">
-            <Input
-              placeholder="Search products…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="mb-2 h-8"
-            />
-            <div className="max-h-44 space-y-0.5 overflow-y-auto">
-              {filtered.map((p) => (
+        <Button type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => setOpen((o) => !o)}>
+          <Plus className="size-3" /> Tag
+        </Button>
+      </div>
+
+      {open && (
+        <div className="rounded-lg border border-border bg-muted/30 p-2">
+          <Input
+            placeholder="Search products…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="mb-2 h-8"
+          />
+          <div className="max-h-44 space-y-0.5 overflow-y-auto">
+            {filtered.map((p) => (
+              <button
+                type="button"
+                key={p.id}
+                onClick={() => toggleProduct(p.id)}
+                className={`flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-accent ${
+                  selectedProductIds.includes(p.id) ? 'font-medium text-brand' : ''
+                }`}
+              >
+                {p.name}
+                {selectedProductIds.includes(p.id) && <span>✓</span>}
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="px-2 py-1 text-sm text-muted-foreground">No products</p>}
+          </div>
+          <div className="mt-2 border-t pt-2">
+            <p className="mb-1 px-1 text-[11px] font-semibold uppercase text-muted-foreground">Retailers</p>
+            <div className="flex flex-wrap gap-1">
+              {RETAILERS.map((r) => (
                 <button
                   type="button"
-                  key={p.id}
-                  onClick={() => toggleProduct(p.id)}
-                  className={`flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm hover:bg-accent ${
-                    selectedProductIds.includes(p.id) ? 'font-medium text-brand' : ''
+                  key={r}
+                  onClick={() => toggleRetailer(r)}
+                  className={`rounded-full border px-2 py-0.5 text-xs ${
+                    selectedRetailers.includes(r) ? 'border-brand bg-brand-muted text-brand' : 'border-border'
                   }`}
                 >
-                  {p.name}
-                  {selectedProductIds.includes(p.id) && <span>✓</span>}
+                  {r}
                 </button>
               ))}
-              {filtered.length === 0 && <p className="px-2 py-1 text-sm text-muted-foreground">No products</p>}
             </div>
-            <div className="mt-2 border-t pt-2">
-              <p className="mb-1 px-1 text-[11px] font-semibold uppercase text-muted-foreground">Retailers</p>
-              <div className="flex flex-wrap gap-1">
-                {RETAILERS.map((r) => (
-                  <button
-                    type="button"
-                    key={r}
-                    onClick={() => toggleRetailer(r)}
-                    className={`rounded-full border px-2 py-0.5 text-xs ${
-                      selectedRetailers.includes(r) ? 'border-brand bg-brand-muted text-brand' : 'border-border'
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

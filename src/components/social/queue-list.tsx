@@ -47,7 +47,7 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
             >
               <div className="flex items-center gap-2">
                 <StatusChip status={p.status} />
-                <span className="truncate text-sm font-medium">{p.caption?.trim() || 'Untitled post'}</span>
+                <span className="truncate text-sm font-medium">{p.title?.trim() || p.caption?.trim() || 'Untitled post'}</span>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                 <span>{formatLabel(p.format)}</span>

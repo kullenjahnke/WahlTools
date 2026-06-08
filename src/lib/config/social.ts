@@ -41,3 +41,11 @@ export const SOCIAL_PLATFORM_VALUES = SOCIAL_PLATFORMS.map((p) => p.value) as So
 export function isValidPlatform(value: string): value is SocialPlatform {
   return (SOCIAL_PLATFORM_VALUES as string[]).includes(value)
 }
+
+// The single IG/FB account the calendar plans for (v1). avatarUrl points at a
+// file you can drop into /public; the preview falls back to a monogram if it's
+// missing. Phase 2 can replace this with a per-account table.
+export const SOCIAL_ACCOUNT = {
+  handle: 'wahlburgersathome',
+  avatarUrl: '/social-avatar.png',
+} as const
