@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import Link from "next/link"
 import { Package } from "lucide-react"
 
-export const metadata = { title: "WahlTools | Comparison" }
+export const metadata = { title: "Comparison" }
 
 export default async function ComparisonPage() {
   const supabase = await createSupabaseServerClient()

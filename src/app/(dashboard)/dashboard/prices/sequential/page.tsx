@@ -7,7 +7,7 @@ import { getRetailerCheckStatus } from "@/app/actions/prices"
 import type { PriceHistoryPoint } from "@/lib/outlier"
 import type { ProductUrl, ProductImage } from "@/types/database"
 
-export const metadata = { title: "WahlTools | Sequential Entry" }
+export const metadata = { title: "Sequential Entry" }
 
 const HISTORY_LOOKBACK_DAYS = 120
 

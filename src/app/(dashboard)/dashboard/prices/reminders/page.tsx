@@ -4,7 +4,7 @@ import { SendTestReminderButton } from "@/components/prices/send-test-reminder-b
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 
-export const metadata = { title: "WahlTools | Reminders" }
+export const metadata = { title: "Reminders" }
 
 export default async function PriceRemindersPage() {
   const settings = await getReminderSettings()
