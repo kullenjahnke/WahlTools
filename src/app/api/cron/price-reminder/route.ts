@@ -38,6 +38,20 @@ export async function GET(request: NextRequest) {
   const { weekday } = getDetroitParts(new Date())
   const actions: Record<string, unknown> = {}
 
+  // Social digest — independent of the weekday gating; runs daily (morning-of).
+  try {
+    if (settings.social_reminder_enabled) {
+      const socialPosts = await getUpcomingAndOverduePosts(admin)
+      if (socialPosts.length > 0) {
+        const r = await sendSocialReminder(settings.social_recipients, socialPosts)
+        actions.social = { id: r.id, count: socialPosts.length }
+      }
+    }
+  } catch (error) {
+    console.error("social reminder send failed:", error)
+    actions.socialError = true
+  }
+
   try {
     // Weekly reminder
     if (weekday === settings.weekly_day) {
@@ -66,20 +80,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("reminder cron send failed:", error)
     return new NextResponse("Send failed", { status: 500 })
-  }
-
-  // Social digest — independent of the weekday gating; runs daily (morning-of).
-  try {
-    if (settings.social_reminder_enabled) {
-      const socialPosts = await getUpcomingAndOverduePosts(admin)
-      if (socialPosts.length > 0) {
-        const r = await sendSocialReminder(settings.social_recipients, socialPosts)
-        actions.social = { id: r.id, count: socialPosts.length }
-      }
-    }
-  } catch (error) {
-    console.error("social reminder send failed:", error)
-    actions.socialError = true
   }
 
   return NextResponse.json({ ran: true, weekday, actions })
