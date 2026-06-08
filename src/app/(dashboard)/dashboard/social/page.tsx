@@ -4,13 +4,12 @@ import { IconButton } from '@/components/ui/icon-button'
 import { ListChecks } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getPostsInRange } from '@/lib/social/queries'
-import { SocialCalendar } from '@/components/social/social-calendar'
+import { SocialBoard } from '@/components/social/social-board'
 
 export const metadata = { title: 'Social' }
 export const dynamic = 'force-dynamic'
 
-// month param is 'yyyy-MM'; defaults to the current month.
-function monthBounds(month: string | undefined): { year: number; monthIndex: number; startIso: string; endIso: string } {
+function monthBounds(month: string | undefined) {
   const now = new Date()
   let year = now.getFullYear()
   let monthIndex = now.getMonth()
@@ -34,18 +33,20 @@ export default async function SocialCalendarPage({
   const { month } = await searchParams
   const { year, monthIndex, startIso, endIso } = monthBounds(month)
   const supabase = await createSupabaseServerClient()
-  const posts = await getPostsInRange(supabase, startIso, endIso)
+  const [posts, productsRes] = await Promise.all([
+    getPostsInRange(supabase, startIso, endIso),
+    supabase.from('products').select('id, name').order('name'),
+  ])
+  const products = (productsRes.data ?? []) as { id: string; name: string }[]
 
   return (
     <PageContainer>
       <PageHeader
         title="Social"
-        actions={
-          <IconButton href="/dashboard/social/queue" label="Queue" icon={<ListChecks className="size-4" />} />
-        }
+        actions={<IconButton href="/dashboard/social/queue" label="Queue" icon={<ListChecks className="size-4" />} />}
       />
       <div className="mt-6">
-        <SocialCalendar year={year} monthIndex={monthIndex} posts={posts} />
+        <SocialBoard year={year} monthIndex={monthIndex} posts={posts} products={products} />
       </div>
     </PageContainer>
   )

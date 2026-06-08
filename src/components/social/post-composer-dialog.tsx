@@ -1,0 +1,213 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { Loader2, Trash2 } from 'lucide-react'
+import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS } from '@/lib/config/social'
+import { TagPicker, type ProductOption } from './tag-picker'
+import { MediaDropzone, type MediaItem } from './media-dropzone'
+import { PostPreview } from './post-preview'
+import { createSocialPost, updateSocialPost, deleteSocialPost } from '@/app/actions/social'
+import type { SocialPostRecord } from '@/lib/social/queries'
+
+// Converts an ISO timestamp to the value a datetime-local input expects (local wall clock).
+function toLocalInput(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+export function PostComposerDialog({
+  open,
+  onOpenChange,
+  products,
+  post,
+  initialDate,
+  onSaved,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  products: ProductOption[]
+  post?: SocialPostRecord | null
+  initialDate?: string // 'yyyy-MM-dd'
+  onSaved: () => void
+}) {
+  const [caption, setCaption] = useState('')
+  const [format, setFormat] = useState<string>('image')
+  const [status, setStatus] = useState<string>('idea')
+  const [platforms, setPlatforms] = useState<string[]>(['instagram', 'facebook'])
+  const [when, setWhen] = useState<string>('')
+  const [productIds, setProductIds] = useState<string[]>([])
+  const [retailers, setRetailers] = useState<string[]>([])
+  const [media, setMedia] = useState<MediaItem[]>([])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    if (post) {
+      setCaption(post.caption ?? '')
+      setFormat(post.format)
+      setStatus(post.status)
+      setPlatforms(post.platforms.length ? post.platforms : ['instagram', 'facebook'])
+      setWhen(toLocalInput(post.scheduled_at))
+      setProductIds(post.product_ids)
+      setRetailers(post.retailers)
+      setMedia(post.media.map((m) => ({ url: m.url, storage_path: m.storage_path, media_type: m.media_type, position: m.position })))
+    } else {
+      setCaption('')
+      setFormat('image')
+      setStatus('idea')
+      setPlatforms(['instagram', 'facebook'])
+      setWhen(initialDate ? `${initialDate}T12:00` : '')
+      setProductIds([])
+      setRetailers([])
+      setMedia([])
+    }
+    setError(null)
+  }, [open, post, initialDate])
+
+  function togglePlatform(p: string) {
+    setPlatforms((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    const input = {
+      caption,
+      format,
+      status,
+      scheduled_at: when ? new Date(when).toISOString() : null,
+      platforms,
+      productIds,
+      retailers,
+      media,
+    }
+    const res = post ? await updateSocialPost(post.id, input) : await createSocialPost(input)
+    setSaving(false)
+    if (!res.success) {
+      setError(res.error ?? 'Failed to save')
+      return
+    }
+    onOpenChange(false)
+    onSaved()
+  }
+
+  async function handleDelete() {
+    if (!post) return
+    setSaving(true)
+    await deleteSocialPost(post.id)
+    setSaving(false)
+    onOpenChange(false)
+    onSaved()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{post ? 'Edit post' : 'New post'}</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-5 md:grid-cols-[1fr_220px]">
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="caption">Caption</Label>
+              <Textarea id="caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} placeholder="Write a caption…" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Format</Label>
+                <Select value={format} onValueChange={setFormat}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SOCIAL_FORMATS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SOCIAL_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Media</Label>
+              <MediaDropzone media={media} onChange={setMedia} />
+            </div>
+
+            <div>
+              <Label>Publish to</Label>
+              <div className="flex gap-2">
+                {SOCIAL_PLATFORMS.map((p) => (
+                  <button
+                    type="button"
+                    key={p.value}
+                    onClick={() => togglePlatform(p.value)}
+                    className={`rounded-full border px-3 py-1 text-xs ${
+                      platforms.includes(p.value) ? 'border-brand bg-brand-muted text-brand font-medium' : 'border-border text-muted-foreground'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="when">When</Label>
+              <Input id="when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+            </div>
+
+            <div>
+              <Label>Tags</Label>
+              <TagPicker
+                products={products}
+                selectedProductIds={productIds}
+                onProductsChange={setProductIds}
+                selectedRetailers={retailers}
+                onRetailersChange={setRetailers}
+              />
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+
+          <PostPreview caption={caption} media={media} platforms={platforms} />
+        </div>
+
+        <DialogFooter className="flex items-center justify-between sm:justify-between">
+          <div>
+            {post && (
+              <Button type="button" variant="ghost" size="sm" onClick={handleDelete} disabled={saving} className="text-destructive">
+                <Trash2 className="mr-1 size-4" /> Delete
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+            <Button type="button" onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="mr-1 size-4 animate-spin" />}
+              {status === 'scheduled' ? 'Schedule' : 'Save'}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
