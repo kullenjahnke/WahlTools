@@ -99,8 +99,7 @@ export async function getUpcomingAndOverduePosts(
   const { data, error } = await admin
     .from('social_posts')
     .select('title, caption, scheduled_at, status')
-    .in('status', ['scheduled'])
-    .not('scheduled_at', 'is', null)
+    .in('status', ['scheduled', 'failed'])
     .order('scheduled_at', { ascending: true })
   if (error) throw error
 
@@ -112,7 +111,16 @@ export async function getUpcomingAndOverduePosts(
   })
 
   const out: SocialPostReminderEntry[] = []
-  for (const row of (data ?? []) as { title: string | null; caption: string | null; scheduled_at: string; status: string }[]) {
+  for (const row of (data ?? []) as { title: string | null; caption: string | null; scheduled_at: string | null; status: string }[]) {
+    if (row.status === 'failed') {
+      out.push({
+        caption: row.title?.trim() || row.caption?.trim() || 'Untitled post',
+        when: row.scheduled_at ? `${fmtDay.format(new Date(row.scheduled_at))} ${fmtTime.format(new Date(row.scheduled_at))}` : 'Unknown',
+        overdue: true,
+      })
+      continue
+    }
+    if (!row.scheduled_at) continue
     const t = new Date(row.scheduled_at)
     const isToday = fmtDay.format(t) === todayYmd
     const overdue = t.getTime() < nowMs && !isToday

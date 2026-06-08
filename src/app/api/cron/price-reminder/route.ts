@@ -94,13 +94,15 @@ export async function GET(request: NextRequest) {
       .not("scheduled_at", "is", null)
       .lt("scheduled_at", cutoff)
     let reconciled = 0
-    for (const row of (due ?? []) as { id: string; external_ref: { vendorId?: string } | null }[]) {
+    for (const row of (due ?? []) as { id: string; external_ref: { vendorId?: string; croppedPaths?: string[] } | null }[]) {
       const vendorId = row.external_ref?.vendorId
       if (!vendorId) continue
       try {
         const st = await zernioAdapter.getStatus(vendorId)
         if (st.status === "posted" || st.status === "partial") {
           await admin.from("social_posts").update({ status: "posted", posted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", row.id)
+          const cp = (row.external_ref as { croppedPaths?: string[] } | null)?.croppedPaths
+          if (cp?.length) await admin.storage.from('social-media').remove(cp)
           reconciled++
         } else if (st.status === "failed") {
           await admin.from("social_posts").update({ status: "failed", failure_reason: st.error ?? "Publish failed", updated_at: new Date().toISOString() }).eq("id", row.id)

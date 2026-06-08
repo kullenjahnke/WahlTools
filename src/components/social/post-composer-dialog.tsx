@@ -147,12 +147,14 @@ export function PostComposerDialog({
   async function handlePublishNow() {
     setSaving(true)
     setError(null)
+    // Publish-now saves as draft (no pre-schedule, no date requirement); the
+    // immediate publishPost below does the single send and flips status to posted.
     const input = {
       title,
       caption,
       format,
       aspect_ratio: aspectRatio,
-      status: post ? status : 'scheduled',
+      status: 'draft',
       scheduled_at: when ? new Date(when).toISOString() : null,
       platforms,
       productIds,

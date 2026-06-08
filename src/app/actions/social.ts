@@ -65,6 +65,7 @@ async function persist(input: SocialPostInput) {
   if (input.status === 'scheduled') {
     const pub = await sendPost(data as string, {})
     if (!pub.success) {
+      await supabase.from('social_posts').update({ status: 'draft' }).eq('id', data as string)
       revalidatePath('/dashboard/social')
       revalidatePath('/dashboard/social/queue')
       return { success: false as const, error: pub.error ?? 'Could not schedule for publishing' }
