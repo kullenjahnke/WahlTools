@@ -30,7 +30,7 @@ v1 must **never** be blocked on Meta access — the calendar ships regardless. T
 | Composer | **Two-pane modal**: fields left, **live IG/FB-style preview** right. Not a separate route. |
 | Status lifecycle | `idea → draft → scheduled → posted → failed` (color-coded chips). |
 | Platform targeting | Per-post **Instagram and/or Facebook** toggles, default **both on**. |
-| Tagging | **Many products + one retailer**, shown as `Chip`s, **filterable** on calendar + queue. |
+| Tagging | **Many products + many retailers**, both **optional** (most posts reference no retailer), shown as `Chip`s, **filterable** on calendar + queue. |
 | Ideas without a date | Live **only in the Queue**; appear on the calendar once given a `scheduled_at`. |
 | Reminders | **Morning-of + overdue** daily digest via existing Resend + daily cron. |
 | Media | **Images via server action (≤5MB each)**; **video/reel via direct-to-storage** signed-URL upload (bypasses the 5MB body limit). Full format support in v1. |
@@ -51,8 +51,7 @@ app. Timestamps are `timestamptz`; display uses **America/Detroit** (consistent 
 | `status` | text | check in (`idea`,`draft`,`scheduled`,`posted`,`failed`); default `idea` |
 | `scheduled_at` | timestamptz null | null = unscheduled idea (Queue only) |
 | `posted_at` | timestamptz null | set when marked `posted` |
-| `platforms` | text[] | default `{instagram,facebook}`; array keeps it open to more platforms |
-| `retailer` | text null | single retailer (value from `RETAILERS` config), stored as text like `prices.retailer` |
+| `platforms` | text[] | default `{instagram,facebook}`; **CHECK `platforms <@ ARRAY['instagram','facebook']::text[]`** so only allowed values persist; array keeps it open to more platforms (extend the allow-list when adding one) |
 | `notes` | text null | internal notes |
 | `external_ref` | jsonb null | **Phase-2** vendor post IDs (vendor-agnostic) |
 | `failure_reason` | text null | **Phase-2** publish failure detail |
@@ -81,12 +80,25 @@ Index: `(post_id, position)`.
 | `product_id` | uuid | FK → `products(id)` on delete cascade |
 | PK | (`post_id`,`product_id`) | |
 
+### `social_post_retailers` (join)
+| Column | Type | Notes |
+|---|---|---|
+| `post_id` | uuid | FK → `social_posts(id)` on delete cascade |
+| `retailer` | text | retailer name (value from `RETAILERS` config), stored as text like `prices.retailer` |
+| PK | (`post_id`,`retailer`) | |
+
+*(Products and retailers are both 0..n and both optional — symmetric join tables rather than a single
+column, so a post can reference multiple of each or none. The vast majority of posts will have no
+retailer.)*
+
 ### Atomic RPC
-`save_social_post(p_post jsonb, p_product_ids uuid[], p_media jsonb) RETURNS uuid`
+`save_social_post(p_post jsonb, p_product_ids uuid[], p_retailers text[], p_media jsonb) RETURNS uuid`
 (`SECURITY DEFINER`, mirrors `record_price_check`): upserts the post row (insert when `p_post->>'id'`
-is null, else update), then **replaces** the post's product tags and media rows from the args — all in
-one transaction. Returns the post id. Media files are uploaded to storage *before* calling the RPC; the
-RPC only writes the `social_post_media` rows. Setting `status='posted'` stamps `posted_at`.
+is null, else update), then **replaces** the post's product tags, retailer tags, and media rows from the
+args — all in one transaction. Returns the post id. The RPC **validates** `p_retailers` against the
+allowed retailer set and relies on the `platforms` CHECK for platform validation (belt-and-suspenders
+with app-level validation). Media files are uploaded to storage *before* calling the RPC; the RPC only
+writes the `social_post_media` rows. Setting `status='posted'` stamps `posted_at`.
 
 ### Storage
 New **public** bucket **`social-media`**. Storage RLS: `select` public; `insert`/`update`/`delete` for
@@ -98,7 +110,9 @@ allow-listed for `/storage/v1/object/public/**`.
 Pattern matches existing actions (`createSupabaseServerClient`, try/catch returning
 `{ success, error?, data? }`, `revalidatePath`).
 
-- `createSocialPost(input)` / `updateSocialPost(id, input)` → call `save_social_post` RPC.
+- `createSocialPost(input)` / `updateSocialPost(id, input)` → call `save_social_post` RPC (input carries
+  `productIds`, `retailers`, and `media`). Validate `platforms` and `retailers` against the config
+  allow-lists before the call (the DB CHECK + RPC validation are the backstop).
 - `deleteSocialPost(id)` → delete the post's storage objects (by `storage_path`), then delete the row
   (cascade clears media + product joins). `revalidatePath`.
 - `reschedulePost(id, scheduledAt)` — single-field update (drag-to-reschedule + kebab fallback).
@@ -121,7 +135,7 @@ Pattern matches existing actions (`createSupabaseServerClient`, try/catch return
 `social-calendar.tsx` (month grid + native DnD), `post-tile.tsx` (day-cell tile), `post-composer-dialog.tsx`
 (two-pane modal), `post-preview.tsx` (phone-style live preview), `media-dropzone.tsx` (image upload +
 video signed-URL upload, carousel ordering), `tag-picker.tsx` (product multi-select + retailer
-single-select, `Chip` display), `status-chip.tsx` (status → `Chip` tone), `queue-list.tsx`.
+multi-select, both optional, `Chip` display), `status-chip.tsx` (status → `Chip` tone), `queue-list.tsx`.
 Keep files focused and small.
 
 ### Config — `src/lib/config/social.ts`
@@ -140,16 +154,20 @@ Add **Social** (`/dashboard/social`, lucide `CalendarDays`) to `app-sidebar.tsx`
   (overdue), with their tags for display.
 - New `send-social-reminder.ts` + template (reuse the branded `shell.ts`): a digest listing today's and
   overdue posts with status, time, format, and product/retailer tags, linking to `/dashboard/social`.
-- Cron route (`api/cron/price-reminder/route.ts`): add a **daily** social-digest send, gated on
-  `social_reminder_enabled` and there being posts; sent to `social_recipients`. Runs every day (unlike
-  the weekday-gated price reminders) since "morning-of" is daily.
+- Cron route (`api/cron/price-reminder/route.ts`): add the social-digest send as a **distinct, clearly
+  separated code path** from the weekday-gated price/follow-up/N-A logic — its own `try/catch` block and
+  its own `actions.social` result key. It runs **every day** (morning-of), gated only on
+  `social_reminder_enabled` and there being posts to report; sent to `social_recipients`. It must not
+  share or depend on the `weekday === settings.weekly_day` gating. (If the digest later wants its own
+  send hour, that's a Phase-2 concern once sub-daily cron exists.)
 - `18_extend_reminder_settings_social.sql`: add `social_reminder_enabled boolean default true` and
   `social_recipients text[]`. Surface a **Social** section on the Reminders settings page + extend
   `settings.ts` (`ReminderSettings` type, defaults, parsers) and `reminders.ts` save action.
 
 ## 7. Types & Migrations
 
-- `src/types/database.ts`: add `social_posts`, `social_post_media`, `social_post_products` (Row/Insert/Update).
+- `src/types/database.ts`: add `social_posts`, `social_post_media`, `social_post_products`,
+  `social_post_retailers` (Row/Insert/Update).
 - Numbered migrations (run **manually in the Supabase SQL editor** — note this in the plan and the
   migration headers): **`16_social_calendar.sql`** (tables + indexes + RLS + `save_social_post` RPC),
   **`17_social_media_bucket.sql`** (bucket + storage policies), **`18_extend_reminder_settings_social.sql`**.
