@@ -53,7 +53,7 @@ export function buildCaptionSystemPrompt(brandVoice: string): string {
   return v ? `${CAPTION_BASE_INSTRUCTION}\n\nBrand voice guidance:\n${v}` : CAPTION_BASE_INSTRUCTION
 }
 
-/** Strip a single layer of surrounding straight/smart quotes the model may add. */
+/** Strip surrounding straight/smart quotes the model may add. */
 export function stripSurroundingQuotes(s: string): string {
   return s.trim().replace(/^["'""'']+|["'""'']+$/g, '').trim()
 }
