@@ -127,50 +127,49 @@ export function CollaboratorInput({
         </div>
       )}
 
-      <Input
-        value={draft}
-        onChange={(e) => { setDraft(e.target.value); setErr(null); setOpen(true); setHighlight(-1) }}
-        onKeyDown={onKeyDown}
-        onBlur={() => commit(draft)}
-        disabled={atMax}
-        placeholder={atMax ? 'Maximum 3 collaborators' : 'Search or type a username…'}
-        className="h-8"
-      />
+      <div className="relative">
+        <Input
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); setErr(null); setOpen(true); setHighlight(-1) }}
+          onKeyDown={onKeyDown}
+          onBlur={() => commit(draft)}
+          disabled={atMax}
+          placeholder={atMax ? 'Maximum 3 collaborators' : 'Search or type a username…'}
+          className="h-8"
+        />
 
-      {showDropdown && (
-        <div className="max-h-56 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md">
-          {GROUP_ORDER.map((g) => {
-            const items = matches.filter((p) => p.group === g)
-            if (!items.length) return null
-            return (
-              <div key={g}>
-                <p className="px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase text-muted-foreground">{g}</p>
-                {items.map((p) => {
-                  const idx = matches.indexOf(p)
-                  return (
-                    <button
-                      type="button"
-                      key={p.handle}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onMouseEnter={() => setHighlight(idx)}
-                      onClick={() => commit(p.handle)}
-                      className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm ${idx === highlight ? 'bg-accent' : 'hover:bg-accent'}`}
-                    >
-                      <span className="text-foreground">{p.label}</span>
-                      <span className="text-xs text-muted-foreground">@{p.handle}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )
-          })}
-        </div>
-      )}
+        {showDropdown && (
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md">
+            {GROUP_ORDER.map((g) => {
+              const items = matches.filter((p) => p.group === g)
+              if (!items.length) return null
+              return (
+                <div key={g}>
+                  <p className="px-2 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase text-muted-foreground">{g}</p>
+                  {items.map((p) => {
+                    const idx = matches.indexOf(p)
+                    return (
+                      <button
+                        type="button"
+                        key={p.handle}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => setHighlight(idx)}
+                        onClick={() => commit(p.handle)}
+                        className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm ${idx === highlight ? 'bg-accent' : 'hover:bg-accent'}`}
+                      >
+                        <span className="text-foreground">{p.label}</span>
+                        <span className="text-xs text-muted-foreground">@{p.handle}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {err && <p className="text-xs text-destructive">{err}</p>}
-      <p className="text-xs text-muted-foreground">
-        Collaborators co-author the post — it&apos;s shared to their followers and shows them as a co-author. Instagram only; Business or Creator accounts.
-      </p>
     </div>
   )
 }
