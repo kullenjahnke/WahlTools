@@ -21,16 +21,23 @@ export default async function AnalyticsPage() {
           status,
           is_promotion,
           promotion_notes
-        )
+        ),
+        product_images ( url, main )
       `)
       .order('name'),
     supabase.from('product_categories').select('id, name').order('name'),
   ])
 
+  const withImages = (products || []).map((product) => {
+    const images = (product.product_images || []) as { url: string; main: boolean }[]
+    const imageUrl = (images.find((im) => im.main) || images[0])?.url ?? null
+    return { ...product, imageUrl }
+  })
+
   return (
     <PageContainer>
       <PageHeader title="Analytics" />
-      <ProductAnalytics products={products || []} categories={categories || []} />
+      <ProductAnalytics products={withImages} categories={categories || []} />
     </PageContainer>
   )
 }
