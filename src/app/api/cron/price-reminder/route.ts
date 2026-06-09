@@ -8,6 +8,8 @@ import { sendNADigest } from "@/lib/email/send-na-digest"
 import { getStaleRetailers, getRecentNAProducts, getUpcomingAndOverduePosts } from "@/lib/email/reminder-data"
 import { sendSocialReminder } from "@/lib/email/send-social-reminder"
 import { zernioAdapter } from "@/lib/publishing/zernio-client"
+import { cleanupOldPostedAssets } from "@/lib/social/asset-cleanup"
+import { normalizeSocialSettings } from "@/lib/config/social-settings"
 
 export const dynamic = "force-dynamic"
 
@@ -116,6 +118,28 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("publish reconcile failed:", error)
     actions.reconcileError = true
+  }
+
+  // Asset cleanup: delete original media of posted posts older than the retention
+  // window (social_settings.asset_retention_days; 0 disables). Posted-only,
+  // irreversible. Cropped derivatives + vendor-hosted copies are untouched.
+  try {
+    const { data: socialRow } = await admin
+      .from("social_settings")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle()
+    const social = normalizeSocialSettings(socialRow as Parameters<typeof normalizeSocialSettings>[0])
+    if (social.asset_retention_days > 0) {
+      const summary = await cleanupOldPostedAssets(admin, social.asset_retention_days)
+      if (summary.processedPosts > 0 || summary.capped) {
+        console.log("asset cleanup:", JSON.stringify(summary))
+        actions.assetCleanup = summary
+      }
+    }
+  } catch (error) {
+    console.error("asset cleanup failed:", error)
+    actions.assetCleanupError = true
   }
 
   return NextResponse.json({ ran: true, weekday, actions })
