@@ -33,11 +33,19 @@ export async function getSocialSettings(): Promise<SocialSettings> {
   }
 }
 
-// Feature A only persists brand_voice + caption_model; retention/analytics
-// columns keep their DB defaults (wired up later by features C/E).
+/** Coerce arbitrary input into a valid retention window: integer in [0, 3650] (0 = never delete). */
+function clampRetentionDays(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return DEFAULT_SOCIAL_SETTINGS.asset_retention_days
+  return Math.min(3650, Math.max(0, Math.floor(n)))
+}
+
+// Persists brand_voice + caption_model (Feature A) and asset_retention_days
+// (Feature E). analytics_enabled keeps its DB default until Feature C wires it up.
 export async function saveSocialSettings(input: {
   brand_voice: string
   caption_model: string
+  asset_retention_days: number
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = await createSupabaseServerClient()
   const {
@@ -49,6 +57,7 @@ export async function saveSocialSettings(input: {
     ? input.caption_model
     : DEFAULT_SOCIAL_SETTINGS.caption_model
   const brand_voice = (input.brand_voice ?? '').slice(0, 4000)
+  const asset_retention_days = clampRetentionDays(input.asset_retention_days)
 
   try {
     const admin = createSupabaseAdminClient()
@@ -56,6 +65,7 @@ export async function saveSocialSettings(input: {
       id: 1,
       brand_voice,
       caption_model,
+      asset_retention_days,
       updated_at: new Date().toISOString(),
     })
     if (error) throw error
