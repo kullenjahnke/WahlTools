@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -15,18 +16,23 @@ import { saveSocialSettings } from '@/app/actions/social-settings'
 export function SocialSettingsForm({ initial }: { initial: SocialSettings }) {
   const [brandVoice, setBrandVoice] = useState(initial.brand_voice)
   const [captionModel, setCaptionModel] = useState(initial.caption_model)
+  const [retentionDays, setRetentionDays] = useState(String(initial.asset_retention_days))
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
 
   async function handleSave() {
     setSaving(true)
-    const res = await saveSocialSettings({ brand_voice: brandVoice, caption_model: captionModel })
+    const res = await saveSocialSettings({
+      brand_voice: brandVoice,
+      caption_model: captionModel,
+      asset_retention_days: Number(retentionDays) || 0,
+    })
     setSaving(false)
     if (!res.success) {
       toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Could not save', description: res.error ?? 'Please try again.' })
       return
     }
-    toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: 'Settings saved', description: 'AI caption settings updated.' })
+    toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: 'Settings saved', description: 'Social settings updated.' })
   }
 
   return (
@@ -59,6 +65,27 @@ export function SocialSettingsForm({ initial }: { initial: SocialSettings }) {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2 border-t border-border pt-5">
+        <h2 className="text-sm font-semibold">Asset cleanup</h2>
+        <Label htmlFor="asset-retention-days">Asset retention (days)</Label>
+        <Input
+          id="asset-retention-days"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={3650}
+          step={1}
+          value={retentionDays}
+          onChange={(e) => setRetentionDays(e.target.value)}
+          className="max-w-[8rem]"
+        />
+        <p className="text-xs text-muted-foreground">
+          Old posted media is deleted after this many days (0 = never delete) &mdash; check
+          Supabase &rarr; Storage for current usage. Only affects posted items; ideas,
+          drafts, and scheduled posts are never touched.
+        </p>
       </div>
 
       <div className="flex justify-end">
