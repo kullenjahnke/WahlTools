@@ -27,13 +27,21 @@ function buildIdeaContext(input: GenerateCaptionInput): string {
   if (input.notes?.trim()) lines.push(`Notes: ${input.notes.trim()}`)
   if (input.productNames?.length) lines.push(`Products: ${input.productNames.join(', ')}`)
   if (input.retailers?.length) lines.push(`Retailers: ${input.retailers.join(', ')}`)
+
+  // With an image, the picture is the context — only add the detail block when
+  // there are actual details, so we never contradict ourselves with a "no
+  // details provided" line under an "use these details" intro.
+  if (input.imageUrl) {
+    const intro = "Write a caption for this social post. The attached image is the post's actual visual."
+    return lines.length
+      ? `${intro} Use these details as context:\n\n${lines.join('\n')}`
+      : `${intro} Caption what it shows, on-brand for Wahlburgers at Home.`
+  }
+
   if (lines.length === 0) {
     lines.push('No specific details provided — write a general on-brand caption for Wahlburgers at Home.')
   }
-  const intro = input.imageUrl
-    ? "Write a caption for this social post. The attached image is the post's actual visual — caption what it shows, using these details as context:"
-    : 'Write a caption for this post idea:'
-  return `${intro}\n\n${lines.join('\n')}`
+  return `Write a caption for this post idea:\n\n${lines.join('\n')}`
 }
 
 export async function generateCaption(
