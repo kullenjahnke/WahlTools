@@ -12,6 +12,7 @@ interface DbPost {
   caption: string | null
   format: string
   platforms: string[]
+  collaborators: string[] | null
   aspect_ratio: string
   scheduled_at: string | null
   external_ref: { vendorId?: string; croppedPaths?: string[] } | null
@@ -19,7 +20,7 @@ interface DbPost {
 }
 
 const POST_SELECT =
-  'id, caption, format, platforms, aspect_ratio, scheduled_at, external_ref, ' +
+  'id, caption, format, platforms, collaborators, aspect_ratio, scheduled_at, external_ref, ' +
   'social_post_media ( url, storage_path, media_type, position )'
 
 async function loadPost(admin: ReturnType<typeof createSupabaseAdminClient>, id: string): Promise<DbPost | null> {
@@ -97,6 +98,7 @@ export async function sendPost(id: string, opts: { now?: boolean }): Promise<{ s
       caption: post.caption ?? '',
       media: built.media,
       platforms: post.platforms,
+      collaborators: post.collaborators ?? [],
       format: post.format,
       scheduledFor: post.scheduled_at ?? undefined,
     }

@@ -14,6 +14,8 @@ export interface PublishRequest {
   media: PublishMedia[]
   /** Our platform values, e.g. ['instagram','facebook']. */
   platforms: string[]
+  /** IG collaborator usernames (no leading '@'); applied to Instagram only, max 3. */
+  collaborators?: string[]
   /** Our format: image | carousel | reel | story. Drives per-platform content type. */
   format: string
   /** ISO timestamp for scheduled publishing; omit for publish-now. */
