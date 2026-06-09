@@ -71,7 +71,11 @@ export function CollaboratorInput({
               label={
                 <span className="flex items-center gap-1">
                   @{c}
-                  <X className="size-3 cursor-pointer" onClick={() => remove(c)} />
+                  <X
+                    className="size-3 cursor-pointer"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => remove(c)}
+                  />
                 </span>
               }
             />
