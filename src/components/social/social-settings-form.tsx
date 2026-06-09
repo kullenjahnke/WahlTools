@@ -49,9 +49,9 @@ export function SocialSettingsForm({ initial }: { initial: SocialSettings }) {
       </div>
 
       <div className="space-y-2">
-        <Label>Caption model</Label>
+        <Label htmlFor="caption-model">Caption model</Label>
         <Select value={captionModel} onValueChange={setCaptionModel}>
-          <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger id="caption-model" className="max-w-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             {CAPTION_MODELS.map((m) => (
               <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
