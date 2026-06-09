@@ -1,7 +1,7 @@
 import { PageContainer } from '@/components/layout/page-container'
 import { PageHeader } from '@/components/layout/page-header'
 import { IconButton } from '@/components/ui/icon-button'
-import { ListChecks } from 'lucide-react'
+import { ListChecks, Settings } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getPostsInRange } from '@/lib/social/queries'
 import { SocialBoard } from '@/components/social/social-board'
@@ -43,7 +43,12 @@ export default async function SocialCalendarPage({
     <PageContainer>
       <PageHeader
         title="Social"
-        actions={<IconButton href="/dashboard/social/queue" label="Queue" icon={<ListChecks className="size-4" />} />}
+        actions={
+          <>
+            <IconButton href="/dashboard/social/settings" label="Settings" icon={<Settings className="size-4" />} />
+            <IconButton href="/dashboard/social/queue" label="Queue" icon={<ListChecks className="size-4" />} />
+          </>
+        }
       />
       <div className="mt-6">
         <SocialBoard year={year} monthIndex={monthIndex} posts={posts} products={products} />

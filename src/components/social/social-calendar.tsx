@@ -14,11 +14,12 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { ChevronLeft, ChevronRight, CalendarClock, CheckCircle2, Copy, Trash2, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarClock, CheckCircle2, Copy, Trash2, AlertTriangle, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PostTile } from './post-tile'
 import { reschedulePost, updatePostStatus, deleteSocialPost, duplicateSocialPost } from '@/app/actions/social'
+import { publishPost } from '@/app/actions/publish'
 import { PostContextMenu } from './post-context-menu'
 import { localYmd } from '@/lib/social/dates'
 import { postLabel, statusMeta } from '@/lib/config/social'
@@ -42,6 +43,8 @@ export function SocialCalendar({
   const [pending, setPending] = useState(false)
   const [confirmPost, setConfirmPost] = useState<SocialPostRecord | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
+  const [publishRec, setPublishRec] = useState<SocialPostRecord | null>(null)
+  const [publishLoading, setPublishLoading] = useState(false)
   const monthDate = new Date(year, monthIndex, 1)
 
   const gridStart = startOfWeek(startOfMonth(monthDate), { weekStartsOn: 1 })
@@ -104,6 +107,19 @@ export function SocialCalendar({
 
   function del(post: SocialPostRecord) {
     setConfirmPost(post)
+  }
+
+  async function performPublishNow() {
+    if (!publishRec) return
+    const post = publishRec
+    setPublishLoading(true)
+    const res = await publishPost(post.id, { now: true })
+    setPublishLoading(false)
+    setPublishRec(null)
+    toast(res.success
+      ? { icon: <Send className="size-5 text-brand" />, title: 'Publishing now', description: `"${postLabel(post)}"` }
+      : { variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Publish failed', description: res.error ?? 'Please try again.' })
+    router.refresh()
   }
 
   async function performDelete() {
@@ -193,6 +209,7 @@ export function SocialCalendar({
                   onSetStatus={(s) => setStatus(p, s)}
                   onDuplicate={() => duplicate(p)}
                   onDelete={() => del(p)}
+                  onPublishNow={() => setPublishRec(p)}
                 >
                   <PostTile
                     post={p}
@@ -215,6 +232,16 @@ export function SocialCalendar({
         destructive
         loading={confirmLoading}
         onConfirm={performDelete}
+      />
+
+      <ConfirmDialog
+        open={!!publishRec}
+        onOpenChange={(v) => { if (!v) setPublishRec(null) }}
+        title="Publish now?"
+        description={publishRec ? `"${postLabel(publishRec)}" will post to Instagram/Facebook immediately.` : ''}
+        confirmLabel="Publish now"
+        loading={publishLoading}
+        onConfirm={performPublishNow}
       />
     </div>
   )

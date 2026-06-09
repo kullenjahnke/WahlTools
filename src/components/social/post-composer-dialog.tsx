@@ -10,13 +10,14 @@ import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Trash2, CheckCircle2, CalendarClock, Pencil, AlertTriangle } from 'lucide-react'
+import { Loader2, Trash2, CheckCircle2, CalendarClock, Pencil, AlertTriangle, Send } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS, SOCIAL_ASPECT_RATIOS, postLabel } from '@/lib/config/social'
 import { TagPicker, type ProductOption } from './tag-picker'
 import { MediaDropzone, type MediaItem } from './media-dropzone'
 import { PostPreview } from './post-preview'
 import { createSocialPost, updateSocialPost, deleteSocialPost } from '@/app/actions/social'
+import { publishPost } from '@/app/actions/publish'
 import type { SocialPostRecord } from '@/lib/social/queries'
 
 // Converts an ISO timestamp to the value a datetime-local input expects (local wall clock).
@@ -55,6 +56,7 @@ export function PostComposerDialog({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmPublish, setConfirmPublish] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -138,6 +140,42 @@ export function PostComposerDialog({
     }
     toast({ icon: <Trash2 className="size-5 text-muted-foreground" />, title: 'Post deleted', description: `"${label}"` })
     setConfirmOpen(false)
+    onOpenChange(false)
+    onSaved()
+  }
+
+  async function handlePublishNow() {
+    setSaving(true)
+    setError(null)
+    // Publish-now saves as draft (no pre-schedule, no date requirement); the
+    // immediate publishPost below does the single send and flips status to posted.
+    const input = {
+      title,
+      caption,
+      format,
+      aspect_ratio: aspectRatio,
+      status: 'draft',
+      scheduled_at: when ? new Date(when).toISOString() : null,
+      platforms,
+      productIds,
+      retailers,
+      media,
+    }
+    const saved = post ? await updateSocialPost(post.id, input) : await createSocialPost(input)
+    if (!saved.success || !saved.data) {
+      setSaving(false)
+      setError(saved.error ?? 'Could not save')
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Something went wrong', description: saved.error ?? 'Please try again.' })
+      return
+    }
+    const pub = await publishPost(saved.data, { now: true })
+    setSaving(false)
+    if (!pub.success) {
+      setError(pub.error ?? 'Publish failed')
+      toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Publish failed', description: pub.error ?? 'Please try again.' })
+      return
+    }
+    toast({ icon: <Send className="size-5 text-brand" />, title: 'Publishing now', description: `"${postLabel({ title, caption })}"` })
     onOpenChange(false)
     onSaved()
   }
@@ -253,6 +291,9 @@ export function PostComposerDialog({
             )}
           </div>
           <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => setConfirmPublish(true)} disabled={saving}>
+              <Send className="mr-1 size-4" /> Publish now
+            </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
             <Button type="button" onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="mr-1 size-4 animate-spin" />}
@@ -271,6 +312,15 @@ export function PostComposerDialog({
       destructive
       loading={saving}
       onConfirm={performDelete}
+    />
+    <ConfirmDialog
+      open={confirmPublish}
+      onOpenChange={setConfirmPublish}
+      title="Publish now?"
+      description={`"${postLabel({ title, caption })}" will post to Instagram/Facebook immediately.`}
+      confirmLabel="Publish now"
+      loading={saving}
+      onConfirm={() => { setConfirmPublish(false); handlePublishNow() }}
     />
     </>
   )

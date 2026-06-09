@@ -22,6 +22,7 @@ export function PostContextMenu({
   onSetStatus,
   onDuplicate,
   onDelete,
+  onPublishNow,
 }: {
   children: React.ReactNode
   onEdit: () => void
@@ -30,6 +31,7 @@ export function PostContextMenu({
   onSetStatus: (status: string) => void
   onDuplicate: () => void
   onDelete: () => void
+  onPublishNow: () => void
 }) {
   return (
     <ContextMenu>
@@ -39,6 +41,8 @@ export function PostContextMenu({
         <div onClick={(e) => e.stopPropagation()}>{children}</div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
+        <ContextMenuItem onSelect={onPublishNow}>Publish now</ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem onSelect={onEdit}>Edit post</ContextMenuItem>
 
         <ContextMenuSub>

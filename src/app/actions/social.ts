@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendPost, cancelPost } from '@/lib/publishing/publish-service'
 import { RETAILERS } from '@/lib/config/retailers'
 import { SOCIAL_STATUS_VALUES, SOCIAL_FORMAT_VALUES, SOCIAL_ASPECT_RATIO_VALUES, isValidPlatform } from '@/lib/config/social'
 
@@ -58,6 +59,22 @@ async function persist(input: SocialPostInput) {
     console.error('save_social_post failed:', error)
     return { success: false as const, error: 'Failed to save post' }
   }
+
+  // Phase 2: a scheduled post is (re)sent to the vendor. sendPost does the
+  // strict cancel-then-recreate internally if it was already scheduled.
+  if (input.status === 'scheduled') {
+    const pub = await sendPost(data as string, {})
+    if (!pub.success) {
+      await supabase.from('social_posts').update({ status: 'draft' }).eq('id', data as string)
+      revalidatePath('/dashboard/social')
+      revalidatePath('/dashboard/social/queue')
+      return { success: false as const, error: pub.error ?? 'Could not schedule for publishing' }
+    }
+  } else if (input.id) {
+    // Editing an existing post into a non-scheduled state: cancel any vendor schedule (best-effort).
+    try { await cancelPost(input.id) } catch (e) { console.error('cancelPost on save failed:', e) }
+  }
+
   revalidatePath('/dashboard/social')
   revalidatePath('/dashboard/social/queue')
   return { success: true as const, data: data as string }
@@ -78,6 +95,14 @@ export async function reschedulePost(id: string, scheduledAt: string) {
     .update({ scheduled_at: scheduledAt, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) return { success: false as const, error: 'Failed to reschedule' }
+
+  // Re-send to the vendor with the new time (sendPost cancels the old schedule first).
+  const { data: rrow } = await supabase.from('social_posts').select('status').eq('id', id).maybeSingle()
+  if ((rrow as { status?: string } | null)?.status === 'scheduled') {
+    const pub = await sendPost(id, {})
+    if (!pub.success) return { success: false as const, error: pub.error ?? 'Could not reschedule at vendor' }
+  }
+
   revalidatePath('/dashboard/social')
   revalidatePath('/dashboard/social/queue')
   return { success: true as const }
@@ -91,6 +116,11 @@ export async function updatePostStatus(id: string, status: string) {
   if (status !== 'posted') patch.posted_at = null
   const { error } = await supabase.from('social_posts').update(patch).eq('id', id)
   if (error) return { success: false as const, error: 'Failed to update status' }
+
+  if (status !== 'scheduled') {
+    try { await cancelPost(id) } catch (e) { console.error('cancelPost on status change failed:', e) }
+  }
+
   revalidatePath('/dashboard/social')
   revalidatePath('/dashboard/social/queue')
   return { success: true as const }
@@ -98,6 +128,12 @@ export async function updatePostStatus(id: string, status: string) {
 
 export async function deleteSocialPost(id: string) {
   const supabase = await createSupabaseServerClient()
+
+  // Cancel any vendor schedule + remove cropped derivatives. Best-effort: a
+  // vendor error shouldn't block deleting locally (note: an orphaned vendor
+  // schedule could still publish — surfaced via the daily reconcile/logs).
+  try { await cancelPost(id) } catch (e) { console.error('cancelPost on delete failed:', e) }
+
   const { data: media } = await supabase.from('social_post_media').select('storage_path').eq('post_id', id)
   const paths = (media ?? []).map((m) => m.storage_path).filter(Boolean)
   if (paths.length) await supabase.storage.from(BUCKET).remove(paths)
