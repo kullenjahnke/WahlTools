@@ -65,6 +65,7 @@ export interface Database {
           scheduled_at: string | null
           posted_at: string | null
           platforms: string[]
+          collaborators: string[]
           notes: string | null
           external_ref: Json | null
           failure_reason: string | null
@@ -81,6 +82,7 @@ export interface Database {
           scheduled_at?: string | null
           posted_at?: string | null
           platforms?: string[]
+          collaborators?: string[]
           notes?: string | null
           external_ref?: Json | null
           failure_reason?: string | null
@@ -97,6 +99,7 @@ export interface Database {
           scheduled_at?: string | null
           posted_at?: string | null
           platforms?: string[]
+          collaborators?: string[]
           notes?: string | null
           external_ref?: Json | null
           failure_reason?: string | null
