@@ -126,7 +126,7 @@ export const ChartExportCard = forwardRef<HTMLDivElement, ChartExportCardProps>(
           <div className="flex-1 p-5">
             <div className="mb-2 flex items-center gap-2">
               <span className="text-[13px] font-semibold">Prices</span>
-              <span className="rounded-full bg-[hsl(var(--brand-muted))] px-2.5 py-0.5 text-[10px] font-semibold text-[hsl(var(--brand))]">
+              <span className="rounded-full bg-brand-muted px-2.5 py-0.5 text-[10px] font-semibold text-brand">
                 {rangeLabel}
               </span>
             </div>
@@ -175,8 +175,8 @@ export const ChartExportCard = forwardRef<HTMLDivElement, ChartExportCardProps>(
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-border px-5 py-2.5 text-[10px] text-muted-foreground">
           <span>{generatedLabel}</span>
-          <span className="flex items-center gap-1.5 font-semibold text-[hsl(var(--brand))]">
-            <span className="inline-block h-3 w-3 rounded-[3px] bg-[hsl(var(--brand))]" />
+          <span className="flex items-center gap-1.5 font-semibold text-brand">
+            <span className="inline-block h-3 w-3 rounded-[3px] bg-brand" />
             Powered by WahlTools
           </span>
         </div>
