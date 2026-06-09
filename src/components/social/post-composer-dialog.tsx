@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Trash2, CheckCircle2, CalendarClock, Pencil, AlertTriangle, Send } from 'lucide-react'
+import { Loader2, Trash2, CheckCircle2, CalendarClock, Pencil, AlertTriangle, Send, Sparkles } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS, SOCIAL_ASPECT_RATIOS, postLabel } from '@/lib/config/social'
 import { TagPicker, type ProductOption } from './tag-picker'
@@ -18,6 +18,7 @@ import { MediaDropzone, type MediaItem } from './media-dropzone'
 import { PostPreview } from './post-preview'
 import { createSocialPost, updateSocialPost, deleteSocialPost } from '@/app/actions/social'
 import { publishPost } from '@/app/actions/publish'
+import { generateCaption } from '@/app/actions/ai'
 import type { SocialPostRecord } from '@/lib/social/queries'
 
 // Converts an ISO timestamp to the value a datetime-local input expects (local wall clock).
@@ -54,6 +55,7 @@ export function PostComposerDialog({
   const [retailers, setRetailers] = useState<string[]>([])
   const [media, setMedia] = useState<MediaItem[]>([])
   const [saving, setSaving] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmPublish, setConfirmPublish] = useState(false)
@@ -86,6 +88,47 @@ export function PostComposerDialog({
     }
     setError(null)
   }, [open, post, initialDate])
+
+  const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? ''
+
+  async function handleGenerate() {
+    setGenerating(true)
+    try {
+      const productNames = productIds.map(nameOf).filter(Boolean)
+      // Cover image (lowest-position image media item) as a visual reference;
+      // video-only / image-less posts generate from text alone, as before.
+      const coverImage = media
+        .filter((m) => m.media_type === 'image')
+        .sort((a, b) => a.position - b.position)[0]
+      const res = await generateCaption({
+        title,
+        notes: post?.notes ?? '',
+        productNames,
+        retailers,
+        imageUrl: coverImage?.url ?? null,
+      })
+      if (!res.success || !res.caption) {
+        // Never overwrite the existing caption on failure.
+        toast({
+          variant: 'destructive',
+          icon: <AlertTriangle className="size-5" />,
+          title: 'Caption generation failed',
+          description: res.error ?? 'Please try again.',
+        })
+        return
+      }
+      setCaption(res.caption)
+    } catch {
+      toast({
+        variant: 'destructive',
+        icon: <AlertTriangle className="size-5" />,
+        title: 'Caption generation failed',
+        description: 'Please try again.',
+      })
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   function togglePlatform(p: string) {
     setPlatforms((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]))
@@ -200,7 +243,20 @@ export function PostComposerDialog({
             </div>
 
             <div>
-              <Label htmlFor="caption">Caption</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="caption">Caption</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs text-brand hover:text-brand"
+                  onClick={handleGenerate}
+                  disabled={generating || saving}
+                >
+                  {generating ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                  {caption.trim() ? 'Regenerate' : 'Generate caption'}
+                </Button>
+              </div>
               <Textarea id="caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} placeholder="Write a caption…" />
             </div>
 
