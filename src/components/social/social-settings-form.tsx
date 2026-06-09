@@ -32,7 +32,7 @@ export function SocialSettingsForm({ initial }: { initial: SocialSettings }) {
       toast({ variant: 'destructive', icon: <AlertTriangle className="size-5" />, title: 'Could not save', description: res.error ?? 'Please try again.' })
       return
     }
-    toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: 'Settings saved', description: 'AI caption settings updated.' })
+    toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: 'Settings saved', description: 'Social settings updated.' })
   }
 
   return (
