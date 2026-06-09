@@ -143,6 +143,32 @@ export interface Database {
         Insert: { post_id: string; retailer: string }
         Update: { post_id?: string; retailer?: string }
       }
+      social_settings: {
+        Row: {
+          id: number
+          brand_voice: string | null
+          caption_model: string
+          asset_retention_days: number
+          analytics_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          brand_voice?: string | null
+          caption_model?: string
+          asset_retention_days?: number
+          analytics_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          brand_voice?: string | null
+          caption_model?: string
+          asset_retention_days?: number
+          analytics_enabled?: boolean
+          updated_at?: string
+        }
+      }
       brands: {
         Row: {
           id: string
