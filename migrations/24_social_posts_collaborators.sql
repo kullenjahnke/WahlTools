@@ -62,6 +62,8 @@ begin
         platforms),
       notes = nullif(p_post->>'notes',''),
       aspect_ratio = coalesce(p_post->>'aspect_ratio','auto'),
+      -- Intentional: an explicit empty array clears collaborators (zero is a
+      -- valid state, unlike platforms). The action always sends this key.
       collaborators = coalesce(
         (select array_agg(value::text) from jsonb_array_elements_text(p_post->'collaborators')),
         '{}'::text[]),
