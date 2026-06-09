@@ -43,6 +43,7 @@ export function SocialSettingsForm({ initial }: { initial: SocialSettings }) {
           value={brandVoice}
           onChange={(e) => setBrandVoice(e.target.value)}
           rows={6}
+          maxLength={4000}
           placeholder="Describe the tone, style, and any do’s/don’ts for captions (e.g. “Warm, family-first, a little playful. Mention real ingredients. Avoid hard-sell language.”). Leave blank for a generic on-brand voice."
         />
         <p className="text-xs text-muted-foreground">Guides every generated caption. Leave blank to use a generic on-brand voice.</p>
