@@ -14,6 +14,7 @@ import { Loader2, Trash2, CheckCircle2, CalendarClock, Pencil, AlertTriangle, Se
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS, SOCIAL_ASPECT_RATIOS, postLabel } from '@/lib/config/social'
 import { TagPicker, type ProductOption } from './tag-picker'
+import { CollaboratorInput } from './collaborator-input'
 import { MediaDropzone, type MediaItem } from './media-dropzone'
 import { PostPreview } from './post-preview'
 import { createSocialPost, updateSocialPost, deleteSocialPost } from '@/app/actions/social'
@@ -50,6 +51,7 @@ export function PostComposerDialog({
   const [aspectRatio, setAspectRatio] = useState<string>('auto')
   const [status, setStatus] = useState<string>('idea')
   const [platforms, setPlatforms] = useState<string[]>(['instagram', 'facebook'])
+  const [collaborators, setCollaborators] = useState<string[]>([])
   const [when, setWhen] = useState<string>('')
   const [productIds, setProductIds] = useState<string[]>([])
   const [retailers, setRetailers] = useState<string[]>([])
@@ -70,6 +72,7 @@ export function PostComposerDialog({
       setAspectRatio(post.aspect_ratio ?? 'auto')
       setStatus(post.status)
       setPlatforms(post.platforms.length ? post.platforms : ['instagram', 'facebook'])
+      setCollaborators(post.collaborators ?? [])
       setWhen(toLocalInput(post.scheduled_at))
       setProductIds(post.product_ids)
       setRetailers(post.retailers)
@@ -81,6 +84,7 @@ export function PostComposerDialog({
       setAspectRatio('auto')
       setStatus('idea')
       setPlatforms(['instagram', 'facebook'])
+      setCollaborators([])
       setWhen(initialDate ? `${initialDate}T12:00` : '')
       setProductIds([])
       setRetailers([])
@@ -145,6 +149,7 @@ export function PostComposerDialog({
       status,
       scheduled_at: when ? new Date(when).toISOString() : null,
       platforms,
+      collaborators,
       productIds,
       retailers,
       media,
@@ -200,6 +205,7 @@ export function PostComposerDialog({
       status: 'draft',
       scheduled_at: when ? new Date(when).toISOString() : null,
       platforms,
+      collaborators,
       productIds,
       retailers,
       media,
@@ -315,6 +321,13 @@ export function PostComposerDialog({
                 ))}
               </div>
             </div>
+
+            {platforms.includes('instagram') && (
+              <div>
+                <Label>Collaborators</Label>
+                <CollaboratorInput value={collaborators} onChange={setCollaborators} />
+              </div>
+            )}
 
             <div>
               <Label htmlFor="when">When</Label>
