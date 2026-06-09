@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
     const social = normalizeSocialSettings(socialRow as Parameters<typeof normalizeSocialSettings>[0])
     if (social.asset_retention_days > 0) {
       const summary = await cleanupOldPostedAssets(admin, social.asset_retention_days)
-      if (summary.processedPosts > 0 || summary.capped) {
+      if (summary.processedPosts > 0 || summary.capped || summary.storageError) {
         console.log("asset cleanup:", JSON.stringify(summary))
         actions.assetCleanup = summary
       }
