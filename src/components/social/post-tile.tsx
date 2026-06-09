@@ -5,6 +5,7 @@ import { Film, ImageIcon, Images, Square } from 'lucide-react'
 import { statusMeta, type SocialFormat } from '@/lib/config/social'
 import { detroitTime } from '@/lib/social/dates'
 import type { SocialPostRecord } from '@/lib/social/queries'
+import { Chip } from '@/components/ui/chip'
 
 const FORMAT_ICON: Record<SocialFormat, typeof Film> = {
   image: ImageIcon,
@@ -53,6 +54,13 @@ export function PostTile({
           {post.platforms.map((p) => (p === 'instagram' ? 'IG' : 'FB')).join(' · ')}
           {time ? ` · ${time}` : ''}
         </span>
+        {post.collaborators.length > 0 && (
+          <span className="mt-0.5 flex flex-wrap gap-1">
+            {post.collaborators.map((c) => (
+              <Chip key={c} tone="neutral" size="sm" label={`@${c}`} />
+            ))}
+          </span>
+        )}
       </span>
     </button>
   )
