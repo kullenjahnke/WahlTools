@@ -5,6 +5,7 @@ import { Chip } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
 import { COLLABORATOR_PRESETS, type CollaboratorPreset } from '@/lib/config/social'
+import { DropdownOverlay } from './dropdown-overlay'
 
 const MAX = 3
 // Mirrors the server action: strip leading '@', trim, lowercase, then validate.
@@ -138,9 +139,8 @@ export function CollaboratorInput({
           className="h-8"
         />
 
-        {showDropdown && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md">
-            {GROUP_ORDER.map((g) => {
+        <DropdownOverlay open={showDropdown} className="max-h-56 p-1">
+          {GROUP_ORDER.map((g) => {
               const items = matches.filter((p) => p.group === g)
               if (!items.length) return null
               return (
@@ -165,8 +165,7 @@ export function CollaboratorInput({
                 </div>
               )
             })}
-          </div>
-        )}
+        </DropdownOverlay>
       </div>
 
       {err && <p className="text-xs text-destructive">{err}</p>}
