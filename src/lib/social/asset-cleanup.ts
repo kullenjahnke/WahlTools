@@ -12,6 +12,8 @@ export interface CleanupSummary {
   removedObjects: number
   deletedRows: number
   capped: boolean
+  /** True if the storage object removal call returned an error (rows are still deleted). */
+  storageError: boolean
 }
 
 /**
@@ -29,7 +31,7 @@ export async function cleanupOldPostedAssets(
   admin: SupabaseClient,
   retentionDays: number
 ): Promise<CleanupSummary> {
-  const empty: CleanupSummary = { eligible: 0, processedPosts: 0, removedObjects: 0, deletedRows: 0, capped: false }
+  const empty: CleanupSummary = { eligible: 0, processedPosts: 0, removedObjects: 0, deletedRows: 0, capped: false, storageError: false }
   if (!Number.isFinite(retentionDays) || retentionDays <= 0) return empty
 
   const cutoff = new Date(Date.now() - retentionDays * MS_PER_DAY).toISOString()
@@ -66,15 +68,19 @@ export async function cleanupOldPostedAssets(
   if (mediaError) throw mediaError
 
   const paths = (media ?? [])
-    .map((m) => (m as { storage_path: string | null }).storage_path)
-    .filter((p): p is string => typeof p === 'string' && p.length > 0)
+    .map((m) => (m as { storage_path: string }).storage_path)
+    .filter((p) => typeof p === 'string' && p.length > 0)
 
   let removedObjects = 0
+  let storageError = false
   if (paths.length > 0) {
+    // remove() returns a single error for the batch, not per-object results, so on
+    // success we credit the whole batch; on error we flag it and still delete the rows.
     const { error: removeError } = await admin.storage.from(SOCIAL_MEDIA_BUCKET).remove(paths)
     if (removeError) {
       // Storage failure shouldn't abort row cleanup, but surface it for visibility.
       console.error('asset cleanup: storage remove failed:', removeError)
+      storageError = true
     } else {
       removedObjects = paths.length
     }
@@ -93,5 +99,6 @@ export async function cleanupOldPostedAssets(
     removedObjects,
     deletedRows: deletedRows ?? 0,
     capped: eligible > postIds.length,
+    storageError,
   }
 }
