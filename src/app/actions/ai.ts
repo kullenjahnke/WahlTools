@@ -38,12 +38,12 @@ export async function generateCaption(
   } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'You must be signed in to generate a caption.' }
 
-  const settings = await getSocialSettings()
-  const system = buildCaptionSystemPrompt(settings.brand_voice)
-  const model = resolveCaptionModelId(settings.caption_model)
-  const userMessage = buildIdeaContext(input)
-
   try {
+    const settings = await getSocialSettings()
+    const system = buildCaptionSystemPrompt(settings.brand_voice)
+    const model = resolveCaptionModelId(settings.caption_model)
+    const userMessage = buildIdeaContext(input)
+
     const client = getAnthropic()
     const message = await client.messages.create({
       model,
