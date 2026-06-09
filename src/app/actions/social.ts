@@ -8,6 +8,23 @@ import { SOCIAL_STATUS_VALUES, SOCIAL_FORMAT_VALUES, SOCIAL_ASPECT_RATIO_VALUES,
 
 const BUCKET = 'social-media'
 
+const MAX_COLLABORATORS = 3
+// Instagram handles: letters, digits, '.', '_'; 1–30 chars. Validated after
+// stripping a leading '@', trimming, and lowercasing.
+const COLLABORATOR_RE = /^[a-z0-9._]{1,30}$/
+
+function normalizeCollaborators(raw: string[] | undefined): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const r of raw ?? []) {
+    const name = r.replace(/^@+/, '').trim().toLowerCase()
+    if (!name || seen.has(name)) continue
+    seen.add(name)
+    out.push(name)
+  }
+  return out
+}
+
 export interface SocialPostInput {
   id?: string
   title?: string | null
@@ -17,6 +34,7 @@ export interface SocialPostInput {
   status: string
   scheduled_at?: string | null
   platforms: string[]
+  collaborators?: string[]
   notes?: string | null
   productIds: string[]
   retailers: string[]
@@ -38,6 +56,14 @@ async function persist(input: SocialPostInput) {
   const invalid = validate(input)
   if (invalid) return { success: false as const, error: invalid }
 
+  const collaborators = normalizeCollaborators(input.collaborators)
+  if (collaborators.length > MAX_COLLABORATORS) {
+    return { success: false as const, error: `Up to ${MAX_COLLABORATORS} collaborators.` }
+  }
+  if (!collaborators.every((c) => COLLABORATOR_RE.test(c))) {
+    return { success: false as const, error: 'Invalid collaborator username.' }
+  }
+
   const { data, error } = await supabase.rpc('save_social_post', {
     p_post: {
       id: input.id ?? null,
@@ -48,6 +74,7 @@ async function persist(input: SocialPostInput) {
       status: input.status,
       scheduled_at: input.scheduled_at ?? null,
       platforms: input.platforms,
+      collaborators,
       notes: input.notes ?? null,
     },
     p_product_ids: input.productIds,
@@ -173,7 +200,7 @@ export async function duplicateSocialPost(id: string) {
   const { data: post, error } = await supabase
     .from('social_posts')
     .select(
-      'title, caption, format, platforms, aspect_ratio, notes, ' +
+      'title, caption, format, platforms, aspect_ratio, notes, collaborators, ' +
       'social_post_media ( url, storage_path, media_type, position ), ' +
       'social_post_products ( product_id ), ' +
       'social_post_retailers ( retailer )'
@@ -187,6 +214,7 @@ export async function duplicateSocialPost(id: string) {
     caption: string | null
     format: string
     platforms: string[]
+    collaborators: string[] | null
     aspect_ratio: string
     notes: string | null
     social_post_media: { url: string; storage_path: string; media_type: string; position: number }[] | null
@@ -217,6 +245,7 @@ export async function duplicateSocialPost(id: string) {
       status: 'draft',
       scheduled_at: null,
       platforms: src.platforms,
+      collaborators: src.collaborators ?? [],
       notes: src.notes,
       aspect_ratio: src.aspect_ratio,
     },
