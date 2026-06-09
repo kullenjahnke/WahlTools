@@ -86,7 +86,7 @@ export function CollaboratorInput({
       setHighlight((h) => Math.min(h + 1, matches.length - 1))
     } else if (e.key === 'ArrowUp' && matches.length) {
       e.preventDefault()
-      setHighlight((h) => Math.max(h - 1, 0))
+      setHighlight((h) => Math.max(h - 1, -1))
     } else if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
       // Enter on a highlighted suggestion picks it; otherwise add the typed text.
@@ -130,7 +130,6 @@ export function CollaboratorInput({
       <Input
         value={draft}
         onChange={(e) => { setDraft(e.target.value); setErr(null); setOpen(true); setHighlight(-1) }}
-        onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
         onBlur={() => commit(draft)}
         disabled={atMax}
