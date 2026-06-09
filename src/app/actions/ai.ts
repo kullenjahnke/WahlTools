@@ -1,5 +1,6 @@
 'use server'
 
+import type Anthropic from '@anthropic-ai/sdk'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnthropic } from '@/lib/ai/anthropic'
 import { getSocialSettings } from './social-settings'
@@ -14,9 +15,12 @@ export interface GenerateCaptionInput {
   notes?: string | null
   productNames?: string[]
   retailers?: string[]
+  /** Public URL of the post's cover image, when one is uploaded. Sent to the
+   *  model as a visual reference. Omitted for video-only / image-less posts. */
+  imageUrl?: string | null
 }
 
-// Builds the idea context the model sees as the user message.
+// Builds the idea context the model sees as the user message text.
 function buildIdeaContext(input: GenerateCaptionInput): string {
   const lines: string[] = []
   if (input.title?.trim()) lines.push(`Title: ${input.title.trim()}`)
@@ -26,7 +30,10 @@ function buildIdeaContext(input: GenerateCaptionInput): string {
   if (lines.length === 0) {
     lines.push('No specific details provided — write a general on-brand caption for Wahlburgers at Home.')
   }
-  return `Write a caption for this post idea:\n\n${lines.join('\n')}`
+  const intro = input.imageUrl
+    ? "Write a caption for this social post. The attached image is the post's actual visual — caption what it shows, using these details as context:"
+    : 'Write a caption for this post idea:'
+  return `${intro}\n\n${lines.join('\n')}`
 }
 
 export async function generateCaption(
@@ -42,14 +49,22 @@ export async function generateCaption(
     const settings = await getSocialSettings()
     const system = buildCaptionSystemPrompt(settings.brand_voice)
     const model = resolveCaptionModelId(settings.caption_model)
-    const userMessage = buildIdeaContext(input)
+    const ideaText = buildIdeaContext(input)
+
+    // Multimodal message when an image is available; plain text otherwise.
+    const content: string | Anthropic.ContentBlockParam[] = input.imageUrl
+      ? [
+          { type: 'image', source: { type: 'url', url: input.imageUrl } },
+          { type: 'text', text: ideaText },
+        ]
+      : ideaText
 
     const client = getAnthropic()
     const message = await client.messages.create({
       model,
       max_tokens: 400,
       system,
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [{ role: 'user', content }],
     })
 
     const text = message.content

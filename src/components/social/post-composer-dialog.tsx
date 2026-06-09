@@ -95,11 +95,17 @@ export function PostComposerDialog({
     setGenerating(true)
     try {
       const productNames = productIds.map(nameOf).filter(Boolean)
+      // Cover image (lowest-position image media item) as a visual reference;
+      // video-only / image-less posts generate from text alone, as before.
+      const coverImage = media
+        .filter((m) => m.media_type === 'image')
+        .sort((a, b) => a.position - b.position)[0]
       const res = await generateCaption({
         title,
         notes: post?.notes ?? '',
         productNames,
         retailers,
+        imageUrl: coverImage?.url ?? null,
       })
       if (!res.success || !res.caption) {
         // Never overwrite the existing caption on failure.
