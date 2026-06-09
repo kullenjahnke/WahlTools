@@ -7,6 +7,27 @@
 > **Builds on:** v1 ([2026-06-08-social-calendar-design.md](2026-06-08-social-calendar-design.md)) +
 > Phase 2 ([2026-06-08-social-calendar-phase2-publishing-design.md](2026-06-08-social-calendar-phase2-publishing-design.md)).
 
+> **Status update — 2026-06-09 (Feature A shipped, PR #10 squash-merged to `main`):**
+> AI captions + the `social_settings` table are live. Deltas from this umbrella spec for the B–E sessions:
+> - **`social_settings` is fully created** (migration `23_social_settings.sql`: `brand_voice`,
+>   `caption_model` default `'claude-haiku'`, `asset_retention_days` default 30, `analytics_enabled`
+>   default true; id=1 singleton + RLS). **C (analytics)** and **E (asset cleanup)** do **not** need a new
+>   migration for these columns — they wire up the existing ones.
+> - **Settings UI + `saveSocialSettings` currently handle only `brand_voice` + `caption_model`.** The §0
+>   "Settings UI" items for **Asset retention (days)** (E) and **Analytics on/off** (C) were intentionally
+>   deferred — those features must **extend** `src/components/social/social-settings-form.tsx` and the
+>   `saveSocialSettings` action (`src/app/actions/social-settings.ts`), which today persist only those two
+>   fields.
+> - **The `social_posts` column additions did NOT land with A** (despite §0 saying they would; scope was
+>   trimmed to A-only). `collaborators text[]` lands with **B**; `metrics jsonb` + `metrics_synced_at
+>   timestamptz` land with **C**.
+> - **Next free migration number is `24`.**
+> - **Reusable artifacts now in place:** `getSocialSettings` / `saveSocialSettings`
+>   (`src/app/actions/social-settings.ts`), `src/lib/config/social-settings.ts` (defaults,
+>   `normalizeSocialSettings`, `CAPTION_MODELS`, `resolveCaptionModelId`), the lazy Anthropic client
+>   (`src/lib/ai/anthropic.ts`), and `generateCaption` (`src/app/actions/ai.ts`). `caption_model` is a
+>   label resolved to a concrete model id in config — keep the model ids current there.
+
 ## 0. Shared groundwork (lands with Feature A)
 
 - **New `social_settings` singleton table** (mirrors `reminder_settings`; id=1 check), columns:
