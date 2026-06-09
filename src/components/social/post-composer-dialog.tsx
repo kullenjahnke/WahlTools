@@ -93,25 +93,35 @@ export function PostComposerDialog({
 
   async function handleGenerate() {
     setGenerating(true)
-    const productNames = productIds.map(nameOf).filter(Boolean)
-    const res = await generateCaption({
-      title,
-      notes: post?.notes ?? '',
-      productNames,
-      retailers,
-    })
-    setGenerating(false)
-    if (!res.success || !res.caption) {
-      // Never overwrite the existing caption on failure.
+    try {
+      const productNames = productIds.map(nameOf).filter(Boolean)
+      const res = await generateCaption({
+        title,
+        notes: post?.notes ?? '',
+        productNames,
+        retailers,
+      })
+      if (!res.success || !res.caption) {
+        // Never overwrite the existing caption on failure.
+        toast({
+          variant: 'destructive',
+          icon: <AlertTriangle className="size-5" />,
+          title: 'Caption generation failed',
+          description: res.error ?? 'Please try again.',
+        })
+        return
+      }
+      setCaption(res.caption)
+    } catch {
       toast({
         variant: 'destructive',
         icon: <AlertTriangle className="size-5" />,
         title: 'Caption generation failed',
-        description: res.error ?? 'Please try again.',
+        description: 'Please try again.',
       })
-      return
+    } finally {
+      setGenerating(false)
     }
-    setCaption(res.caption)
   }
 
   function togglePlatform(p: string) {
