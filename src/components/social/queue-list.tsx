@@ -77,6 +77,7 @@ export function QueueList({ posts, products }: { posts: SocialPostRecord[]; prod
                 <span>{p.scheduled_at ? `${detroitYmd(p.scheduled_at)} ${detroitTime(p.scheduled_at)}` : 'Unscheduled'}</span>
                 {p.product_names.map((n, i) => <Chip key={`${p.id}-pn-${i}`} label={n} tone="auto" colorKey={p.product_ids[i]} size="sm" />)}
                 {p.retailers.map((r) => <Chip key={`${p.id}-r-${r}`} label={r} tone="brand" size="sm" />)}
+                {p.collaborators.map((c) => <Chip key={`${p.id}-c-${c}`} label={`@${c}`} tone="neutral" size="sm" />)}
               </div>
             </button>
             <RowActions

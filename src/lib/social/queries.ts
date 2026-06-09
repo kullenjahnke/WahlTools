@@ -19,6 +19,7 @@ export interface SocialPostRecord {
   scheduled_at: string | null
   posted_at: string | null
   platforms: string[]
+  collaborators: string[]
   notes: string | null
   created_at: string
   updated_at: string
@@ -29,7 +30,7 @@ export interface SocialPostRecord {
 }
 
 const SELECT = `
-  id, title, caption, format, aspect_ratio, status, scheduled_at, posted_at, platforms, notes, created_at, updated_at,
+  id, title, caption, format, aspect_ratio, status, scheduled_at, posted_at, platforms, collaborators, notes, created_at, updated_at,
   social_post_media ( id, url, storage_path, media_type, position ),
   social_post_products ( product_id, products ( name ) ),
   social_post_retailers ( retailer )
@@ -45,6 +46,7 @@ type RawRow = {
   scheduled_at: string | null
   posted_at: string | null
   platforms: string[]
+  collaborators: string[] | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -65,6 +67,7 @@ function shape(row: RawRow): SocialPostRecord {
     scheduled_at: row.scheduled_at,
     posted_at: row.posted_at,
     platforms: row.platforms ?? [],
+    collaborators: row.collaborators ?? [],
     notes: row.notes,
     created_at: row.created_at,
     updated_at: row.updated_at,

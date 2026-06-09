@@ -69,3 +69,33 @@ export function aspectRatioNumber(value: string): number | null {
 export function postLabel(p: { title?: string | null; caption?: string | null }): string {
   return p.title?.trim() || p.caption?.trim() || 'Untitled post'
 }
+
+// Curated collaborator presets for the composer's typeahead. Live Instagram
+// username search isn't available (no public search API / no IG user graph), so
+// this hand-verified list is the practical substitute. `handle` is the exact IG
+// username (no leading '@'); every one satisfies ^[a-z0-9._]{1,30}$. The app's
+// own account (@wahlburgersathome) is intentionally excluded — you can't tag
+// yourself as a collaborator. Handles verified live, June 2026.
+export interface CollaboratorPreset {
+  /** Friendly display name shown in the dropdown. */
+  label: string
+  /** Exact Instagram handle (no leading '@'); inserted on select. */
+  handle: string
+  group: 'Family' | 'Brand' | 'Retailers'
+}
+
+export const COLLABORATOR_PRESETS: CollaboratorPreset[] = [
+  { label: 'Wahlburgers',       handle: 'wahlburgers',      group: 'Brand' },
+  { label: 'Mark Wahlberg',     handle: 'markwahlberg',     group: 'Family' },
+  { label: 'Donnie Wahlberg',   handle: 'donniewahlberg',   group: 'Family' },
+  { label: 'Paul Wahlberg',     handle: 'chefpaulwahlberg', group: 'Family' },
+  { label: 'Jewel-Osco',        handle: 'jewelosco',        group: 'Retailers' },
+  { label: 'Stop & Shop',       handle: 'stopandshop',      group: 'Retailers' },
+  { label: 'Acme',              handle: 'acmemarkets',      group: 'Retailers' },
+  { label: "Shaw's",            handle: 'shawssupermarket', group: 'Retailers' },
+  { label: 'Giant Eagle',       handle: 'gianteagle',       group: 'Retailers' },
+  { label: 'Giant Food Stores', handle: 'giantfoodstores',  group: 'Retailers' },
+  { label: 'Big Y',             handle: 'bigyfoods',        group: 'Retailers' },
+  { label: 'Publix',            handle: 'publix',           group: 'Retailers' },
+  { label: 'Safeway',           handle: 'safeway',          group: 'Retailers' },
+]

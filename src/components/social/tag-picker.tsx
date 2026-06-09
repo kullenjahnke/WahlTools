@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, X } from 'lucide-react'
 import { RETAILERS } from '@/lib/config/retailers'
+import { DropdownOverlay } from './dropdown-overlay'
 
 export interface ProductOption { id: string; name: string }
 
@@ -56,7 +57,7 @@ export function TagPicker({
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? 'Unknown'
 
   return (
-    <div className="space-y-2" ref={rootRef}>
+    <div className="relative space-y-2" ref={rootRef}>
       <div className="flex flex-wrap items-center gap-1.5">
         {selectedProductIds.map((id) => (
           <Chip
@@ -88,8 +89,7 @@ export function TagPicker({
         </Button>
       </div>
 
-      {open && (
-        <div className="rounded-lg border border-border bg-muted/30 p-2">
+      <DropdownOverlay open={open} className="max-h-80 p-2">
           <Input
             placeholder="Search products…"
             value={q}
@@ -129,8 +129,7 @@ export function TagPicker({
               ))}
             </div>
           </div>
-        </div>
-      )}
+      </DropdownOverlay>
     </div>
   )
 }

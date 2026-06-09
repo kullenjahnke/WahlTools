@@ -51,16 +51,24 @@ function normalizeStatus(zStatus: string): string {
 
 async function buildBody(req: PublishRequest, publishNow: boolean) {
   const accounts = await resolveAccountIds()
-  const psd = contentTypeFor(req.format)
+  const basePsd = contentTypeFor(req.format)
+  const collaborators = (req.collaborators ?? []).slice(0, 3)
   const missing = req.platforms.filter((p) => !accounts[p])
   if (missing.length > 0) {
     throw new Error(`Not connected for: ${missing.join(', ')}. Connect the account(s) in Zernio first.`)
   }
-  const platforms = req.platforms.map((p) => ({
-    platform: p,
-    accountId: accounts[p],
-    ...(psd ? { platformSpecificData: psd } : {}),
-  }))
+  const platforms = req.platforms.map((p) => {
+    // Collaborators are Instagram-only (Business/Creator usernames); Facebook ignores them.
+    const psd =
+      p === 'instagram' && collaborators.length > 0
+        ? { ...(basePsd ?? {}), collaborators }
+        : basePsd
+    return {
+      platform: p,
+      accountId: accounts[p],
+      ...(psd ? { platformSpecificData: psd } : {}),
+    }
+  })
 
   return {
     content: req.caption,
