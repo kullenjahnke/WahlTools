@@ -252,6 +252,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
 
   // --- Chart export ---------------------------------------------------------
   const exportRef = useRef<HTMLDivElement>(null)
+  const exportingRef = useRef(false)
   const [exportData, setExportData] = useState<ChartExportCardProps | null>(null)
 
   // Short pill label derived from the selected time range (e.g. "90 days").
@@ -261,34 +262,40 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
   }, [timeRange])
 
   const handleExport = useCallback(async () => {
-    if (mode !== "retailer" || !selectedProduct) return
-    const imageDataUrl = selectedProduct.imageUrl
-      ? await imageToDataUrl(selectedProduct.imageUrl)
-      : null
-    setExportData({
-      productName: selectedProduct.name,
-      brandName:
-        selectedProduct.brand_type === "wahlburgers"
-          ? "Wahlburgers"
-          : selectedProduct.brand_name || null,
-      imageDataUrl,
-      rangeLabel,
-      generatedLabel: `Generated ${format(new Date(), "MMM d, yyyy")}`,
-      series: visibleSeries.map((s) => ({ key: s.key, label: s.label, color: s.color })),
-      metrics: metrics.map((m) => ({
-        key: m.key,
-        label: m.label,
-        color: m.color,
-        avg: m.avg,
-        wowChange: m.wowChange,
-      })),
-      chartData,
-    })
+    if (mode !== "retailer" || !selectedProduct || exportingRef.current) return
+    exportingRef.current = true
+    try {
+      const imageDataUrl = selectedProduct.imageUrl
+        ? await imageToDataUrl(selectedProduct.imageUrl)
+        : null
+      setExportData({
+        productName: selectedProduct.name,
+        brandName:
+          selectedProduct.brand_type === "wahlburgers"
+            ? "Wahlburgers"
+            : selectedProduct.brand_name || null,
+        imageDataUrl,
+        rangeLabel,
+        generatedLabel: `Generated ${format(new Date(), "MMM d, yyyy")}`,
+        series: visibleSeries.map((s) => ({ key: s.key, label: s.label, color: s.color })),
+        metrics: metrics.map((m) => ({
+          key: m.key,
+          label: m.label,
+          color: m.color,
+          avg: m.avg,
+          wowChange: m.wowChange,
+        })),
+        chartData,
+      })
+    } finally {
+      exportingRef.current = false
+    }
   }, [mode, selectedProduct, rangeLabel, visibleSeries, metrics, chartData])
 
   // Once the off-screen card is mounted and painted, rasterize + download it.
   useEffect(() => {
     if (!exportData) return
+    // Note: the finally below sets exportData to null, which re-runs this effect; the early-return guard above makes that run a no-op.
     let cancelled = false
     const run = async () => {
       // Two RAFs so Recharts (animation disabled) has committed its SVG.

@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import type { ProductImage } from "@/types/database"
 import { ProductAnalytics } from "@/components/analytics/product-analytics"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
@@ -29,7 +30,7 @@ export default async function AnalyticsPage() {
   ])
 
   const withImages = (products || []).map((product) => {
-    const images = (product.product_images || []) as { url: string; main: boolean }[]
+    const images = (product.product_images ?? []) as ProductImage[]
     const imageUrl = (images.find((im) => im.main) || images[0])?.url ?? null
     return { ...product, imageUrl }
   })
