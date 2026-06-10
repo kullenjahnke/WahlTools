@@ -89,7 +89,7 @@ export function RetailerPriceTable({ products, categories = [], exportSlot }: Re
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [brandFilter, setBrandFilter] = useState<string>("all")
   const [retailerFilter, setRetailerFilter] = useState<string>("all")
-  const [freshnessFilter, setFreshnessFilter] = useState<FreshnessFilter>("all")
+  const [freshnessFilter, setFreshnessFilter] = useState<FreshnessFilter>("active")
   const [highlightFreshness, setHighlightFreshness] = useState(false)
   const router = useRouter()
   const supabase = createClientClient()
@@ -115,12 +115,14 @@ export function RetailerPriceTable({ products, categories = [], exportSlot }: Re
     new Set(products.map((p) => p.category_id).filter(Boolean))
   ).map((id) => ({ id, name: categoryMap.get(id) || id }))
 
-  // Get unique retailers that have associations with any product
+  // Get unique retailers that have associations with any product.
+  // Filter against the configured 9 retailers so stray rows (e.g. legacy
+  // retailer='HyVee' price data) can never surface as a table column.
   const relevantRetailers = Array.from(new Set(
     products.flatMap(product =>
       product.prices?.map(p => p.retailer) || []
     )
-  )).filter(Boolean);
+  )).filter((r): r is string => Boolean(r) && (RETAILERS as readonly string[]).includes(r));
 
   // Use these for the retailer filter and headers
   const availableRetailers = relevantRetailers.length > 0 ? relevantRetailers : RETAILERS;
