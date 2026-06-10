@@ -269,3 +269,58 @@ export async function getRetailerCheckStatus(): Promise<Record<string, string>> 
     return {}
   }
 }
+
+export type HistoricalAvailability = "available" | "sold_out" | "na"
+
+/**
+ * Add or adjust a product's price at a retailer for a PAST week. Routes through
+ * the atomic upsert_historical_price RPC (migration 25), which replaces the
+ * target week's value and preserves the current-price invariant.
+ */
+export async function recordHistoricalPrice(input: {
+  productId: string
+  retailer: string
+  weekStart: string // ISO of Monday 00:00 EST
+  availability: HistoricalAvailability
+  price: number // dollars; ignored unless availability === "available"
+}) {
+  try {
+    if (!(RETAILERS as readonly string[]).includes(input.retailer)) {
+      throw new Error(`Unknown retailer: ${input.retailer}`)
+    }
+
+    const weekStart = new Date(input.weekStart)
+    if (Number.isNaN(weekStart.getTime())) throw new Error("Invalid week")
+
+    // Past weeks only: strictly before the current week's start.
+    const currentWeekStart = getWeekStartEST(new Date())
+    if (weekStart.getTime() >= currentWeekStart.getTime()) {
+      throw new Error("Only past weeks can be edited here")
+    }
+
+    const isSoldOut = input.availability === "sold_out"
+    const price = input.availability === "available" ? input.price : 0
+    if (input.availability === "available" && !(price > 0 && price < 100000)) {
+      throw new Error("Enter a valid price")
+    }
+
+    const supabase = await createSupabaseServerClient()
+    const { error } = await supabase.rpc("upsert_historical_price", {
+      p_product_id: input.productId,
+      p_retailer: input.retailer,
+      p_week_start: weekStart.toISOString(),
+      p_price: price,
+      p_is_sold_out: isSoldOut,
+    })
+    if (error) throw error
+
+    revalidatePath("/dashboard/prices")
+    revalidatePath("/dashboard/prices/history")
+    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/analytics")
+    return { success: true }
+  } catch (error) {
+    console.error("Error recording historical price:", error)
+    throw error
+  }
+}
