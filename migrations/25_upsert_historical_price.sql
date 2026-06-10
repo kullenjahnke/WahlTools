@@ -26,7 +26,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   v_window_end timestamptz := p_week_start + interval '7 days';
-  v_ts         timestamptz := p_week_start + interval '12 hours'; -- Monday noon EST
+  v_ts         timestamptz := p_week_start + interval '12 hours'; -- Monday noon local (EST/EDT)
   v_is_latest  boolean;
   v_new_status text;
 BEGIN
@@ -80,6 +80,6 @@ BEGIN
 
   -- Insert the single representative row for the week.
   INSERT INTO prices (product_id, retailer, price, status, is_sold_out, timestamp)
-  VALUES (p_product_id, p_retailer, p_price, v_new_status, COALESCE(p_is_sold_out, false), v_ts);
+  VALUES (p_product_id, p_retailer, p_price, v_new_status, p_is_sold_out, v_ts);
 END;
 $$;

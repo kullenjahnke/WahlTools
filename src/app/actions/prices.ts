@@ -318,6 +318,7 @@ export async function recordHistoricalPrice(input: {
     revalidatePath("/dashboard/prices/history")
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/analytics")
+    revalidatePath("/dashboard/comparison")
     return { success: true }
   } catch (error) {
     console.error("Error recording historical price:", error)
