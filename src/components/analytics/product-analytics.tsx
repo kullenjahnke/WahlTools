@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useRef, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select,
@@ -33,10 +33,19 @@ import { RETAILERS, RETAILER_COLORS } from "@/lib/config/retailers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { Product, Price } from "@/types/database"
 import { format, subDays, subMonths } from "date-fns"
-import { BarChart3, Package, Plus, Store, Tags, TrendingDown, TrendingUp, X } from "lucide-react"
+import { BarChart3, Download, Package, Plus, Store, Tags, TrendingDown, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import {
+  ChartExportCard,
+  type ChartExportCardProps,
+} from "@/components/analytics/chart-export-card"
+import { slugify, imageToDataUrl, exportNodeToPng } from "@/lib/analytics/export-chart"
 
-type ProductWithPrices = Product & { prices?: Price[] }
+type ProductWithPrices = Product & {
+  prices?: Price[]
+  imageUrl?: string | null
+}
 
 interface ProductAnalyticsProps {
   products: ProductWithPrices[]
@@ -241,6 +250,76 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
 
   const metrics = useMemo(() => visibleSeries.map(computeMetric), [visibleSeries])
 
+  // --- Chart export ---------------------------------------------------------
+  const exportRef = useRef<HTMLDivElement>(null)
+  const exportingRef = useRef(false)
+  const [exportData, setExportData] = useState<ChartExportCardProps | null>(null)
+
+  // Short pill label derived from the selected time range (e.g. "90 days").
+  const rangeLabel = useMemo(() => {
+    const full = TIME_RANGES.find((r) => r.value === timeRange)?.label ?? ""
+    return full.replace(/^Last\s+/i, "") // "Last 90 days" -> "90 days"
+  }, [timeRange])
+
+  const handleExport = useCallback(async () => {
+    if (mode !== "retailer" || !selectedProduct || exportingRef.current) return
+    exportingRef.current = true
+    try {
+      const imageDataUrl = selectedProduct.imageUrl
+        ? await imageToDataUrl(selectedProduct.imageUrl)
+        : null
+      setExportData({
+        productName: selectedProduct.name,
+        brandName:
+          selectedProduct.brand_type === "wahlburgers"
+            ? "Wahlburgers"
+            : selectedProduct.brand_name || null,
+        imageDataUrl,
+        rangeLabel,
+        generatedLabel: `Generated ${format(new Date(), "MMM d, yyyy")}`,
+        series: visibleSeries.map((s) => ({ key: s.key, label: s.label, color: s.color })),
+        metrics: metrics.map((m) => ({
+          key: m.key,
+          label: m.label,
+          color: m.color,
+          avg: m.avg,
+          wowChange: m.wowChange,
+        })),
+        chartData,
+      })
+    } finally {
+      exportingRef.current = false
+    }
+  }, [mode, selectedProduct, rangeLabel, visibleSeries, metrics, chartData])
+
+  // Once the off-screen card is mounted and painted, rasterize + download it.
+  useEffect(() => {
+    if (!exportData) return
+    // Note: the finally below sets exportData to null, which re-runs this effect; the early-return guard above makes that run a no-op.
+    let cancelled = false
+    const run = async () => {
+      // Two RAFs so Recharts (animation disabled) has committed its SVG.
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      )
+      if (cancelled || !exportRef.current) return
+      try {
+        await exportNodeToPng(
+          exportRef.current,
+          `${slugify(exportData.productName)}-prices-${slugify(exportData.rangeLabel)}.png`
+        )
+      } catch (err) {
+        console.error("Chart export failed:", err)
+      } finally {
+        if (!cancelled) setExportData(null)
+      }
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [exportData])
+
   const toggleSeries = (key: string) =>
     setHidden((prev) => {
       const next = new Set(prev)
@@ -420,8 +499,20 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
 
           {/* Chart */}
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
               <CardTitle className="text-base">Price over time</CardTitle>
+              {mode === "retailer" && chartData.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                  disabled={!!exportData}
+                  className="h-8"
+                >
+                  <Download className="size-4" />
+                  {exportData ? "Exporting…" : "Export PNG"}
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {chartData.length === 0 ? (
@@ -562,6 +653,14 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
             </Card>
           )}
         </>
+      )}
+      {exportData && (
+        <div
+          aria-hidden
+          style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }}
+        >
+          <ChartExportCard ref={exportRef} {...exportData} />
+        </div>
       )}
     </div>
   )
