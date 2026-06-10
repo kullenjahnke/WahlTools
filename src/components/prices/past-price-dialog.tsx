@@ -98,23 +98,24 @@ export function PastPriceDialog({
     [prices, retailer, selectedWeek]
   )
 
-  // Prefill the form from the existing value when retailer/week changes.
-  useEffect(() => {
-    if (!existing) return
-    if (existing.kind === "price") {
+  // Prefill the value fields from the existing entry for a given retailer+week.
+  function prefillFor(nextRetailer: string, nextWeekIso: string) {
+    const week = weeks.find((w) => w.toISOString() === nextWeekIso) ?? null
+    const v = nextRetailer && week ? classifyExisting(prices, nextRetailer, week) : { kind: "none" as const }
+    if (v.kind === "price") {
       setAvailability("available")
-      setPriceText(existing.price.toFixed(2))
-    } else if (existing.kind === "sold_out") {
+      setPriceText(v.price.toFixed(2))
+    } else if (v.kind === "sold_out") {
       setAvailability("sold_out")
       setPriceText("")
-    } else if (existing.kind === "na") {
+    } else if (v.kind === "na") {
       setAvailability("na")
       setPriceText("")
     } else {
       setAvailability("available")
       setPriceText("")
     }
-  }, [existing])
+  }
 
   // Reset when the dialog opens.
   useEffect(() => {
@@ -166,7 +167,7 @@ export function PastPriceDialog({
           {/* Retailer */}
           <div className="space-y-1.5">
             <Label>Retailer</Label>
-            <Select value={retailer} onValueChange={setRetailer}>
+            <Select value={retailer} onValueChange={(r) => { setRetailer(r); prefillFor(r, weekIso) }} disabled={saving}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a retailer" />
               </SelectTrigger>
@@ -183,7 +184,7 @@ export function PastPriceDialog({
           {/* Week */}
           <div className="space-y-1.5">
             <Label>Week</Label>
-            <Select value={weekIso} onValueChange={setWeekIso} disabled={!retailer}>
+            <Select value={weekIso} onValueChange={(iso) => { setWeekIso(iso); prefillFor(retailer, iso) }} disabled={!retailer || saving}>
               <SelectTrigger>
                 <SelectValue placeholder={retailer ? "Select a week" : "Pick a retailer first"} />
               </SelectTrigger>
@@ -214,6 +215,7 @@ export function PastPriceDialog({
                   key={o.value}
                   type="button"
                   onClick={() => setAvailability(o.value)}
+                  disabled={saving}
                   className={cn(
                     "rounded px-3 py-1 text-sm transition-colors",
                     availability === o.value
@@ -227,10 +229,12 @@ export function PastPriceDialog({
             </div>
             {availability === "available" && (
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                   $
                 </span>
                 <Input
+                  id="past-price-input"
+                  aria-label="Price in dollars"
                   type="number"
                   inputMode="decimal"
                   step="0.01"
@@ -238,6 +242,7 @@ export function PastPriceDialog({
                   placeholder="0.00"
                   value={priceText}
                   onChange={(e) => setPriceText(e.target.value)}
+                  disabled={saving}
                   className="pl-7"
                 />
               </div>
