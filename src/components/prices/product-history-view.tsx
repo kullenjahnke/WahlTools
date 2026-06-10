@@ -25,8 +25,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { Product, Price } from "@/types/database"
-import { ChevronDown, PackageSearch } from "lucide-react"
+import { CalendarPlus, ChevronDown, PackageSearch } from "lucide-react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { PastPriceDialog } from "@/components/prices/past-price-dialog"
 
 type ProductWithPrices = Product & {
   prices?: Price[]
@@ -68,6 +71,8 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [search, setSearch] = useState("")
   const chart = useChartTheme()
+  const router = useRouter()
+  const [pastDialogOpen, setPastDialogOpen] = useState(false)
 
   const product = products.find((p) => p.id === selectedId) ?? products[0]
 
@@ -558,9 +563,20 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
       {product && (
         <Card className="shadow-none">
           <CardContent className="px-4 py-4">
-            <h4 className="mb-3 text-sm font-semibold text-foreground">
-              Price changes — {product.name}
-            </h4>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold text-foreground">
+                Price changes — {product.name}
+              </h4>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPastDialogOpen(true)}
+                className="h-8"
+              >
+                <CalendarPlus className="size-4" />
+                Add / adjust past price
+              </Button>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -623,6 +639,17 @@ export function ProductHistoryView({ products }: ProductHistoryViewProps) {
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      {product && (
+        <PastPriceDialog
+          open={pastDialogOpen}
+          onOpenChange={setPastDialogOpen}
+          productId={product.id}
+          productName={product.name}
+          prices={product.prices ?? []}
+          onSaved={() => router.refresh()}
+        />
       )}
     </div>
   )
