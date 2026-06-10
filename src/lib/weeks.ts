@@ -25,7 +25,7 @@ export function getWeekStartEST(date: Date): Date {
   const month = parseInt(get("month")) - 1
   const day = parseInt(get("day")) - dayOffset
   const monday = new Date(Date.UTC(year, month, day, 5, 0, 0)) // assume EST (UTC-5)
-  // DST correction: Mar–Oct use EDT (UTC-4)
+  // DST correction: Mar–Nov use EDT (UTC-4)
   const m = monday.getUTCMonth()
   if (m >= 2 && m <= 10) monday.setUTCHours(4)
   return monday

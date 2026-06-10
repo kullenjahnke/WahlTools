@@ -209,11 +209,12 @@ export function PastPriceDialog({
           {/* Availability + price */}
           <div className="space-y-1.5">
             <Label>Value</Label>
-            <div className="inline-flex rounded-md border border-input p-0.5">
+            <div role="group" aria-label="Value type" className="inline-flex rounded-md border border-input p-0.5">
               {AVAIL_OPTIONS.map((o) => (
                 <button
                   key={o.value}
                   type="button"
+                  aria-pressed={availability === o.value}
                   onClick={() => setAvailability(o.value)}
                   disabled={saving}
                   className={cn(
