@@ -43,3 +43,41 @@ export async function exportNodeToPng(node: HTMLElement, filename: string): Prom
   link.click()
   document.body.removeChild(link)
 }
+
+const LOGO_URL = "/email-logo.png"
+
+/**
+ * Load the white WahlTools wordmark and return a PNG data URL recolored for the theme:
+ * kept white for dark exports, recolored to black for light exports (via 'source-in', which
+ * preserves alpha). Same-origin asset, so the canvas isn't tainted. Resolves null on any failure.
+ */
+export function themedLogoDataUrl(isDark: boolean): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = "anonymous"
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas")
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext("2d")
+        if (!ctx || !canvas.width || !canvas.height) {
+          resolve(null)
+          return
+        }
+        ctx.drawImage(img, 0, 0)
+        if (!isDark) {
+          // Recolor opaque pixels to black, preserving alpha (the wordmark shape).
+          ctx.globalCompositeOperation = "source-in"
+          ctx.fillStyle = "#000000"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+        }
+        resolve(canvas.toDataURL("image/png"))
+      } catch {
+        resolve(null)
+      }
+    }
+    img.onerror = () => resolve(null)
+    img.src = LOGO_URL
+  })
+}
