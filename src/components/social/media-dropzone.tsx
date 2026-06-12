@@ -15,9 +15,11 @@ const VIDEO_MAX = 50 * 1024 * 1024  // 50 MB
 export function MediaDropzone({
   media,
   onChange,
+  onVideoSelected,
 }: {
   media: MediaItem[]
   onChange: (m: MediaItem[]) => void
+  onVideoSelected?: (file: File) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -46,6 +48,7 @@ export function MediaDropzone({
             .uploadToSignedUrl(signed.data.path, signed.data.token, file)
           if (upErr) throw upErr
           next.push({ url: signed.data.url, storage_path: signed.data.path, media_type: 'video', position: next.length })
+          onVideoSelected?.(file)
         } else {
           const fd = new FormData()
           fd.append('file', file)
