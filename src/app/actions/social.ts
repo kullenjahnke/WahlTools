@@ -272,7 +272,7 @@ export async function duplicateSocialPost(id: string) {
       aspect_ratio: src.aspect_ratio,
       reel_cover_path: coverPath,
       reel_cover_url: coverUrl,
-      reel_cover_is_custom: src.reel_cover_is_custom,
+      reel_cover_is_custom: coverPath ? src.reel_cover_is_custom : false,
     },
     p_product_ids: (src.social_post_products ?? []).map((p) => p.product_id),
     p_retailers: (src.social_post_retailers ?? []).map((r) => r.retailer),
