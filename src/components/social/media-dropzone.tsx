@@ -20,6 +20,26 @@ const BUCKET = 'social-media'
 const IMAGE_MAX = 5 * 1024 * 1024   // 5 MB
 const VIDEO_MAX = 50 * 1024 * 1024  // 50 MB
 
+/** Measure pixel dimensions of an image/video File. Resolves to null on any failure. */
+function measureDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const cleanup = () => URL.revokeObjectURL(url)
+    if (file.type.startsWith('video/')) {
+      const v = document.createElement('video')
+      v.preload = 'metadata'
+      v.onloadedmetadata = () => { resolve({ width: v.videoWidth, height: v.videoHeight }); cleanup() }
+      v.onerror = () => { resolve(null); cleanup() }
+      v.src = url
+    } else {
+      const img = new window.Image()
+      img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); cleanup() }
+      img.onerror = () => { resolve(null); cleanup() }
+      img.src = url
+    }
+  })
+}
+
 export function MediaDropzone({
   media,
   onChange,
@@ -46,6 +66,7 @@ export function MediaDropzone({
       }
       try {
         if (file.type.startsWith('video/')) {
+          const dims = await measureDimensions(file)
           const signed = await createSocialVideoUploadUrl(file.name)
           if (!signed.success) throw new Error(signed.error)
           const supabase = createClientClient()
@@ -53,13 +74,14 @@ export function MediaDropzone({
             .from(BUCKET)
             .uploadToSignedUrl(signed.data.path, signed.data.token, file)
           if (upErr) throw upErr
-          next.push({ url: signed.data.url, storage_path: signed.data.path, media_type: 'video', position: next.length })
+          next.push({ url: signed.data.url, storage_path: signed.data.path, media_type: 'video', position: next.length, ...(dims ?? {}) })
         } else {
+          const dims = await measureDimensions(file)
           const fd = new FormData()
           fd.append('file', file)
           const res = await uploadSocialImage(fd)
           if (!res.success) throw new Error(res.error)
-          next.push({ ...res.data, position: next.length })
+          next.push({ ...res.data, position: next.length, ...(dims ?? {}) })
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Upload failed')
