@@ -5,10 +5,11 @@ export function captureFirstFrame(file: File): Promise<Blob | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const video = document.createElement('video')
-    const cleanup = () => URL.revokeObjectURL(url)
+    const cleanup = () => { URL.revokeObjectURL(url); clearTimeout(timeout) }
     const fail = () => { resolve(null); cleanup() }
+    const timeout = setTimeout(() => fail(), 8000)
 
-    video.preload = 'metadata'
+    video.preload = 'auto'
     video.muted = true
     video.playsInline = true
 
@@ -24,7 +25,7 @@ export function captureFirstFrame(file: File): Promise<Blob | null> {
         const ctx = canvas.getContext('2d')
         if (!ctx || !canvas.width || !canvas.height) { fail(); return }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        canvas.toBlob((blob) => { resolve(blob); cleanup() }, 'image/jpeg', 0.9)
+        canvas.toBlob((blob) => { resolve(blob ?? null); cleanup() }, 'image/jpeg', 0.9)
       } catch { fail() }
     }
     video.onerror = fail
