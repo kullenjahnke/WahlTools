@@ -6,7 +6,15 @@ import { Loader2, Upload, X } from 'lucide-react'
 import { uploadSocialImage, createSocialVideoUploadUrl } from '@/app/actions/social'
 import { createClientClient } from '@/lib/supabase/client'
 
-export interface MediaItem { url: string; storage_path: string; media_type: 'image' | 'video'; position: number }
+export interface MediaItem {
+  url: string
+  storage_path: string
+  media_type: 'image' | 'video'
+  position: number
+  /** Transient pixel dimensions measured at attach time. In-memory only — never persisted or loaded from the DB. */
+  width?: number
+  height?: number
+}
 
 const BUCKET = 'social-media'
 const IMAGE_MAX = 5 * 1024 * 1024   // 5 MB
