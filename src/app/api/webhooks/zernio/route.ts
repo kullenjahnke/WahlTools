@@ -20,9 +20,12 @@ function verify(raw: string, signature: string | null): boolean {
 export async function POST(request: NextRequest) {
   const raw = await request.text()
   const sig = request.headers.get('x-zernio-signature') ?? request.headers.get('x-late-signature')
-  if (!verify(raw, sig)) return new NextResponse('Invalid signature', { status: 401 })
+  if (!verify(raw, sig)) {
+    console.warn('zernio webhook: invalid signature — rejected (401)')
+    return new NextResponse('Invalid signature', { status: 401 })
+  }
 
-  let payload: { event?: string; post?: { _id?: string; platforms?: { status?: string; error?: string }[] } }
+  let payload: { event?: string; post?: { id?: string; _id?: string; platforms?: { status?: string; error?: string }[] } }
   try {
     payload = JSON.parse(raw)
   } catch {
@@ -30,8 +33,13 @@ export async function POST(request: NextRequest) {
   }
 
   const event = payload.event ?? ''
-  const vendorId = payload.post?._id
-  if (!vendorId) return NextResponse.json({ ok: true, ignored: 'no post id' })
+  // Zernio's webhook payload carries the post id as `post.id`; REST response bodies use `_id`.
+  // Prefer `id`, keep `_id` as a defensive fallback.
+  const vendorId = payload.post?.id ?? payload.post?._id
+  if (!vendorId) {
+    console.warn('zernio webhook: ignored — no post id', { event })
+    return NextResponse.json({ ok: true, ignored: 'no post id' })
+  }
 
   const admin = createSupabaseAdminClient()
   const { data: post } = await admin
@@ -39,7 +47,10 @@ export async function POST(request: NextRequest) {
     .select('id, title, caption, scheduled_at, external_ref')
     .filter('external_ref->>vendorId', 'eq', vendorId)
     .maybeSingle()
-  if (!post) return NextResponse.json({ ok: true, ignored: 'no matching post' })
+  if (!post) {
+    console.warn('zernio webhook: ignored — no matching post', { event, vendorId })
+    return NextResponse.json({ ok: true, ignored: 'no matching post' })
+  }
 
   const p = post as { id: string; title: string | null; caption: string | null; scheduled_at: string | null; external_ref: { croppedPaths?: string[] } | null }
 
@@ -47,6 +58,7 @@ export async function POST(request: NextRequest) {
     await admin.from('social_posts').update({
       status: 'posted', posted_at: new Date().toISOString(), failure_reason: null, updated_at: new Date().toISOString(),
     }).eq('id', p.id)
+    console.log('zernio webhook: marked posted', { event, vendorId, postId: p.id })
     if (p.external_ref?.croppedPaths?.length) await admin.storage.from(BUCKET).remove(p.external_ref.croppedPaths)
     if (event === 'post.partial') {
       const reason = (payload.post?.platforms ?? []).find((x) => x.error)?.error ?? 'Partially published'
@@ -57,6 +69,7 @@ export async function POST(request: NextRequest) {
     await admin.from('social_posts').update({
       status: 'failed', failure_reason: reason, updated_at: new Date().toISOString(),
     }).eq('id', p.id)
+    console.warn('zernio webhook: marked failed', { event, vendorId, postId: p.id, reason })
     await notifyFailure(admin, p, reason)
   }
 
