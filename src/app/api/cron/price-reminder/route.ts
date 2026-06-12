@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       if (!vendorId) continue
       try {
         const st = await zernioAdapter.getStatus(vendorId)
-        console.log('reconcile: getStatus', { postId: row.id, vendorId, status: st.status })
+        console.log("reconcile: getStatus", { postId: row.id, vendorId, status: st.status })
         if (st.status === "posted" || st.status === "partial") {
           await admin.from("social_posts").update({ status: "posted", posted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", row.id)
           const cp = (row.external_ref as { croppedPaths?: string[] } | null)?.croppedPaths
