@@ -65,8 +65,8 @@ export function MediaDropzone({
         continue
       }
       try {
+        const dims = await measureDimensions(file)
         if (file.type.startsWith('video/')) {
-          const dims = await measureDimensions(file)
           const signed = await createSocialVideoUploadUrl(file.name)
           if (!signed.success) throw new Error(signed.error)
           const supabase = createClientClient()
@@ -76,7 +76,6 @@ export function MediaDropzone({
           if (upErr) throw upErr
           next.push({ url: signed.data.url, storage_path: signed.data.path, media_type: 'video', position: next.length, ...(dims ?? {}) })
         } else {
-          const dims = await measureDimensions(file)
           const fd = new FormData()
           fd.append('file', file)
           const res = await uploadSocialImage(fd)
