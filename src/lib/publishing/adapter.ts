@@ -20,6 +20,8 @@ export interface PublishRequest {
   format: string
   /** ISO timestamp for scheduled publishing; omit for publish-now. */
   scheduledFor?: string
+  /** Optional Instagram reel cover image URL (already cropped to 9:16). Instagram-only. */
+  instagramThumbnailUrl?: string
 }
 
 export interface PublishResult {

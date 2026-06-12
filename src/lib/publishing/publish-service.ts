@@ -1,6 +1,6 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { zernioAdapter } from './zernio-client'
-import { cropImageToRatio } from './crop'
+import { cropImageToRatio, cropCover } from './crop'
 import { validateForPublish } from './rules'
 import type { PublishMedia, PublishResult } from './adapter'
 
@@ -14,13 +14,16 @@ interface DbPost {
   platforms: string[]
   collaborators: string[] | null
   aspect_ratio: string
+  reel_cover_path: string | null
+  reel_cover_url: string | null
+  reel_cover_is_custom: boolean
   scheduled_at: string | null
   external_ref: { vendorId?: string; croppedPaths?: string[] } | null
   social_post_media: DbMedia[] | null
 }
 
 const POST_SELECT =
-  'id, caption, format, platforms, collaborators, aspect_ratio, scheduled_at, external_ref, ' +
+  'id, caption, format, platforms, collaborators, aspect_ratio, reel_cover_path, reel_cover_url, reel_cover_is_custom, scheduled_at, external_ref, ' +
   'social_post_media ( url, storage_path, media_type, position )'
 
 async function loadPost(admin: ReturnType<typeof createSupabaseAdminClient>, id: string): Promise<DbPost | null> {
@@ -94,6 +97,27 @@ export async function sendPost(id: string, opts: { now?: boolean }): Promise<{ s
   try {
     const built = await buildMedia(admin, post)
     croppedPaths = built.croppedPaths
+
+    // Reel cover → Instagram custom thumbnail (cover-crop to 9:16). Non-fatal:
+    // on any failure we fall back to Instagram's default cover.
+    let instagramThumbnailUrl: string | undefined
+    if (post.format === 'reel' && post.platforms.includes('instagram') && post.reel_cover_url) {
+      try {
+        const cResp = await fetch(post.reel_cover_url, { cache: 'no-store' })
+        if (cResp.ok) {
+          const cover = await cropCover(Buffer.from(await cResp.arrayBuffer()), 1080, 1920)
+          const cPath = `published/${post.id}/cover-${Date.now()}.jpg`
+          const { error: cErr } = await admin.storage.from(BUCKET).upload(cPath, cover, { contentType: 'image/jpeg', upsert: true })
+          if (!cErr) {
+            croppedPaths.push(cPath)
+            instagramThumbnailUrl = admin.storage.from(BUCKET).getPublicUrl(cPath).data.publicUrl
+          }
+        }
+      } catch (e) {
+        console.error('reel cover crop failed:', e)
+      }
+    }
+
     const req = {
       caption: post.caption ?? '',
       media: built.media,
@@ -101,6 +125,7 @@ export async function sendPost(id: string, opts: { now?: boolean }): Promise<{ s
       collaborators: post.collaborators ?? [],
       format: post.format,
       scheduledFor: post.scheduled_at ?? undefined,
+      instagramThumbnailUrl,
     }
     result = opts.now ? await zernioAdapter.publishNow(req) : await zernioAdapter.schedule(req)
   } catch (e) {

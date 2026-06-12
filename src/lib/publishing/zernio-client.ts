@@ -58,11 +58,15 @@ async function buildBody(req: PublishRequest, publishNow: boolean) {
     throw new Error(`Not connected for: ${missing.join(', ')}. Connect the account(s) in Zernio first.`)
   }
   const platforms = req.platforms.map((p) => {
-    // Collaborators are Instagram-only (Business/Creator usernames); Facebook ignores them.
-    const psd =
-      p === 'instagram' && collaborators.length > 0
-        ? { ...(basePsd ?? {}), collaborators }
-        : basePsd
+    // Instagram carries extra platformSpecificData: collaborators and (for reels)
+    // a custom cover. Facebook just uses the base content-type data.
+    let psd: Record<string, unknown> | undefined = basePsd
+    if (p === 'instagram') {
+      const extra: Record<string, unknown> = { ...(basePsd ?? {}) }
+      if (collaborators.length > 0) extra.collaborators = collaborators
+      if (req.instagramThumbnailUrl) extra.instagramThumbnail = req.instagramThumbnailUrl
+      psd = Object.keys(extra).length > 0 ? extra : undefined
+    }
     return {
       platform: p,
       accountId: accounts[p],

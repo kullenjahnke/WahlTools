@@ -34,3 +34,12 @@ export async function cropImageToRatio(
     .toBuffer()
   return { buffer: out, ext: 'jpg' }
 }
+
+// Cover-crops + resizes an image buffer to exactly w×h (no distortion), for the
+// Instagram reel cover (instagramThumbnail; recommended 1080×1920).
+export async function cropCover(input: Buffer, w: number, h: number): Promise<Buffer> {
+  return sharp(input, { failOn: 'none' })
+    .resize(w, h, { fit: 'cover', position: 'centre' })
+    .jpeg({ quality: 90 })
+    .toBuffer()
+}
