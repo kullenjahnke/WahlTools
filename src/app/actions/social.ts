@@ -39,6 +39,9 @@ export interface SocialPostInput {
   productIds: string[]
   retailers: string[]
   media: { url: string; storage_path: string; media_type: string; position: number }[]
+  reel_cover_path?: string | null
+  reel_cover_url?: string | null
+  reel_cover_is_custom?: boolean
 }
 
 function validate(input: SocialPostInput): string | null {
@@ -76,6 +79,9 @@ async function persist(input: SocialPostInput) {
       platforms: input.platforms,
       collaborators,
       notes: input.notes ?? null,
+      reel_cover_path: input.reel_cover_path ?? null,
+      reel_cover_url: input.reel_cover_url ?? null,
+      reel_cover_is_custom: input.reel_cover_is_custom ?? false,
     },
     p_product_ids: input.productIds,
     p_retailers: input.retailers,
@@ -200,7 +206,7 @@ export async function duplicateSocialPost(id: string) {
   const { data: post, error } = await supabase
     .from('social_posts')
     .select(
-      'title, caption, format, platforms, aspect_ratio, notes, collaborators, ' +
+      'title, caption, format, platforms, aspect_ratio, notes, collaborators, reel_cover_path, reel_cover_url, reel_cover_is_custom, ' +
       'social_post_media ( url, storage_path, media_type, position ), ' +
       'social_post_products ( product_id ), ' +
       'social_post_retailers ( retailer )'
@@ -217,6 +223,9 @@ export async function duplicateSocialPost(id: string) {
     collaborators: string[] | null
     aspect_ratio: string
     notes: string | null
+    reel_cover_path: string | null
+    reel_cover_url: string | null
+    reel_cover_is_custom: boolean
     social_post_media: { url: string; storage_path: string; media_type: string; position: number }[] | null
     social_post_products: { product_id: string }[] | null
     social_post_retailers: { retailer: string }[] | null
@@ -235,6 +244,19 @@ export async function duplicateSocialPost(id: string) {
     media.push({ url: publicUrl, storage_path: newPath, media_type: m.media_type, position: m.position })
   }
 
+  // Copy the reel cover to a fresh path so deleting one post never removes the other's cover.
+  let coverPath: string | null = null
+  let coverUrl: string | null = null
+  if (src.reel_cover_path) {
+    const ext = src.reel_cover_path.split('.').pop() || 'jpg'
+    const newCoverPath = `${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`
+    const { error: cErr } = await supabase.storage.from(BUCKET).copy(src.reel_cover_path, newCoverPath)
+    if (!cErr) {
+      coverPath = newCoverPath
+      coverUrl = supabase.storage.from(BUCKET).getPublicUrl(newCoverPath).data.publicUrl
+    }
+  }
+
   const baseLabel = src.title?.trim() || src.caption?.trim()?.slice(0, 40) || 'post'
   const { error: rpcErr } = await supabase.rpc('save_social_post', {
     p_post: {
@@ -248,6 +270,9 @@ export async function duplicateSocialPost(id: string) {
       collaborators: src.collaborators ?? [],
       notes: src.notes,
       aspect_ratio: src.aspect_ratio,
+      reel_cover_path: coverPath,
+      reel_cover_url: coverUrl,
+      reel_cover_is_custom: coverPath ? src.reel_cover_is_custom : false,
     },
     p_product_ids: (src.social_post_products ?? []).map((p) => p.product_id),
     p_retailers: (src.social_post_retailers ?? []).map((r) => r.retailer),
