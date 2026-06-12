@@ -100,8 +100,10 @@ export function PostComposerDialog({
   }, [open, post, initialDate])
 
   // Auto-derive format/aspect from media unless the user has manually touched the field.
-  // Clearing media to empty resets the touched flags so derivation can resume.
+  // Clearing media to empty resets the touched flags so derivation can resume (new posts only).
   useEffect(() => {
+    // Edit mode is fully sticky: never auto-derive from media for an existing post.
+    if (post) return
     if (media.length === 0) {
       setFormatTouched(false)
       setAspectTouched(false)
