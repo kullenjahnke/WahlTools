@@ -9,12 +9,14 @@ export function ReelCoverField({
   coverUrl,
   isCustom,
   busy,
+  canResetAuto,
   onPickCustom,
   onResetAuto,
 }: {
   coverUrl: string | null
   isCustom: boolean
   busy?: boolean
+  canResetAuto?: boolean
   onPickCustom: (file: File) => void
   onResetAuto: () => void
 }) {
@@ -44,7 +46,7 @@ export function ReelCoverField({
           >
             <ImagePlus className="size-3.5" /> Upload custom cover
           </button>
-          {isCustom && (
+          {isCustom && canResetAuto && (
             <button
               type="button"
               onClick={onResetAuto}

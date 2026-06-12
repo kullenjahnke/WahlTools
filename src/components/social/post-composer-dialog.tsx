@@ -373,6 +373,7 @@ export function PostComposerDialog({
                 coverUrl={reelCoverUrl}
                 isCustom={reelCoverIsCustom}
                 busy={coverBusy}
+                canResetAuto={!!autoCover}
                 onPickCustom={handlePickCustomCover}
                 onResetAuto={handleResetAutoCover}
               />
@@ -434,11 +435,11 @@ export function PostComposerDialog({
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setConfirmPublish(true)} disabled={saving}>
+            <Button type="button" variant="outline" onClick={() => setConfirmPublish(true)} disabled={saving || coverBusy}>
               <Send className="mr-1 size-4" /> Publish now
             </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
-            <Button type="button" onClick={handleSave} disabled={saving}>
+            <Button type="button" onClick={handleSave} disabled={saving || coverBusy}>
               {saving && <Loader2 className="mr-1 size-4 animate-spin" />}
               {status === 'scheduled' ? 'Schedule' : 'Save'}
             </Button>
