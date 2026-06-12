@@ -138,6 +138,9 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
     if (product.lastWasPromo && product.lastOriginalPrice != null) {
       setPromos(prev => ({ ...prev, [product.id]: true }))
       setOriginalPrices(prev => ({ ...prev, [product.id]: product.lastOriginalPrice!.toFixed(2) }))
+    } else {
+      setPromos(prev => ({ ...prev, [product.id]: false }))
+      setOriginalPrices(prev => ({ ...prev, [product.id]: '' }))
     }
   }
 

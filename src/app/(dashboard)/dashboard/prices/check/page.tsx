@@ -90,6 +90,7 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
     }
 
     // Newest positive-price record per product at the effective retailer (for last-week carry, incl. promo).
+    // Relies on the prices query's DESC timestamp order: first hit per product = newest.
     const lastEntryByProduct = new Map<string, { price: number; original_price: number | null; is_promotion: boolean }>()
     for (const row of (pricesResult.data || []) as Array<{
       product_id: string; retailer: string; price: number | null; original_price: number | null; is_promotion: boolean | null
