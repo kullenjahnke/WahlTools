@@ -35,12 +35,14 @@ export function PostPreview({
   platforms,
   format,
   aspectRatio,
+  coverUrl,
 }: {
   caption: string
   media: MediaItem[]
   platforms: string[]
   format: string
   aspectRatio: string
+  coverUrl?: string | null
 }) {
   const [autoRatio, setAutoRatio] = useState<number | null>(null)
   const isPortrait = format === 'reel' || format === 'story'
@@ -91,6 +93,8 @@ export function PostPreview({
             </div>
           ) : media[0].media_type === 'image' ? (
             <Image src={media[0].url} alt="" fill sizes="220px" className="object-cover" onLoad={handleFirstLoad} />
+          ) : format === 'reel' && coverUrl ? (
+            <Image src={coverUrl} alt="" fill sizes="220px" className="object-cover" />
           ) : (
             <video src={media[0].url} className="size-full object-cover" controls />
           )}

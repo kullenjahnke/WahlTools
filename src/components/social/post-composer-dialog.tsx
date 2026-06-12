@@ -17,7 +17,9 @@ import { TagPicker, type ProductOption } from './tag-picker'
 import { CollaboratorInput } from './collaborator-input'
 import { MediaDropzone, type MediaItem } from './media-dropzone'
 import { PostPreview } from './post-preview'
-import { createSocialPost, updateSocialPost, deleteSocialPost } from '@/app/actions/social'
+import { captureFirstFrame } from '@/lib/social/video-cover'
+import { ReelCoverField } from './reel-cover-field'
+import { createSocialPost, updateSocialPost, deleteSocialPost, uploadSocialImage } from '@/app/actions/social'
 import { publishPost } from '@/app/actions/publish'
 import { generateCaption } from '@/app/actions/ai'
 import type { SocialPostRecord } from '@/lib/social/queries'
@@ -56,6 +58,11 @@ export function PostComposerDialog({
   const [productIds, setProductIds] = useState<string[]>([])
   const [retailers, setRetailers] = useState<string[]>([])
   const [media, setMedia] = useState<MediaItem[]>([])
+  const [reelCoverUrl, setReelCoverUrl] = useState<string | null>(null)
+  const [reelCoverPath, setReelCoverPath] = useState<string | null>(null)
+  const [reelCoverIsCustom, setReelCoverIsCustom] = useState(false)
+  const [autoCover, setAutoCover] = useState<{ url: string; storage_path: string } | null>(null)
+  const [coverBusy, setCoverBusy] = useState(false)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +84,10 @@ export function PostComposerDialog({
       setProductIds(post.product_ids)
       setRetailers(post.retailers)
       setMedia(post.media.map((m) => ({ url: m.url, storage_path: m.storage_path, media_type: m.media_type, position: m.position })))
+      setReelCoverUrl(post.reel_cover_url)
+      setReelCoverPath(post.reel_cover_path)
+      setReelCoverIsCustom(post.reel_cover_is_custom)
+      setAutoCover(post.reel_cover_is_custom ? null : (post.reel_cover_url && post.reel_cover_path ? { url: post.reel_cover_url, storage_path: post.reel_cover_path } : null))
     } else {
       setTitle('')
       setCaption('')
@@ -89,11 +100,58 @@ export function PostComposerDialog({
       setProductIds([])
       setRetailers([])
       setMedia([])
+      setReelCoverUrl(null)
+      setReelCoverPath(null)
+      setReelCoverIsCustom(false)
+      setAutoCover(null)
     }
     setError(null)
   }, [open, post, initialDate])
 
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? ''
+
+  // Auto cover: capture the video's first frame and upload it (skipped if a custom cover is set).
+  async function handleVideoSelected(file: File) {
+    if (reelCoverIsCustom) return
+    setCoverBusy(true)
+    try {
+      const blob = await captureFirstFrame(file)
+      if (!blob) return
+      const fd = new FormData()
+      fd.append('file', new File([blob], 'reel-cover.jpg', { type: 'image/jpeg' }))
+      const res = await uploadSocialImage(fd)
+      if (res.success) {
+        setAutoCover({ url: res.data.url, storage_path: res.data.storage_path })
+        setReelCoverUrl(res.data.url)
+        setReelCoverPath(res.data.storage_path)
+        setReelCoverIsCustom(false)
+      }
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+
+  async function handlePickCustomCover(file: File) {
+    setCoverBusy(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await uploadSocialImage(fd)
+      if (res.success) {
+        setReelCoverUrl(res.data.url)
+        setReelCoverPath(res.data.storage_path)
+        setReelCoverIsCustom(true)
+      }
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+
+  function handleResetAutoCover() {
+    setReelCoverIsCustom(false)
+    setReelCoverUrl(autoCover?.url ?? null)
+    setReelCoverPath(autoCover?.storage_path ?? null)
+  }
 
   async function handleGenerate() {
     setGenerating(true)
@@ -153,6 +211,9 @@ export function PostComposerDialog({
       productIds,
       retailers,
       media,
+      reel_cover_path: reelCoverPath,
+      reel_cover_url: reelCoverUrl,
+      reel_cover_is_custom: reelCoverIsCustom,
     }
     const res = post ? await updateSocialPost(post.id, input) : await createSocialPost(input)
     setSaving(false)
@@ -209,6 +270,9 @@ export function PostComposerDialog({
       productIds,
       retailers,
       media,
+      reel_cover_path: reelCoverPath,
+      reel_cover_url: reelCoverUrl,
+      reel_cover_is_custom: reelCoverIsCustom,
     }
     const saved = post ? await updateSocialPost(post.id, input) : await createSocialPost(input)
     if (!saved.success || !saved.data) {
@@ -301,8 +365,18 @@ export function PostComposerDialog({
 
             <div>
               <Label>Media</Label>
-              <MediaDropzone media={media} onChange={setMedia} />
+              <MediaDropzone media={media} onChange={setMedia} onVideoSelected={handleVideoSelected} />
             </div>
+
+            {format === 'reel' && (
+              <ReelCoverField
+                coverUrl={reelCoverUrl}
+                isCustom={reelCoverIsCustom}
+                busy={coverBusy}
+                onPickCustom={handlePickCustomCover}
+                onResetAuto={handleResetAutoCover}
+              />
+            )}
 
             <div>
               <Label>Publish to</Label>
@@ -348,7 +422,7 @@ export function PostComposerDialog({
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
 
-          <PostPreview caption={caption} media={media} platforms={platforms} format={format} aspectRatio={aspectRatio} />
+          <PostPreview caption={caption} media={media} platforms={platforms} format={format} aspectRatio={aspectRatio} coverUrl={reelCoverUrl} />
         </div>
 
         <DialogFooter className="flex items-center justify-between sm:justify-between">
