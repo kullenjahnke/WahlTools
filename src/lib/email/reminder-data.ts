@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { RETAILERS } from "@/lib/config/retailers"
 
 const MS_PER_DAY = 86400000
+const FAILED_LOOKBACK_DAYS = 7
 
 export interface StaleRetailer {
   retailer: string
@@ -113,9 +114,12 @@ export async function getUpcomingAndOverduePosts(
   const out: SocialPostReminderEntry[] = []
   for (const row of (data ?? []) as { title: string | null; caption: string | null; scheduled_at: string | null; status: string }[]) {
     if (row.status === 'failed') {
+      // Only surface recent failures so they don't nag forever (cancelled + genuine).
+      if (!row.scheduled_at) continue
+      if (nowMs - new Date(row.scheduled_at).getTime() > FAILED_LOOKBACK_DAYS * MS_PER_DAY) continue
       out.push({
         caption: row.title?.trim() || row.caption?.trim() || 'Untitled post',
-        when: row.scheduled_at ? `${fmtDay.format(new Date(row.scheduled_at))} ${fmtTime.format(new Date(row.scheduled_at))}` : 'Unknown',
+        when: `${fmtDay.format(new Date(row.scheduled_at))} ${fmtTime.format(new Date(row.scheduled_at))}`,
         overdue: true,
       })
       continue

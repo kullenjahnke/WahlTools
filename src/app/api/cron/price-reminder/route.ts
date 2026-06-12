@@ -66,6 +66,16 @@ export async function GET(request: NextRequest) {
         } else if (st.status === "failed") {
           await admin.from("social_posts").update({ status: "failed", failure_reason: st.error ?? "Publish failed", updated_at: new Date().toISOString() }).eq("id", row.id)
           reconciled++
+        } else if (st.status === "cancelled") {
+          await admin.from("social_posts").update({
+            status: "failed",
+            failure_reason: "Cancelled or removed at the vendor",
+            external_ref: null,
+            updated_at: new Date().toISOString(),
+          }).eq("id", row.id)
+          const cp = (row.external_ref as { croppedPaths?: string[] } | null)?.croppedPaths
+          if (cp?.length) await admin.storage.from('social-media').remove(cp)
+          reconciled++
         }
       } catch (e) {
         console.error("reconcile getStatus failed for", row.id, e)
