@@ -39,8 +39,9 @@ import { Button } from "@/components/ui/button"
 import {
   ChartExportCard,
   type ChartExportCardProps,
+  type ExportHeader,
 } from "@/components/analytics/chart-export-card"
-import { slugify, imageToDataUrl, exportNodeToPng } from "@/lib/analytics/export-chart"
+import { slugify, imageToDataUrl, exportNodeToPng, themedLogoDataUrl } from "@/lib/analytics/export-chart"
 
 type ProductWithPrices = Product & {
   prices?: Price[]
@@ -65,6 +66,7 @@ const TIME_RANGES = [
   { value: "90", label: "Last 90 days" },
   { value: "180", label: "Last 6 months" },
   { value: "365", label: "Last 1 year" },
+  { value: "all", label: "All time" },
 ]
 
 // Palette for product/category series (retailers use their brand colors).
@@ -165,6 +167,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name || "Uncategorized"
 
   const cutoffMs = useMemo(() => {
+    if (timeRange === "all") return 0
     const days = parseInt(timeRange)
     const cutoff = days <= 90 ? subDays(new Date(), days) : subMonths(new Date(), days / 30)
     return cutoff.getTime()
@@ -253,7 +256,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
   // --- Chart export ---------------------------------------------------------
   const exportRef = useRef<HTMLDivElement>(null)
   const exportingRef = useRef(false)
-  const [exportData, setExportData] = useState<ChartExportCardProps | null>(null)
+  const [exportData, setExportData] = useState<{ props: ChartExportCardProps; filename: string } | null>(null)
 
   // Short pill label derived from the selected time range (e.g. "90 days").
   const rangeLabel = useMemo(() => {
@@ -262,30 +265,64 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
   }, [timeRange])
 
   const handleExport = useCallback(async () => {
-    if (mode !== "retailer" || !selectedProduct || exportingRef.current) return
+    if (chartData.length === 0 || exportingRef.current) return
+    if (mode === "retailer" && !selectedProduct) return
     exportingRef.current = true
     try {
-      const imageDataUrl = selectedProduct.imageUrl
-        ? await imageToDataUrl(selectedProduct.imageUrl)
-        : null
+      const isDark = document.documentElement.classList.contains("dark")
+      const logoDataUrl = await themedLogoDataUrl(isDark)
+
+      let header: ExportHeader
+      let filename: string
+      if (mode === "retailer") {
+        const imageDataUrl = selectedProduct!.imageUrl
+          ? await imageToDataUrl(selectedProduct!.imageUrl)
+          : null
+        header = {
+          kind: "product",
+          productName: selectedProduct!.name,
+          brandName:
+            selectedProduct!.brand_type === "wahlburgers"
+              ? "Wahlburgers"
+              : selectedProduct!.brand_name || null,
+          imageDataUrl,
+        }
+        filename = `${slugify(selectedProduct!.name)}-prices-${slugify(rangeLabel)}.png`
+      } else if (mode === "product") {
+        header = {
+          kind: "comparison",
+          title: "Product comparison",
+          subtitle: `${visibleSeries.length} ${visibleSeries.length === 1 ? "product" : "products"}`,
+          icon: "product",
+        }
+        filename = `product-comparison-${slugify(rangeLabel)}.png`
+      } else {
+        header = {
+          kind: "comparison",
+          title: "Category comparison",
+          subtitle: `${visibleSeries.length} ${visibleSeries.length === 1 ? "category" : "categories"}`,
+          icon: "category",
+        }
+        filename = `category-comparison-${slugify(rangeLabel)}.png`
+      }
+
       setExportData({
-        productName: selectedProduct.name,
-        brandName:
-          selectedProduct.brand_type === "wahlburgers"
-            ? "Wahlburgers"
-            : selectedProduct.brand_name || null,
-        imageDataUrl,
-        rangeLabel,
-        generatedLabel: `Generated ${format(new Date(), "MMM d, yyyy")}`,
-        series: visibleSeries.map((s) => ({ key: s.key, label: s.label, color: s.color })),
-        metrics: metrics.map((m) => ({
-          key: m.key,
-          label: m.label,
-          color: m.color,
-          avg: m.avg,
-          wowChange: m.wowChange,
-        })),
-        chartData,
+        props: {
+          header,
+          logoDataUrl,
+          rangeLabel,
+          generatedLabel: `Generated ${format(new Date(), "MMM d, yyyy")}`,
+          series: visibleSeries.map((s) => ({ key: s.key, label: s.label, color: s.color })),
+          metrics: metrics.map((m) => ({
+            key: m.key,
+            label: m.label,
+            color: m.color,
+            avg: m.avg,
+            wowChange: m.wowChange,
+          })),
+          chartData,
+        },
+        filename,
       })
     } finally {
       exportingRef.current = false
@@ -304,10 +341,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
       )
       if (cancelled || !exportRef.current) return
       try {
-        await exportNodeToPng(
-          exportRef.current,
-          `${slugify(exportData.productName)}-prices-${slugify(exportData.rangeLabel)}.png`
-        )
+        await exportNodeToPng(exportRef.current, exportData.filename)
       } catch (err) {
         console.error("Chart export failed:", err)
       } finally {
@@ -501,7 +535,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
               <CardTitle className="text-base">Price over time</CardTitle>
-              {mode === "retailer" && chartData.length > 0 && (
+              {chartData.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -659,7 +693,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
           aria-hidden
           style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }}
         >
-          <ChartExportCard ref={exportRef} {...exportData} />
+          <ChartExportCard ref={exportRef} {...exportData.props} />
         </div>
       )}
     </div>

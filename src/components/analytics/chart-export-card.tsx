@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { format } from "date-fns"
-import { Package } from "lucide-react"
+import { Package, Tags } from "lucide-react"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { cn } from "@/lib/utils"
 
@@ -30,11 +30,14 @@ export interface ExportMetric {
   wowChange: number | null
 }
 
+export type ExportHeader =
+  | { kind: "product"; productName: string; brandName: string | null; imageDataUrl: string | null }
+  | { kind: "comparison"; title: string; subtitle: string; icon: "product" | "category" }
+
 export interface ChartExportCardProps {
-  productName: string
-  brandName: string | null
-  /** Pre-inlined data URL, or null to show a placeholder icon. */
-  imageDataUrl: string | null
+  header: ExportHeader
+  /** Theme-adaptive WahlTools logo data URL for the footer, or null to fall back to text. */
+  logoDataUrl: string | null
   /** Short range label for the pill, e.g. "90 days". */
   rangeLabel: string
   /** Footer line, e.g. "Generated Jun 9, 2026". */
@@ -46,10 +49,13 @@ export interface ChartExportCardProps {
 
 export const ChartExportCard = forwardRef<HTMLDivElement, ChartExportCardProps>(
   function ChartExportCard(
-    { productName, brandName, imageDataUrl, rangeLabel, generatedLabel, series, metrics, chartData },
+    { header, logoDataUrl, rangeLabel, generatedLabel, series, metrics, chartData },
     ref
   ) {
     const chart = useChartTheme()
+
+    const metricLabel =
+      header.kind === "product" ? "Retailer" : header.icon === "category" ? "Category" : "Product"
 
     return (
       <div
@@ -62,19 +68,36 @@ export const ChartExportCard = forwardRef<HTMLDivElement, ChartExportCardProps>(
           <div className="w-[37%] border-r border-border p-5">
             <div className="mb-4 flex items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-                {imageDataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imageDataUrl} alt="" className="h-full w-full object-cover" />
+                {header.kind === "product" ? (
+                  header.imageDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={header.imageDataUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                  )
+                ) : header.icon === "category" ? (
+                  <Tags className="h-5 w-5 text-muted-foreground" />
                 ) : (
                   <Package className="h-5 w-5 text-muted-foreground" />
                 )}
               </div>
               <div className="min-w-0">
-                <div className="truncate text-[17px] font-semibold leading-tight tracking-tight">
-                  {productName}
-                </div>
-                {brandName && (
-                  <div className="text-xs text-muted-foreground">{brandName}</div>
+                {header.kind === "product" ? (
+                  <>
+                    <div className="truncate text-[17px] font-semibold leading-tight tracking-tight">
+                      {header.productName}
+                    </div>
+                    {header.brandName && (
+                      <div className="text-xs text-muted-foreground">{header.brandName}</div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="truncate text-[17px] font-semibold leading-tight tracking-tight">
+                      {header.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{header.subtitle}</div>
+                  </>
                 )}
               </div>
             </div>
@@ -82,7 +105,7 @@ export const ChartExportCard = forwardRef<HTMLDivElement, ChartExportCardProps>(
             <table className="w-full border-collapse text-[11px]">
               <thead>
                 <tr className="text-muted-foreground">
-                  <th className="border-b border-border py-1 pr-2 text-left font-medium">Retailer</th>
+                  <th className="border-b border-border py-1 pr-2 text-left font-medium">{metricLabel}</th>
                   <th className="border-b border-border px-2 py-1 text-right font-medium">Avg</th>
                   <th className="border-b border-border py-1 pl-2 text-right font-medium">WoW</th>
                 </tr>
@@ -175,9 +198,14 @@ export const ChartExportCard = forwardRef<HTMLDivElement, ChartExportCardProps>(
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-border px-5 py-2.5 text-[10px] text-muted-foreground">
           <span>{generatedLabel}</span>
-          <span className="flex items-center gap-1.5 font-semibold text-brand">
-            <span className="inline-block h-3 w-3 rounded-[3px] bg-brand" />
-            Powered by WahlTools
+          <span className="flex items-center gap-1.5">
+            <span>Powered by</span>
+            {logoDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoDataUrl} alt="WahlTools" className="h-4 w-auto" />
+            ) : (
+              <span className="font-semibold text-brand">WahlTools</span>
+            )}
           </span>
         </div>
       </div>
