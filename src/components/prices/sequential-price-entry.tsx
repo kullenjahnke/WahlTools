@@ -10,6 +10,8 @@ import { recordRetailerPrices } from "@/app/actions/prices"
 import type { PriceStatus } from "@/app/actions/prices"
 import type { PriceHistoryPoint } from "@/lib/outlier"
 import { RETAILER_COLORS } from "@/lib/config/retailers"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -68,6 +70,11 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
   const [isNotAvailable, setIsNotAvailable] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [autoAdvanceRetailers, setAutoAdvanceRetailers] = useState(true)
+  const [completedRetailers, setCompletedRetailers] = useState<Set<string>>(
+    () => new Set(Object.keys(checkStatus).filter((r) => !!checkStatus[r]))
+  )
+  const [interstitial, setInterstitial] = useState<{ finished: string; next: string } | null>(null)
 
   const router = useRouter()
   const { toast } = useToast()
@@ -114,24 +121,87 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
     priceInputRef.current?.focus()
   }, [lastWeek])
 
+  const deckSizeFor = useCallback(
+    (r: string) => products.filter((p) => p.urls.some((u) => u.retailer === r)).length,
+    [products]
+  )
+
+  // Next forward retailer in canonical order that isn't completed and has products.
+  const findNextRetailer = useCallback(
+    (after: string, completed: Set<string>): string | null => {
+      const start = retailers.indexOf(after)
+      for (let i = start + 1; i < retailers.length; i++) {
+        const r = retailers[i]
+        if (!completed.has(r) && deckSizeFor(r) > 0) return r
+      }
+      return null
+    },
+    [retailers, deckSizeFor]
+  )
+
   const advance = useCallback(() => {
     resetCard()
     if (index < deck.length - 1) {
       setIndex(index + 1)
-    } else {
+      return
+    }
+    // Deck finished for this retailer.
+    const finished = retailer!
+    const nextCompleted = new Set(completedRetailers)
+    nextCompleted.add(finished)
+    setCompletedRetailers(nextCompleted)
+    if (autoAdvanceRetailers) {
+      const next = findNextRetailer(finished, nextCompleted)
+      if (next) {
+        setInterstitial({ finished, next })
+        return
+      }
+      // Chained through and nothing left.
       toast({
         icon: <CheckCircle2 className="size-5 text-brand" />,
-        title: "All complete!",
-        description: `Saved ${savedCount + 1} price${savedCount + 1 === 1 ? "" : "s"} for ${retailer}.`,
+        title: "All retailers complete!",
+        description: `Saved ${savedCount + 1} price${savedCount + 1 === 1 ? "" : "s"}.`,
       })
-      router.push("/dashboard/prices")
+    } else {
+      // Toggle off: just this one retailer finished (today's behavior).
+      toast({
+        icon: <CheckCircle2 className="size-5 text-brand" />,
+        title: "Retailer complete!",
+        description: `Saved ${savedCount + 1} price${savedCount + 1 === 1 ? "" : "s"} for ${finished}.`,
+      })
     }
-  }, [index, deck.length, resetCard, savedCount, retailer, router, toast])
+    router.push("/dashboard/prices")
+  }, [index, deck.length, resetCard, savedCount, retailer, router, toast, autoAdvanceRetailers, completedRetailers, findNextRetailer])
 
   const goBack = useCallback(() => {
     resetCard()
     if (index > 0) setIndex(index - 1)
   }, [index, resetCard])
+
+  const continueToNext = useCallback(() => {
+    if (!interstitial) return
+    setRetailer(interstitial.next)
+    setIndex(0)
+    resetCard()
+    setInterstitial(null)
+  }, [interstitial, resetCard])
+
+  const skipNextRetailer = useCallback(() => {
+    if (!interstitial) return
+    const next = findNextRetailer(interstitial.next, completedRetailers)
+    if (next) {
+      setInterstitial({ finished: interstitial.finished, next })
+    } else {
+      setInterstitial(null)
+      toast({ icon: <CheckCircle2 className="size-5 text-brand" />, title: "All retailers complete!" })
+      router.push("/dashboard/prices")
+    }
+  }, [interstitial, completedRetailers, findNextRetailer, router, toast])
+
+  const finishSession = useCallback(() => {
+    setInterstitial(null)
+    router.push("/dashboard/prices")
+  }, [router])
 
   // Sold Out / N/A are toggles: turning one on clears the others + the price.
   const toggleSoldOut = useCallback(() => {
@@ -238,7 +308,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
   // ── Hotkeys ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!current) return
+    if (!current || interstitial) return
     const onKey = (e: KeyboardEvent) => {
       // Don't hijack when typing in an input other than our price field
       const tag = (e.target as HTMLElement)?.tagName
@@ -274,7 +344,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [current, lastWeek, save, openBeside, toggleSoldOut, toggleNotAvailable, reuseLastWeek])
+  }, [current, lastWeek, save, openBeside, toggleSoldOut, toggleNotAvailable, reuseLastWeek, interstitial])
 
   // ── Retailer picker ───────────────────────────────────────────────────────
 
@@ -295,6 +365,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
                   setRetailer(r)
                   setIndex(0)
                   resetCard()
+                  setInterstitial(null)
                 }}
                 className={[
                   "inline-flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-medium transition-colors",
@@ -332,11 +403,52 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
             No products with a {retailer} URL found.
           </p>
           <button
-            onClick={() => setRetailer(null)}
+            onClick={() => { setRetailer(null); setInterstitial(null) }}
             className="mt-4 text-sm text-brand underline underline-offset-2"
           >
             ← Back to retailer picker
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Between-retailers interstitial ────────────────────────────────────────
+  if (interstitial) {
+    const nextCount = deckSizeFor(interstitial.next)
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-5 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand">
+            <Check className="h-6 w-6 text-white" strokeWidth={3} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold tracking-tight">Finished {interstitial.finished}</h3>
+            <p className="text-sm text-muted-foreground">
+              Next up: <span className="font-semibold text-foreground">{interstitial.next}</span> ·{" "}
+              {nextCount} product{nextCount === 1 ? "" : "s"}
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2.5">
+            <button
+              onClick={continueToNext}
+              className="inline-flex items-center gap-2 rounded-[10px] bg-brand px-5 py-2.5 text-[15px] font-semibold text-white hover:bg-brand/90 transition-colors"
+            >
+              Continue →
+            </button>
+            <button
+              onClick={skipNextRetailer}
+              className="inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-card px-4 py-2.5 text-sm font-medium hover:bg-accent/60 transition-colors"
+            >
+              Skip
+            </button>
+            <button
+              onClick={finishSession}
+              className="inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Finish
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -354,7 +466,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
         {/* Exit × */}
         <button
           aria-label="Back to retailer picker"
-          onClick={() => setRetailer(null)}
+          onClick={() => { setRetailer(null); setInterstitial(null) }}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-accent/60 transition-colors"
         >
           <X className="h-3.5 w-3.5" />
@@ -380,6 +492,19 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
         <span className="shrink-0 rounded-full border border-border bg-card px-3 py-1 text-[12px] font-bold tabular-nums">
           {index + 1} / {deck.length}
         </span>
+      </div>
+
+      {/* Auto-advance retailers toggle */}
+      <div className="flex items-center justify-end gap-2">
+        <Switch
+          id="auto-advance-retailers"
+          checked={autoAdvanceRetailers}
+          onCheckedChange={setAutoAdvanceRetailers}
+          className="scale-90"
+        />
+        <Label htmlFor="auto-advance-retailers" className="cursor-pointer text-[12px] text-muted-foreground">
+          Auto-advance retailers
+        </Label>
       </div>
 
       {/* ── Card stack ───────────────────────────────────────────── */}
