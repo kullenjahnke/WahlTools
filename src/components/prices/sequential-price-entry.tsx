@@ -13,6 +13,8 @@ import { RETAILER_COLORS } from "@/lib/config/retailers"
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export interface LastWeekEntry { price: number; original_price: number | null; is_promotion: boolean }
+
 export interface SeqProduct {
   id: string
   name: string
@@ -21,7 +23,7 @@ export interface SeqProduct {
   imageUrl: string | null
   urls: { retailer: string; url: string }[]
   history: PriceHistoryPoint[]
-  lastPriceByRetailer: Record<string, { price: number; original_price: number | null; is_promotion: boolean }>
+  lastPriceByRetailer: Record<string, LastWeekEntry>
 }
 
 interface Props {

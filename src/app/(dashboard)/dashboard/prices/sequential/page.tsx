@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { SequentialPriceEntry } from "@/components/prices/sequential-price-entry"
+import type { LastWeekEntry } from "@/components/prices/sequential-price-entry"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 import { RETAILERS, orderRetailers } from "@/lib/config/retailers"
@@ -58,8 +59,7 @@ export default async function SequentialEntryPage() {
     }
 
     // Newest positive-price record per (product, retailer), incl. promo fields — for last-week carry.
-    type LastEntry = { price: number; original_price: number | null; is_promotion: boolean }
-    const lastByProduct = new Map<string, Record<string, LastEntry>>()
+    const lastByProduct = new Map<string, Record<string, LastWeekEntry>>()
     for (const row of (pricesResult.data || []) as Array<{
       product_id: string; retailer: string; price: number | null; original_price: number | null; is_promotion: boolean | null
     }>) {
