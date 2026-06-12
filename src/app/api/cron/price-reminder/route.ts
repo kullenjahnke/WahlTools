@@ -41,6 +41,42 @@ export async function GET(request: NextRequest) {
   const { weekday } = getDetroitParts(new Date())
   const actions: Record<string, unknown> = {}
 
+  // Reconcile: catch any publish results the webhook missed. Checks scheduled
+  // posts whose time has passed and that have a vendor id.
+  try {
+    const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString() // 5 min grace
+    const { data: due } = await admin
+      .from("social_posts")
+      .select("id, external_ref, scheduled_at")
+      .eq("status", "scheduled")
+      .not("scheduled_at", "is", null)
+      .lt("scheduled_at", cutoff)
+    let reconciled = 0
+    for (const row of (due ?? []) as { id: string; external_ref: { vendorId?: string; croppedPaths?: string[] } | null }[]) {
+      const vendorId = row.external_ref?.vendorId
+      if (!vendorId) continue
+      try {
+        const st = await zernioAdapter.getStatus(vendorId)
+        console.log('reconcile: getStatus', { postId: row.id, vendorId, status: st.status })
+        if (st.status === "posted" || st.status === "partial") {
+          await admin.from("social_posts").update({ status: "posted", posted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", row.id)
+          const cp = (row.external_ref as { croppedPaths?: string[] } | null)?.croppedPaths
+          if (cp?.length) await admin.storage.from('social-media').remove(cp)
+          reconciled++
+        } else if (st.status === "failed") {
+          await admin.from("social_posts").update({ status: "failed", failure_reason: st.error ?? "Publish failed", updated_at: new Date().toISOString() }).eq("id", row.id)
+          reconciled++
+        }
+      } catch (e) {
+        console.error("reconcile getStatus failed for", row.id, e)
+      }
+    }
+    if (reconciled) actions.reconciled = reconciled
+  } catch (error) {
+    console.error("publish reconcile failed:", error)
+    actions.reconcileError = true
+  }
+
   // Social digest — independent of the weekday gating; runs daily (morning-of).
   try {
     if (settings.social_reminder_enabled) {
@@ -83,41 +119,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("reminder cron send failed:", error)
     return new NextResponse("Send failed", { status: 500 })
-  }
-
-  // Reconcile: catch any publish results the webhook missed. Checks scheduled
-  // posts whose time has passed and that have a vendor id.
-  try {
-    const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString() // 5 min grace
-    const { data: due } = await admin
-      .from("social_posts")
-      .select("id, external_ref, scheduled_at")
-      .eq("status", "scheduled")
-      .not("scheduled_at", "is", null)
-      .lt("scheduled_at", cutoff)
-    let reconciled = 0
-    for (const row of (due ?? []) as { id: string; external_ref: { vendorId?: string; croppedPaths?: string[] } | null }[]) {
-      const vendorId = row.external_ref?.vendorId
-      if (!vendorId) continue
-      try {
-        const st = await zernioAdapter.getStatus(vendorId)
-        if (st.status === "posted" || st.status === "partial") {
-          await admin.from("social_posts").update({ status: "posted", posted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", row.id)
-          const cp = (row.external_ref as { croppedPaths?: string[] } | null)?.croppedPaths
-          if (cp?.length) await admin.storage.from('social-media').remove(cp)
-          reconciled++
-        } else if (st.status === "failed") {
-          await admin.from("social_posts").update({ status: "failed", failure_reason: st.error ?? "Publish failed", updated_at: new Date().toISOString() }).eq("id", row.id)
-          reconciled++
-        }
-      } catch (e) {
-        console.error("reconcile getStatus failed for", row.id, e)
-      }
-    }
-    if (reconciled) actions.reconciled = reconciled
-  } catch (error) {
-    console.error("publish reconcile failed:", error)
-    actions.reconcileError = true
   }
 
   // Asset cleanup: delete original media of posted posts older than the retention
