@@ -98,8 +98,10 @@ export async function sendPost(id: string, opts: { now?: boolean }): Promise<{ s
     const built = await buildMedia(admin, post)
     croppedPaths = built.croppedPaths
 
-    // Reel cover → Instagram custom thumbnail (cover-crop to 9:16). Non-fatal:
-    // on any failure we fall back to Instagram's default cover.
+    // Reel cover → Instagram custom thumbnail (cover-crop to 9:16). Both the
+    // auto-captured first frame and a user-uploaded custom cover are sent here
+    // (reel_cover_is_custom is composer-UX state only, not a publish gate).
+    // Non-fatal: on any failure we fall back to Instagram's default cover.
     let instagramThumbnailUrl: string | undefined
     if (post.format === 'reel' && post.platforms.includes('instagram') && post.reel_cover_url) {
       try {
