@@ -21,7 +21,7 @@ export interface SeqProduct {
   imageUrl: string | null
   urls: { retailer: string; url: string }[]
   history: PriceHistoryPoint[]
-  lastPriceByRetailer: Record<string, number>
+  lastPriceByRetailer: Record<string, { price: number; original_price: number | null; is_promotion: boolean }>
 }
 
 interface Props {
@@ -96,6 +96,21 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
     setIsSoldOut(false)
     setIsNotAvailable(false)
   }, [])
+
+  const reuseLastWeek = useCallback(() => {
+    if (!lastWeek) return
+    setIsSoldOut(false)
+    setIsNotAvailable(false)
+    setPrice(lastWeek.price.toFixed(2))
+    if (lastWeek.is_promotion && lastWeek.original_price != null) {
+      setIsPromo(true)
+      setOriginalPrice(lastWeek.original_price.toFixed(2))
+    } else {
+      setIsPromo(false)
+      setOriginalPrice("")
+    }
+    priceInputRef.current?.focus()
+  }, [lastWeek])
 
   const advance = useCallback(() => {
     resetCard()
@@ -240,9 +255,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
       const k = e.key.toLowerCase()
       if (k === "l" && lastWeek != null) {
         e.preventDefault()
-        setIsSoldOut(false)
-        setIsNotAvailable(false)
-        setPrice(lastWeek.toFixed(2))
+        reuseLastWeek()
       } else if (k === "s") {
         e.preventDefault()
         setIsPromo((v) => !v)
@@ -259,7 +272,7 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [current, lastWeek, save, openBeside, toggleSoldOut, toggleNotAvailable])
+  }, [current, lastWeek, save, openBeside, toggleSoldOut, toggleNotAvailable, reuseLastWeek])
 
   // ── Retailer picker ───────────────────────────────────────────────────────
 
@@ -433,16 +446,11 @@ export function SequentialPriceEntry({ products, retailers, checkStatus }: Props
           {/* Last week chip */}
           {lastWeek != null && (
             <button
-              onClick={() => {
-                setIsSoldOut(false)
-                setIsNotAvailable(false)
-                setPrice(lastWeek.toFixed(2))
-                priceInputRef.current?.focus()
-              }}
+              onClick={reuseLastWeek}
               className="inline-flex items-center gap-2 rounded-lg border border-[hsl(var(--brand)/0.4)] bg-[hsl(var(--brand)/0.08)] px-2.5 py-1.5 text-[12px] font-semibold text-brand hover:bg-[hsl(var(--brand)/0.12)] transition-colors"
             >
               <span>↺ Last week</span>
-              <span className="tabular-nums">${lastWeek.toFixed(2)}</span>
+              <span className="tabular-nums">${lastWeek.price.toFixed(2)}</span>
               <kbd className="font-mono text-[10px] bg-white dark:bg-background border border-[hsl(var(--brand)/0.4)] rounded px-[5px] py-px text-brand leading-none">
                 L
               </kbd>

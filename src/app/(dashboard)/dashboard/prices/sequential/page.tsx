@@ -28,7 +28,7 @@ export default async function SequentialEntryPage() {
         supabase.from("product_categories").select("id, name"),
         supabase
           .from("prices")
-          .select("product_id, retailer, price, timestamp")
+          .select("product_id, retailer, price, timestamp, original_price, is_promotion")
           .gte("timestamp", since)
           .order("timestamp", { ascending: false }),
         getRetailerCheckStatus(),
@@ -57,6 +57,20 @@ export default async function SequentialEntryPage() {
       historyByProduct.set(row.product_id, arr)
     }
 
+    // Newest positive-price record per (product, retailer), incl. promo fields — for last-week carry.
+    type LastEntry = { price: number; original_price: number | null; is_promotion: boolean }
+    const lastByProduct = new Map<string, Record<string, LastEntry>>()
+    for (const row of (pricesResult.data || []) as Array<{
+      product_id: string; retailer: string; price: number | null; original_price: number | null; is_promotion: boolean | null
+    }>) {
+      if (!row.price || row.price <= 0) continue
+      const rec = lastByProduct.get(row.product_id) || {}
+      if (!(row.retailer in rec)) {
+        rec[row.retailer] = { price: row.price, original_price: row.original_price ?? null, is_promotion: row.is_promotion ?? false }
+        lastByProduct.set(row.product_id, rec)
+      }
+    }
+
     const products = (productsResult.data || []).map((product) => {
       // Resolve image URL: prefer main image, else first, else null
       const images: ProductImage[] = product.product_images || []
@@ -67,14 +81,6 @@ export default async function SequentialEntryPage() {
       const history = (historyByProduct.get(product.id) || []).sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       )
-
-      // Build per-retailer last price map (keep first = newest per retailer)
-      const lastPriceByRetailer: Record<string, number> = {}
-      for (const h of history) {
-        if (!(h.retailer in lastPriceByRetailer)) {
-          lastPriceByRetailer[h.retailer] = h.price
-        }
-      }
 
       return {
         id: product.id,
@@ -87,7 +93,7 @@ export default async function SequentialEntryPage() {
           url: u.url,
         })),
         history,
-        lastPriceByRetailer,
+        lastPriceByRetailer: lastByProduct.get(product.id) || {},
       }
     })
 
