@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Loader2, Trash2, CheckCircle2, CalendarClock, Pencil, AlertTriangle, Send, Sparkles } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS, SOCIAL_ASPECT_RATIOS, postLabel } from '@/lib/config/social'
+import { SOCIAL_FORMATS, SOCIAL_STATUSES, SOCIAL_PLATFORMS, SOCIAL_ASPECT_RATIOS, postLabel, deriveFormat, deriveAspect } from '@/lib/config/social'
 import { TagPicker, type ProductOption } from './tag-picker'
 import { CollaboratorInput } from './collaborator-input'
 import { MediaDropzone, type MediaItem } from './media-dropzone'
@@ -51,6 +51,8 @@ export function PostComposerDialog({
   const [title, setTitle] = useState('')
   const [format, setFormat] = useState<string>('image')
   const [aspectRatio, setAspectRatio] = useState<string>('auto')
+  const [formatTouched, setFormatTouched] = useState(false)
+  const [aspectTouched, setAspectTouched] = useState(false)
   const [status, setStatus] = useState<string>('idea')
   const [platforms, setPlatforms] = useState<string[]>(['instagram', 'facebook'])
   const [collaborators, setCollaborators] = useState<string[]>([])
@@ -88,6 +90,8 @@ export function PostComposerDialog({
       setReelCoverPath(post.reel_cover_path)
       setReelCoverIsCustom(post.reel_cover_is_custom)
       setAutoCover(post.reel_cover_is_custom ? null : (post.reel_cover_url && post.reel_cover_path ? { url: post.reel_cover_url, storage_path: post.reel_cover_path } : null))
+      setFormatTouched(true)
+      setAspectTouched(true)
     } else {
       setTitle('')
       setCaption('')
@@ -104,9 +108,32 @@ export function PostComposerDialog({
       setReelCoverPath(null)
       setReelCoverIsCustom(false)
       setAutoCover(null)
+      setFormatTouched(false)
+      setAspectTouched(false)
     }
     setError(null)
   }, [open, post, initialDate])
+
+  // Auto-derive format/aspect from media unless the user has manually touched the field.
+  // Clearing media to empty resets the touched flags so derivation can resume (new posts only).
+  useEffect(() => {
+    // Edit mode is fully sticky: never auto-derive from media for an existing post.
+    if (post) return
+    if (media.length === 0) {
+      setFormatTouched(false)
+      setAspectTouched(false)
+      return
+    }
+    if (!formatTouched) {
+      const f = deriveFormat(media)
+      if (f) setFormat(f)
+    }
+    if (!aspectTouched) {
+      const a = deriveAspect(media)
+      if (a) setAspectRatio(a)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [media])
 
   const nameOf = (id: string) => products.find((p) => p.id === id)?.name ?? ''
 
@@ -333,7 +360,7 @@ export function PostComposerDialog({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Format</Label>
-                <Select value={format} onValueChange={setFormat}>
+                <Select value={format} onValueChange={(v) => { setFormatTouched(true); setFormat(v) }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SOCIAL_FORMATS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
@@ -354,7 +381,7 @@ export function PostComposerDialog({
             {(format === 'image' || format === 'carousel') && (
               <div>
                 <Label>Aspect ratio</Label>
-                <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                <Select value={aspectRatio} onValueChange={(v) => { setAspectTouched(true); setAspectRatio(v) }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SOCIAL_ASPECT_RATIOS.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}

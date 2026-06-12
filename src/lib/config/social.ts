@@ -66,6 +66,61 @@ export function aspectRatioNumber(value: string): number | null {
   return SOCIAL_ASPECT_RATIOS.find((a) => a.value === value)?.ratio ?? null
 }
 
+/** Minimal media shape the derivation helpers need (structural — avoids importing the component). */
+export interface DerivableMedia {
+  media_type: 'image' | 'video'
+  position: number
+  width?: number
+  height?: number
+}
+
+/**
+ * How close a measured ratio must be to a preset to snap to it; otherwise we fall back to 'auto'.
+ * 0.06 is roughly half the gap between the two closest presets (4:5 = 0.80 and 3:4 = 0.75),
+ * so each preset's snap region doesn't overlap its neighbor.
+ */
+export const ASPECT_SNAP_TOLERANCE = 0.06
+
+/**
+ * Derive the post Format from attached media.
+ * - 1 image, no video → 'image'
+ * - 2+ media (any mix) → 'carousel'
+ * - exactly 1 video, no images → 'reel'
+ * - 0 media → null (leave current value untouched)
+ *
+ * Note: `'story'` is never auto-derived — it requires explicit user selection.
+ */
+export function deriveFormat(media: DerivableMedia[]): SocialFormat | null {
+  if (media.length === 0) return null
+  if (media.length >= 2) return 'carousel'
+  // exactly one item
+  return media[0].media_type === 'video' ? 'reel' : 'image'
+}
+
+/**
+ * Derive the Aspect ratio by measuring the cover image (lowest-position image) and snapping
+ * to the nearest preset. Returns 'auto' when the measured ratio is outside ASPECT_SNAP_TOLERANCE
+ * of every preset, and null when there is no measurable image (leave current value).
+ *
+ * Note: video-only media returns null because the aspect selector is hidden for reels,
+ * so derivation intentionally leaves the current value untouched in that case.
+ */
+export function deriveAspect(media: DerivableMedia[]): SocialAspectRatio | null {
+  const cover = media
+    .filter((m) => m.media_type === 'image' && m.width && m.height)
+    .sort((a, b) => a.position - b.position)[0]
+  if (!cover || !cover.width || !cover.height) return null
+  const ratio = cover.width / cover.height
+  let best: { value: SocialAspectRatio; diff: number } | null = null
+  for (const a of SOCIAL_ASPECT_RATIOS) {
+    if (a.ratio == null) continue // skip 'auto'
+    const diff = Math.abs(ratio - a.ratio)
+    if (!best || diff < best.diff) best = { value: a.value, diff }
+  }
+  if (!best || best.diff > ASPECT_SNAP_TOLERANCE) return 'auto'
+  return best.value
+}
+
 export function postLabel(p: { title?: string | null; caption?: string | null }): string {
   return p.title?.trim() || p.caption?.trim() || 'Untitled post'
 }

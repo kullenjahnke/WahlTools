@@ -6,11 +6,39 @@ import { Loader2, Upload, X } from 'lucide-react'
 import { uploadSocialImage, createSocialVideoUploadUrl } from '@/app/actions/social'
 import { createClientClient } from '@/lib/supabase/client'
 
-export interface MediaItem { url: string; storage_path: string; media_type: 'image' | 'video'; position: number }
+export interface MediaItem {
+  url: string
+  storage_path: string
+  media_type: 'image' | 'video'
+  position: number
+  /** Transient pixel dimensions measured at attach time. In-memory only — never persisted or loaded from the DB. */
+  width?: number
+  height?: number
+}
 
 const BUCKET = 'social-media'
 const IMAGE_MAX = 5 * 1024 * 1024   // 5 MB
 const VIDEO_MAX = 50 * 1024 * 1024  // 50 MB
+
+/** Measure pixel dimensions of an image/video File. Resolves to null on any failure. */
+function measureDimensions(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const cleanup = () => URL.revokeObjectURL(url)
+    if (file.type.startsWith('video/')) {
+      const v = document.createElement('video')
+      v.preload = 'metadata'
+      v.onloadedmetadata = () => { resolve({ width: v.videoWidth, height: v.videoHeight }); cleanup() }
+      v.onerror = () => { resolve(null); cleanup() }
+      v.src = url
+    } else {
+      const img = new window.Image()
+      img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); cleanup() }
+      img.onerror = () => { resolve(null); cleanup() }
+      img.src = url
+    }
+  })
+}
 
 export function MediaDropzone({
   media,
@@ -39,6 +67,7 @@ export function MediaDropzone({
         continue
       }
       try {
+        const dims = await measureDimensions(file)
         if (file.type.startsWith('video/')) {
           const signed = await createSocialVideoUploadUrl(file.name)
           if (!signed.success) throw new Error(signed.error)
@@ -47,14 +76,14 @@ export function MediaDropzone({
             .from(BUCKET)
             .uploadToSignedUrl(signed.data.path, signed.data.token, file)
           if (upErr) throw upErr
-          next.push({ url: signed.data.url, storage_path: signed.data.path, media_type: 'video', position: next.length })
+          next.push({ url: signed.data.url, storage_path: signed.data.path, media_type: 'video', position: next.length, ...(dims ?? {}) })
           onVideoSelected?.(file)
         } else {
           const fd = new FormData()
           fd.append('file', file)
           const res = await uploadSocialImage(fd)
           if (!res.success) throw new Error(res.error)
-          next.push({ ...res.data, position: next.length })
+          next.push({ ...res.data, position: next.length, ...(dims ?? {}) })
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Upload failed')
