@@ -2,7 +2,7 @@ import { EnhancedUnifiedProductForm } from "@/components/products/enhanced-unifi
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 
-export const metadata = { title: "WahlTools | New Product" }
+export const metadata = { title: "New Product" }
 
 export default function NewProductPage() {
   return (

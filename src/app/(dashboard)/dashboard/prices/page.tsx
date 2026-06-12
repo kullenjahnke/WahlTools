@@ -100,7 +100,7 @@ async function ProductsDataLoader() {
   }
 }
 
-export const metadata = { title: "WahlTools | Prices" }
+export const metadata = { title: "Prices" }
 
 export default async function PricesPage() {
   return (

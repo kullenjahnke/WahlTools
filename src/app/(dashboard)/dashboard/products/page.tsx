@@ -8,7 +8,7 @@ import { IconButton } from "@/components/ui/icon-button"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 
-export const metadata = { title: "WahlTools | Products" }
+export const metadata = { title: "Products" }
 
 export default async function ProductsPage() {
   const supabase = await createSupabaseServerClient()

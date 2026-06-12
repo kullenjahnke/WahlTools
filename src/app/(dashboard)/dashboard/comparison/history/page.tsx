@@ -13,7 +13,7 @@ interface PageProps {
   searchParams: Promise<{ retailer?: string; product?: string }>
 }
 
-export const metadata = { title: "WahlTools | Comparison History" }
+export const metadata = { title: "Comparison History" }
 
 export default async function PriceHistoryComparisonPage({ searchParams }: PageProps) {
   const params = await searchParams

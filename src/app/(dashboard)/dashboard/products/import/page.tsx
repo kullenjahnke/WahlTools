@@ -4,7 +4,7 @@ import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 
 export const metadata: Metadata = {
-  title: "WahlTools | Import Products",
+  title: "Import Products",
   description: "Import products in bulk using CSV",
 }
 

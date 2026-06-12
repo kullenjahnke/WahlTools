@@ -3,7 +3,7 @@ import { ProductHistoryView } from "@/components/prices/product-history-view"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 
-export const metadata = { title: "WahlTools | Price History" }
+export const metadata = { title: "Price History" }
 
 export default async function PriceHistoryPage() {
   const supabase = await createSupabaseServerClient()

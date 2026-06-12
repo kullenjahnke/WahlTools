@@ -13,7 +13,7 @@ import {
   CalendarCheck,
 } from "lucide-react"
 
-export const metadata = { title: "WahlTools | Dashboard" }
+export const metadata = { title: "Dashboard" }
 
 /** Monday 00:00 of the current week in America/New_York, as an ISO string. */
 function getCurrentWeekStartISO(): string {

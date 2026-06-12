@@ -4,7 +4,7 @@ import { ProductAnalytics } from "@/components/analytics/product-analytics"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 
-export const metadata = { title: "WahlTools | Analytics" }
+export const metadata = { title: "Analytics" }
 
 export default async function AnalyticsPage() {
   const supabase = await createSupabaseServerClient()

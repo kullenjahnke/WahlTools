@@ -3,7 +3,7 @@ import { ProductUrlManager } from "@/components/products/product-url-manager"
 import { PageContainer } from "@/components/layout/page-container"
 import { PageHeader } from "@/components/layout/page-header"
 
-export const metadata = { title: "WahlTools | Product URLs" }
+export const metadata = { title: "Product URLs" }
 
 export default async function ProductUrlsPage() {
   const supabase = await createSupabaseServerClient()
