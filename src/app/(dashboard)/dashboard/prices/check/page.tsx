@@ -37,7 +37,7 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
         .select('id, name'),
       supabase
         .from('prices')
-        .select('product_id, retailer, price, timestamp')
+        .select('product_id, retailer, price, timestamp, original_price, is_promotion')
         .gte('timestamp', since)
         .order('timestamp', { ascending: false }),
       getRetailerCheckStatus(),
@@ -89,6 +89,19 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
       historyByProduct.set(row.product_id, arr)
     }
 
+    // Newest positive-price record per product at the effective retailer (for last-week carry, incl. promo).
+    // Relies on the prices query's DESC timestamp order: first hit per product = newest.
+    const lastEntryByProduct = new Map<string, { price: number; original_price: number | null; is_promotion: boolean }>()
+    for (const row of (pricesResult.data || []) as Array<{
+      product_id: string; retailer: string; price: number | null; original_price: number | null; is_promotion: boolean | null
+    }>) {
+      if (row.retailer !== effectiveRetailer) continue
+      if (!row.price || row.price <= 0) continue
+      if (!lastEntryByProduct.has(row.product_id)) {
+        lastEntryByProduct.set(row.product_id, { price: row.price, original_price: row.original_price ?? null, is_promotion: row.is_promotion ?? false })
+      }
+    }
+
     // Format the products data correctly with proper typing and add category names
     const formattedProducts = productsResult.data?.map(product => {
       // Filter URLs for the selected retailer
@@ -101,11 +114,9 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
             }))
         : []
 
-      // History + last price at this retailer
+      // History (outlier context) + last entry at this retailer (for carry-over)
       const history = historyByProduct.get(product.id) || []
-      const lastAtRetailer = history
-        .filter(h => h.retailer === effectiveRetailer)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]?.price ?? null
+      const lastEntry = lastEntryByProduct.get(product.id) ?? null
 
       return {
         id: product.id,
@@ -113,7 +124,9 @@ export default async function PriceCheckPage({ searchParams }: PageProps) {
         category: categoryMap.get(product.category_id) || 'Uncategorized',
         brandName: (product.brand_name as string | null) || null,
         urls: relevantUrls,
-        lastPrice: lastAtRetailer,
+        lastPrice: lastEntry?.price ?? null,
+        lastOriginalPrice: lastEntry?.original_price ?? null,
+        lastWasPromo: lastEntry?.is_promotion ?? false,
         history,
       }
     }) || []

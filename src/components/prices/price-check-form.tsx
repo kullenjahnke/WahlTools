@@ -38,6 +38,8 @@ interface SimpleProduct {
   brandName: string | null
   urls: SimpleProductUrl[]
   lastPrice: number | null
+  lastOriginalPrice: number | null
+  lastWasPromo: boolean
   history: PriceHistoryPoint[]
 }
 
@@ -127,6 +129,18 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
       setPrices(prev => ({ ...prev, [productId]: '' }))
       setPromos(prev => ({ ...prev, [productId]: false }))
       setSoldOut(prev => ({ ...prev, [productId]: false }))
+    }
+  }
+
+  const carryOverLastWeek = (product: SimpleProduct) => {
+    if (product.lastPrice == null) return
+    setPrices(prev => ({ ...prev, [product.id]: product.lastPrice!.toFixed(2) }))
+    if (product.lastWasPromo && product.lastOriginalPrice != null) {
+      setPromos(prev => ({ ...prev, [product.id]: true }))
+      setOriginalPrices(prev => ({ ...prev, [product.id]: product.lastOriginalPrice!.toFixed(2) }))
+    } else {
+      setPromos(prev => ({ ...prev, [product.id]: false }))
+      setOriginalPrices(prev => ({ ...prev, [product.id]: '' }))
     }
   }
 
@@ -452,7 +466,7 @@ export function PriceCheckForm({ products, retailer, orderedRetailers }: PriceCh
                         {showCarryOver && (
                           <button
                             type="button"
-                            onClick={() => handlePriceChange(product.id, product.lastPrice!.toFixed(2))}
+                            onClick={() => carryOverLastWeek(product)}
                             className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground border border-dashed border-border rounded-md px-1.5 py-0.5 hover:text-foreground hover:border-muted-foreground transition-colors w-fit"
                           >
                             <RotateCcw className="h-3 w-3" />
