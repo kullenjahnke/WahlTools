@@ -69,6 +69,9 @@ export interface Database {
           notes: string | null
           external_ref: Json | null
           failure_reason: string | null
+          reel_cover_path: string | null
+          reel_cover_url: string | null
+          reel_cover_is_custom: boolean
           created_at: string
           updated_at: string
         }
@@ -86,6 +89,9 @@ export interface Database {
           notes?: string | null
           external_ref?: Json | null
           failure_reason?: string | null
+          reel_cover_path?: string | null
+          reel_cover_url?: string | null
+          reel_cover_is_custom?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -103,6 +109,9 @@ export interface Database {
           notes?: string | null
           external_ref?: Json | null
           failure_reason?: string | null
+          reel_cover_path?: string | null
+          reel_cover_url?: string | null
+          reel_cover_is_custom?: boolean
           created_at?: string
           updated_at?: string
         }

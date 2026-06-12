@@ -15,6 +15,9 @@ export interface SocialPostRecord {
   caption: string | null
   format: 'image' | 'carousel' | 'reel' | 'story'
   aspect_ratio: string
+  reel_cover_path: string | null
+  reel_cover_url: string | null
+  reel_cover_is_custom: boolean
   status: 'idea' | 'draft' | 'scheduled' | 'posted' | 'failed'
   scheduled_at: string | null
   posted_at: string | null
@@ -30,7 +33,7 @@ export interface SocialPostRecord {
 }
 
 const SELECT = `
-  id, title, caption, format, aspect_ratio, status, scheduled_at, posted_at, platforms, collaborators, notes, created_at, updated_at,
+  id, title, caption, format, aspect_ratio, reel_cover_path, reel_cover_url, reel_cover_is_custom, status, scheduled_at, posted_at, platforms, collaborators, notes, created_at, updated_at,
   social_post_media ( id, url, storage_path, media_type, position ),
   social_post_products ( product_id, products ( name ) ),
   social_post_retailers ( retailer )
@@ -42,6 +45,9 @@ type RawRow = {
   caption: string | null
   format: SocialPostRecord['format']
   aspect_ratio: string
+  reel_cover_path: string | null
+  reel_cover_url: string | null
+  reel_cover_is_custom: boolean | null
   status: SocialPostRecord['status']
   scheduled_at: string | null
   posted_at: string | null
@@ -63,6 +69,9 @@ function shape(row: RawRow): SocialPostRecord {
     caption: row.caption,
     format: row.format,
     aspect_ratio: row.aspect_ratio,
+    reel_cover_path: row.reel_cover_path,
+    reel_cover_url: row.reel_cover_url,
+    reel_cover_is_custom: row.reel_cover_is_custom ?? false,
     status: row.status,
     scheduled_at: row.scheduled_at,
     posted_at: row.posted_at,
