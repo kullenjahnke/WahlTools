@@ -72,9 +72,12 @@ media, while keeping both fields editable and never clobbering a manual choice.
   `false` and the helper returns non-`null`.
 - A manual change to the Format or Aspect `Select` sets the respective flag to `true`.
 - When `media` transitions to empty (length 0), both flags reset to `false`.
-- **Edit mode:** when opening an existing post, both flags initialize to `true` (sticky) so a saved
-  post is never silently reshaped on open. Clearing media to empty resets the flags, so re-adding
-  media resumes derivation.
+- **Edit mode:** an existing post is **fully sticky** — the media-change effect early-returns when a
+  `post` is being edited, so derivation never runs and a saved `format`/`aspect_ratio` is never
+  reshaped (on open or by adding/removing media). The clear-resets-flags resume behavior applies to
+  **new posts only**. (This is a refinement from the original "edit re-derives after clearing media"
+  idea: it eliminates a same-commit stale-flag race where opening an edit post with media could
+  overwrite its saved values, and it is the safer, more predictable behavior.)
 
 ## Out of scope
 
@@ -90,6 +93,7 @@ media, while keeping both fields editable and never clobbering a manual choice.
   - Attach a 2nd image → Format flips to Carousel.
   - Attach a single video → Format = Reel; aspect Select hidden.
   - Manually change Format, then add/remove media → manual value sticks (no auto re-derive).
-  - Clear all media, re-add → derivation resumes.
-  - Open an existing post → Format/aspect unchanged on open.
+  - Clear all media, re-add (new post) → derivation resumes.
+  - Open an existing post → Format/aspect unchanged on open, and stay unchanged when adding/removing
+    media (edit mode is fully sticky).
 - Verify both light and dark mode for any UI affordance touched.
