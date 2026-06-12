@@ -65,6 +65,7 @@ const TIME_RANGES = [
   { value: "90", label: "Last 90 days" },
   { value: "180", label: "Last 6 months" },
   { value: "365", label: "Last 1 year" },
+  { value: "all", label: "All time" },
 ]
 
 // Palette for product/category series (retailers use their brand colors).
@@ -165,6 +166,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name || "Uncategorized"
 
   const cutoffMs = useMemo(() => {
+    if (timeRange === "all") return 0
     const days = parseInt(timeRange)
     const cutoff = days <= 90 ? subDays(new Date(), days) : subMonths(new Date(), days / 30)
     return cutoff.getTime()
