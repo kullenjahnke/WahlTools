@@ -292,7 +292,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
         header = {
           kind: "comparison",
           title: "Product comparison",
-          subtitle: `${visibleSeries.length} products`,
+          subtitle: `${visibleSeries.length} ${visibleSeries.length === 1 ? "product" : "products"}`,
           icon: "product",
         }
         filename = `product-comparison-${slugify(rangeLabel)}.png`
@@ -300,7 +300,7 @@ export function ProductAnalytics({ products, categories }: ProductAnalyticsProps
         header = {
           kind: "comparison",
           title: "Category comparison",
-          subtitle: `${visibleSeries.length} categories`,
+          subtitle: `${visibleSeries.length} ${visibleSeries.length === 1 ? "category" : "categories"}`,
           icon: "category",
         }
         filename = `category-comparison-${slugify(rangeLabel)}.png`

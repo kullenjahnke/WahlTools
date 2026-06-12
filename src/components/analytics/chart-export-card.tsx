@@ -54,6 +54,9 @@ export const ChartExportCard = forwardRef<HTMLDivElement, ChartExportCardProps>(
   ) {
     const chart = useChartTheme()
 
+    const metricLabel =
+      header.kind === "product" ? "Retailer" : header.icon === "category" ? "Category" : "Product"
+
     return (
       <div
         ref={ref}
@@ -102,7 +105,7 @@ export const ChartExportCard = forwardRef<HTMLDivElement, ChartExportCardProps>(
             <table className="w-full border-collapse text-[11px]">
               <thead>
                 <tr className="text-muted-foreground">
-                  <th className="border-b border-border py-1 pr-2 text-left font-medium">Retailer</th>
+                  <th className="border-b border-border py-1 pr-2 text-left font-medium">{metricLabel}</th>
                   <th className="border-b border-border px-2 py-1 text-right font-medium">Avg</th>
                   <th className="border-b border-border py-1 pl-2 text-right font-medium">WoW</th>
                 </tr>
